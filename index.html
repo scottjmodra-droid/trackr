@@ -459,7 +459,7 @@ const MET_DEFAULTS = { Swim: 8, Row: 7, Run: 10, Weights: 5, Cycle: 8, Other: 5 
 const RPE_LABEL = ["", "Very Easy", "Easy", "Moderate", "Moderate", "Hard", "Hard", "Very Hard", "Very Hard", "Max", "Max"];
 const STORAGE_KEY = "training-log:sessions";
 const SETTINGS_KEY = "training-log:settings";
-const APP_VERSION = "0.7";  // bump this on every deploy so you can verify the right file is live
+const APP_VERSION = "0.8";  // bump this on every deploy so you can verify the right file is live
 
 // ---------- State ----------
 const state = {
@@ -579,7 +579,52 @@ function autoSpeed(distance, duration) {
   if (!d || !m || m <= 0) return "";
   return ((d / m) * 60).toFixed(1);
 }
-function metFor(discipline, duration, distance) {
+// Parse a split like "1:52" or "2:07.5" to seconds. Returns 0 if invalid.
+function parseSplitToSeconds(s) {
+  if (!s) return 0;
+  const str = String(s).trim();
+  const m = /^(\d{1,2}):(\d{1,2}(?:\.\d+)?)$/.exec(str);
+  if (!m) return 0;
+  const mins = parseInt(m[1], 10);
+  const secs = parseFloat(m[2]);
+  if (isNaN(mins) || isNaN(secs) || secs >= 60) return 0;
+  return mins * 60 + secs;
+}
+// Concept2's split-to-power formula:
+//   power (W) = 2.80 / pace^3, where pace is in sec per metre
+//   so pace_per_m = split_sec_per_500m / 500
+function rowingPowerFromSplit500(splitSeconds) {
+  if (!splitSeconds || splitSeconds <= 0) return 0;
+  const pacePerMeter = splitSeconds / 500;
+  return 2.80 / Math.pow(pacePerMeter, 3);
+}
+// MET from power using the 2024 Compendium of Physical Activities anchors
+// (midpoints of each "stationary rowing" power band):
+//   <100W   -> 5.0 MET   (anchor 50W)
+//   100-149W -> 7.5 MET  (anchor 125W)
+//   150-199W -> 11.0 MET (anchor 175W)
+//   >=200W  -> 14.0 MET  (anchor 225W)
+// Linear interp between, extrapolation outside, MET floor of 3.
+function rowingMetFromPower(watts) {
+  const anchors = [[50, 5.0], [125, 7.5], [175, 11.0], [225, 14.0]];
+  if (watts <= anchors[0][0]) {
+    const [x1, y1] = anchors[0], [x2, y2] = anchors[1];
+    const slope = (y2 - y1) / (x2 - x1);
+    return Math.max(3, y1 + slope * (watts - x1));
+  }
+  for (let i = 0; i < anchors.length - 1; i++) {
+    const [x1, y1] = anchors[i], [x2, y2] = anchors[i + 1];
+    if (watts <= x2) {
+      const slope = (y2 - y1) / (x2 - x1);
+      return y1 + slope * (watts - x1);
+    }
+  }
+  const [x1, y1] = anchors[anchors.length - 2];
+  const [x2, y2] = anchors[anchors.length - 1];
+  const slope = (y2 - y1) / (x2 - x1);
+  return y2 + slope * (watts - x2);
+}
+function metFor(discipline, duration, distance, splitStr) {
   const baseMET = MET_DEFAULTS[discipline] || 5;
   const dur = parseFloat(duration), dist = parseFloat(distance);
   if (!dur || dur <= 0) return baseMET;
@@ -602,23 +647,26 @@ function metFor(discipline, duration, distance) {
     if (speed > 16) return 6.8;
     return 4;
   }
-  // Row: refine by 500m split pace (min per 500m)
-  if (discipline === "Row" && dist > 0) {
-    const split = dur / (dist * 2); // min per 500m
-    if (split < 1.667) return 14;   // sub-1:40 — elite/sprint
-    if (split < 1.833) return 12;   // 1:40-1:50 — very vigorous
-    if (split < 2.083) return 10;   // 1:50-2:05 — vigorous (around 2:00 pace)
-    if (split < 2.25) return 8.5;   // 2:05-2:15 — moderate-hard
-    if (split < 2.5) return 7;      // 2:15-2:30 — moderate
-    return 5;                       // 2:30+ — easy
+  // Row: runbundle / 2024 Compendium method via Concept2 split->power.
+  // Prefer an explicit avgSplit if the user typed one (most accurate, matches
+  // what the rower's display reports); otherwise derive from distance + dur.
+  if (discipline === "Row") {
+    let splitSec = parseSplitToSeconds(splitStr);
+    if (!splitSec && dist > 0) {
+      splitSec = (dur * 60) / (dist * 2);  // sec per 500m
+    }
+    if (splitSec > 0) {
+      const watts = rowingPowerFromSplit500(splitSec);
+      return rowingMetFromPower(watts);
+    }
   }
   return baseMET;
 }
-function calcCalories(discipline, duration, distance) {
+function calcCalories(discipline, duration, distance, splitStr) {
   const dur = parseFloat(duration);
   if (!dur || dur <= 0) return "";
   const weight = state.weight || 94;
-  const met = metFor(discipline, duration, distance);
+  const met = metFor(discipline, duration, distance, splitStr);
   return String(Math.round(met * weight * (dur / 60)));
 }
 
@@ -741,7 +789,7 @@ function renderComputedHint(fieldKey) {
     return s ? `<div class="computed-hint">auto: ${s} km/h — tap to use</div>` : "";
   }
   if (fieldKey === "calories" && m && !state.form.calories) {
-    const c = calcCalories(state.activeDiscipline, m, d);
+    const c = calcCalories(state.activeDiscipline, m, d, state.form.avgSplit);
     return c ? `<div class="computed-hint">auto: ~${c} kcal — tap to use</div>` : "";
   }
   return "";
@@ -1070,7 +1118,7 @@ function attachHandlers() {
       state.form[input.dataset.field] = val;
       // Re-render only if a hint needs to update or RPE preview changes
       const key = input.dataset.field;
-      if (key === "distance" || key === "duration") {
+      if (key === "distance" || key === "duration" || key === "avgSplit") {
         // Preserve focus
         const focused = document.activeElement.dataset?.field;
         const selStart = document.activeElement.selectionStart;
@@ -1113,7 +1161,7 @@ function attachHandlers() {
         state.form.avgSpeed = autoSpeed(state.form.distance, state.form.duration);
       }
       if (cfg.fields.find(f => f.key === "calories") && !state.form.calories) {
-        state.form.calories = calcCalories(state.activeDiscipline, state.form.duration, state.form.distance);
+        state.form.calories = calcCalories(state.activeDiscipline, state.form.duration, state.form.distance, state.form.avgSplit);
       }
       render();
     });
@@ -1160,7 +1208,7 @@ function handleSave() {
     if (s) state.form.avgSpeed = s;
   }
   if (cfg.fields.find(f => f.key === "calories") && !state.form.calories) {
-    const c = calcCalories(state.activeDiscipline, state.form.duration, state.form.distance);
+    const c = calcCalories(state.activeDiscipline, state.form.duration, state.form.distance, state.form.avgSplit);
     if (c) state.form.calories = c;
   }
   const session = { id: uid(), date: state.date, discipline: state.activeDiscipline, data: { ...state.form } };
