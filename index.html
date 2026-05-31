@@ -137,13 +137,14 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
   border-color: #e8f84a;
   box-shadow: 0 0 0 1px rgba(232, 248, 74, 0.3);
 }
-.date-today-badge {
+.date-day-badge {
   position: absolute; top: 50%; right: 10px; transform: translateY(-50%);
-  background: #e8f84a; color: #1a0633;
+  background: rgba(255,255,255,0.10); color: #d4baeb;
   font-family: 'Bebas Neue', sans-serif; letter-spacing: 1.5px;
   font-size: 11px; padding: 3px 8px; border-radius: 4px;
   pointer-events: none;
 }
+.date-day-badge.is-today { background: #e8f84a; color: #1a0633; }
 .field-label {
   font-size: 13px; color: #d4baeb; letter-spacing: 2px;
   font-family: 'Bebas Neue', sans-serif; margin-bottom: 7px; display: block;
@@ -347,16 +348,22 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
 .weekly-legend-swatch { width: 8px; height: 8px; border-radius: 2px; }
 
 .stats-grid {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(78px, 1fr));
   gap: 8px; margin-bottom: 16px;
 }
 .stat-card {
-  background: rgba(255,255,255,0.06); border-radius: 10px; padding: 12px 14px;
+  background: rgba(255,255,255,0.06); border-radius: 10px; padding: 12px 10px;
   backdrop-filter: blur(8px);
   border: 1px solid rgba(255,255,255,0.08);
+  min-width: 0;
+  overflow: hidden;
 }
-.stat-value { font-size: 28px; font-family: 'Bebas Neue', sans-serif; letter-spacing: 1px; }
-.stat-label { font-size: 12px; color: #d4baeb; margin-top: 2px; }
+.stat-value {
+  font-size: 22px; font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.5px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  line-height: 1.1;
+}
+.stat-label { font-size: 11px; color: #d4baeb; margin-top: 2px; }
 
 .history-list { display: flex; flex-direction: column; gap: 8px; }
 .history-item {
@@ -450,12 +457,14 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
     <button class="menu-item" id="settingsBtn"><span class="menu-icon">⚙</span>Bodyweight <span id="weightDisplay" style="color:#666; margin-left:auto;"></span></button>
     <button class="menu-item" id="exportBtn"><span class="menu-icon">⬇</span>Export sessions (JSON)</button>
     <button class="menu-item" id="importBtn"><span class="menu-icon">⬆</span>Import sessions (JSON)</button>
+    <button class="menu-item" id="importAppleBtn"><span class="menu-icon">⌚</span>Import from Apple Health</button>
     <button class="menu-item" id="exportCsvBtn"><span class="menu-icon">📊</span>Export as CSV</button>
     <button class="menu-item danger" id="clearBtn"><span class="menu-icon">🗑</span>Clear all data</button>
     <button class="menu-item" id="closeMenuBtn" style="color:#666; justify-content:center;">Cancel</button>
   </div>
 </div>
 <input type="file" id="importFile" accept="application/json" style="display:none">
+<input type="file" id="importAppleFile" accept=".xml,text/xml,application/xml" style="display:none">
 <div class="toast" id="toast"></div>
 
 <script>
@@ -521,7 +530,7 @@ const MET_DEFAULTS = { Swim: 8, Row: 7, Run: 10, Weights: 5, Walk: 3.5, Other: 5
 const RPE_LABEL = ["", "Very Easy", "Easy", "Moderate", "Moderate", "Hard", "Hard", "Very Hard", "Very Hard", "Max", "Max"];
 const STORAGE_KEY = "training-log:sessions";
 const SETTINGS_KEY = "training-log:settings";
-const APP_VERSION = "0.13";  // bump this on every deploy so you can verify the right file is live
+const APP_VERSION = "0.17";  // bump this on every deploy so you can verify the right file is live
 
 // ---------- State ----------
 const state = {
@@ -559,6 +568,13 @@ function mondayOf(d) {
   out.setDate(out.getDate() - offset);
   return out;
 }
+function firstOfMonth(d) {
+  return new Date(d.getFullYear(), d.getMonth(), 1);
+}
+// "YYYY-MM" key for grouping sessions into calendar months.
+function monthKey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
 // Compute the visible period bounds from the selected range + offset.
 // Returns { start, end, label, isCurrent } where start/end are Date objects
 // (or null for all-time which has no fixed bounds).
@@ -583,6 +599,21 @@ function periodBounds(range, offset) {
     return { start: first, end: last, label, isCurrent: offset === 0 };
   }
   return { start: null, end: null, label: "ALL TIME", isCurrent: true };
+}
+
+// Pretty-print a duration in minutes for display.
+// Below 60 min: show the original value with "m" (preserves decimals).
+// 60 min or more: convert to "Xh Ym" (rounded to nearest minute).
+function fmtDuration(minutes) {
+  const m = parseFloat(minutes);
+  if (!m || isNaN(m) || m <= 0) return "";
+  if (m < 60) {
+    // Strip trailing zero (e.g. "45.0" -> "45") but keep real decimals
+    return (Number.isInteger(m) ? String(m) : String(m)) + "m";
+  }
+  const total = Math.round(m);
+  const h = Math.floor(total / 60), rem = total % 60;
+  return rem === 0 ? `${h}h` : `${h}h ${rem}m`;
 }
 
 function relativeDayLabel(iso) {
@@ -619,6 +650,92 @@ function disciplineBtnStyle(color, active) {
   }
   // Inactive: ~28% tint of the color on top of the dark purple background
   return `background:rgba(${r},${g},${b},0.22); border-color:rgba(${r},${g},${b},0.7); color:#f0e6ff;`;
+}
+
+// ---------- Apple Health import ----------
+// Maps Apple's HKWorkoutActivityType strings to our disciplines. Anything not
+// listed falls back to "Other" with a prettified type label so the entry is
+// still identifiable in TRACKR.
+const APPLE_ACTIVITY_MAP = {
+  HKWorkoutActivityTypeRunning: { discipline: "Run" },
+  HKWorkoutActivityTypeSwimming: { discipline: "Swim" },
+  HKWorkoutActivityTypeRowing: { discipline: "Row" },
+  HKWorkoutActivityTypeTraditionalStrengthTraining: { discipline: "Weights" },
+  HKWorkoutActivityTypeFunctionalStrengthTraining: { discipline: "Weights" },
+  HKWorkoutActivityTypeWalking: { discipline: "Walk" },
+};
+function mapAppleActivity(type) {
+  if (APPLE_ACTIVITY_MAP[type]) return APPLE_ACTIVITY_MAP[type];
+  // Fallback: strip the HKWorkoutActivityType prefix, add spaces before caps.
+  const name = String(type || "Workout")
+    .replace(/^HKWorkoutActivityType/, "")
+    .replace(/([A-Z])/g, " $1")
+    .trim();
+  return { discipline: "Other", type: name };
+}
+// Parse an Apple Health export.xml. Handles both the older format (workout
+// stats as attributes on <Workout>) and the iOS 18+ format (stats in nested
+// <WorkoutStatistics> elements). Returns an array of TRACKR session objects.
+function parseAppleHealthXML(xmlText) {
+  const doc = new DOMParser().parseFromString(xmlText, "application/xml");
+  const parseErr = doc.querySelector("parsererror");
+  if (parseErr) throw new Error("XML parse error: " + parseErr.textContent.slice(0, 200));
+  const workouts = doc.querySelectorAll("Workout");
+  const sessions = [];
+  workouts.forEach(w => {
+    const startDate = w.getAttribute("startDate");
+    if (!startDate) return;
+    // Apple stores "YYYY-MM-DD HH:MM:SS ±HHMM" in LOCAL time — first 10 chars
+    // are already the correct local date.
+    const date = startDate.slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
+
+    // Duration: attribute is the only source. Convert seconds to minutes.
+    let duration = parseFloat(w.getAttribute("duration")) || 0;
+    const durationUnit = w.getAttribute("durationUnit") || "min";
+    if (durationUnit === "s") duration = duration / 60;
+    duration = Math.round(duration * 10) / 10;
+
+    // Distance: try the old attribute form, then look in WorkoutStatistics.
+    let distance = parseFloat(w.getAttribute("totalDistance")) || 0;
+    let distanceUnit = w.getAttribute("totalDistanceUnit") || "km";
+    if (!distance) {
+      const distStat = Array.from(w.querySelectorAll("WorkoutStatistics"))
+        .find(s => /Distance/.test(s.getAttribute("type") || ""));
+      if (distStat) {
+        distance = parseFloat(distStat.getAttribute("sum")) || 0;
+        distanceUnit = distStat.getAttribute("unit") || "km";
+      }
+    }
+    if (distanceUnit === "mi") distance = distance * 1.609344;
+    else if (distanceUnit === "m") distance = distance / 1000;  // Apple uses metres for swims
+    distance = Math.round(distance * 100) / 100;
+
+    // Calories — same dual-format pattern as distance.
+    let calories = parseFloat(w.getAttribute("totalEnergyBurned")) || 0;
+    if (!calories) {
+      const calStat = Array.from(w.querySelectorAll("WorkoutStatistics"))
+        .find(s => /ActiveEnergyBurned/.test(s.getAttribute("type") || ""));
+      if (calStat) calories = parseFloat(calStat.getAttribute("sum")) || 0;
+    }
+    calories = Math.round(calories);
+
+    const mapped = mapAppleActivity(w.getAttribute("workoutActivityType"));
+    const data = {
+      duration: duration > 0 ? String(duration) : "",
+      distance: distance > 0 ? String(distance) : "",
+      calories: calories > 0 ? String(calories) : "",
+    };
+    if (mapped.type) data.type = mapped.type;
+
+    sessions.push({
+      id: uid(),
+      date,
+      discipline: mapped.discipline,
+      data,
+    });
+  });
+  return sessions;
 }
 
 // ---------- Storage ----------
@@ -826,7 +943,11 @@ function renderLog() {
         <button class="date-nav" type="button" data-date-step="-1" aria-label="Previous day">‹</button>
         <div class="date-input-wrap ${state.date === todayISO() ? 'is-today' : ''}">
           <input id="dateInput" class="input" type="date" value="${state.date}">
-          ${state.date === todayISO() ? '<span class="date-today-badge">TODAY</span>' : ''}
+          <span class="date-day-badge ${state.date === todayISO() ? 'is-today' : ''}">${
+            state.date === todayISO()
+              ? 'TODAY'
+              : parseLocalISO(state.date).toLocaleDateString("en-AU", { weekday: 'short' }).toUpperCase()
+          }</span>
         </div>
         <button class="date-nav" type="button" data-date-step="1" aria-label="Next day">›</button>
       </div>
@@ -865,7 +986,7 @@ function renderLog() {
           const c = DISCIPLINE_CONFIG[s.discipline];
           const bits = [];
           if (s.data.distance) bits.push(`${s.data.distance}km`);
-          if (s.data.duration) bits.push(`${s.data.duration}min`);
+          if (s.data.duration) bits.push(fmtDuration(s.data.duration));
           if (s.data.calories) bits.push(`${s.data.calories} kcal`);
           return `
             <div class="today-item" style="border-left-color:${c.color};">
@@ -1006,27 +1127,36 @@ function renderDailyVolume(period) {
       });
     }
   } else {
-    // all time: aggregate by week (Mon-Sun) from first session to current week
-    granularity = "week";
-    chartTitle = `WEEKLY ${metricNoun}`;
+    // all time: aggregate by calendar month from first session to current month
+    granularity = "month";
+    chartTitle = `MONTHLY ${metricNoun}`;
     if (state.sessions.length === 0) {
-      // fall back to current week, empty
-      const monday = mondayOf(today);
-      buckets.push({ key: localISO(monday), date: monday, label: { top: "W", bot: String(monday.getDate()) }, isToday: false, isWeekend: false });
+      // fall back to current month, empty
+      const first = firstOfMonth(today);
+      buckets.push({
+        key: monthKey(first), date: first,
+        label: { top: first.toLocaleDateString("en-AU", { month: "short" }).toUpperCase(), bot: "'" + String(first.getFullYear()).slice(-2) },
+        isToday: true, isWeekend: false,
+      });
     } else {
       let earliest = state.sessions[0].date;
       state.sessions.forEach(s => { if (s.date < earliest) earliest = s.date; });
-      const startMonday = mondayOf(parseLocalISO(earliest));
-      const currentMonday = mondayOf(today);
-      const thisMondayKey = localISO(currentMonday);
-      for (let m = new Date(startMonday); m <= currentMonday; m.setDate(m.getDate() + 7)) {
-        const wk = new Date(m);
+      const startMonth = firstOfMonth(parseLocalISO(earliest));
+      const currentMonth = firstOfMonth(today);
+      const thisMonthKey = monthKey(currentMonth);
+      const cursor = new Date(startMonth);
+      while (cursor <= currentMonth) {
+        const m = new Date(cursor);
+        const monthLabel = m.toLocaleDateString("en-AU", { month: "short" }).toUpperCase();
+        // Show year only on January (or the first column) so the row stays readable.
+        const showYear = m.getMonth() === 0 || (buckets.length === 0);
         buckets.push({
-          key: localISO(wk), date: wk,
-          label: { top: wk.toLocaleDateString("en-AU", { month: "short" }).toUpperCase(), bot: String(wk.getDate()) },
-          isToday: localISO(wk) === thisMondayKey,
+          key: monthKey(m), date: m,
+          label: { top: monthLabel, bot: showYear ? "'" + String(m.getFullYear()).slice(-2) : "" },
+          isToday: monthKey(m) === thisMonthKey,
           isWeekend: false,
         });
+        cursor.setMonth(cursor.getMonth() + 1);
       }
     }
   }
@@ -1041,6 +1171,8 @@ function renderDailyVolume(period) {
     let bucketKey;
     if (granularity === "day") {
       bucketKey = s.date;
+    } else if (granularity === "month") {
+      bucketKey = monthKey(parseLocalISO(s.date));
     } else {
       bucketKey = localISO(mondayOf(parseLocalISO(s.date)));
     }
@@ -1112,7 +1244,9 @@ function renderDailyVolume(period) {
 
   // Average line position (from bottom). Only show if avg > 0 and chart has data.
   const avgPctFromBottom = avgVal > 0 ? (avgVal / yMax) * 100 : 0;
-  const avgLabelText = granularity === "week" ? `avg / week` : `avg / day`;
+  const avgLabelText = granularity === "month" ? "avg / month"
+    : granularity === "week" ? "avg / week"
+    : "avg / day";
   const avgLineHTML = avgVal > 0 ? `
     <div class="daily-avg-line" style="bottom:${avgPctFromBottom}%;">
       <span class="daily-avg-label">${fmtVal(avgVal)}${unitLabel} ${avgLabelText}</span>
@@ -1184,7 +1318,7 @@ function renderDisciplineStats(discipline, period) {
   const cards = [
     { value: ds.length, label: "Sessions" },
     totalDist > 0 ? { value: totalDist.toFixed(1) + "km", label: "Total Distance" } : null,
-    totalDur > 0 ? { value: Math.round(totalDur) + "m", label: "Total Time" } : null,
+    totalDur > 0 ? { value: fmtDuration(totalDur), label: "Total Time" } : null,
     totalCal > 0 ? { value: Math.round(totalCal).toLocaleString(), label: "Total kcal" } : null,
   ].filter(Boolean);
 
@@ -1201,14 +1335,20 @@ function renderDisciplineStats(discipline, period) {
       ${ds.slice().reverse().slice(0, 50).map(s => {
         if (s.id === state.editingId) return renderHistoryEdit(s, cfg);
         const fieldHtml = cfg.fields.filter(f => s.data[f.key]).map(f => {
-          const unit = f.key === "distance" ? "km"
-            : f.key === "duration" ? "m"
-            : f.key === "totalSets" ? " sets"
-            : f.key === "calories" ? " kcal"
-            : f.key === "avgSpeed" ? " km/h"
-            : "";
+          // duration gets the smart formatter so 90 -> "1h 30m"; others use a static unit.
+          let displayVal;
+          if (f.key === "duration") {
+            displayVal = fmtDuration(s.data[f.key]);
+          } else {
+            const unit = f.key === "distance" ? "km"
+              : f.key === "totalSets" ? " sets"
+              : f.key === "calories" ? " kcal"
+              : f.key === "avgSpeed" ? " km/h"
+              : "";
+            displayVal = escapeHtml(s.data[f.key]) + unit;
+          }
           const labelShort = f.key === "type" ? "" : f.label.split(" ")[0];
-          return `<div class="history-field">${labelShort ? `<span class="history-field-label">${labelShort}</span>` : ""}${escapeHtml(s.data[f.key])}${unit}</div>`;
+          return `<div class="history-field">${labelShort ? `<span class="history-field-label">${labelShort}</span>` : ""}${displayVal}</div>`;
         }).join("");
         return `
           <div class="history-item" data-edit="${s.id}" style="border-left-color:${cfg.color};">
@@ -1480,6 +1620,40 @@ function setupMenu() {
   });
   document.getElementById("importBtn").addEventListener("click", () => {
     document.getElementById("importFile").click();
+  });
+  // Apple Health: pick the export.xml (after unzipping the Health export zip).
+  document.getElementById("importAppleBtn").addEventListener("click", () => {
+    document.getElementById("importAppleFile").click();
+  });
+  document.getElementById("importAppleFile").addEventListener("change", e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const sessions = parseAppleHealthXML(reader.result);
+        if (sessions.length === 0) {
+          alert("No workouts found in this file. Make sure you picked the export.xml from your Apple Health export (not the zip).");
+          e.target.value = "";
+          return;
+        }
+        const counts = {};
+        sessions.forEach(s => { counts[s.discipline] = (counts[s.discipline] || 0) + 1; });
+        const breakdown = DISCIPLINES.filter(d => counts[d]).map(d => `${counts[d]} ${d}`).join(", ");
+        const msg = `Found ${sessions.length} workouts: ${breakdown}.\n\nThis will REPLACE your current ${state.sessions.length} session${state.sessions.length === 1 ? "" : "s"}. Continue?`;
+        if (confirm(msg)) {
+          state.sessions = sessions;
+          saveSessions();
+          render();
+          showToast(`Imported ${sessions.length} workouts from Apple Health`);
+        }
+      } catch (err) {
+        alert("Could not read this Apple Health export: " + err.message);
+      }
+      e.target.value = "";
+      document.getElementById("menuSheet").classList.remove("open");
+    };
+    reader.readAsText(file);
   });
   document.getElementById("importFile").addEventListener("change", e => {
     const file = e.target.files[0];
