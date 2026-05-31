@@ -213,6 +213,48 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
   box-shadow: 0 0 0 1px rgba(232, 248, 74, 0.4);
 }
 
+.period-nav {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) 40px;
+  gap: 6px; margin-bottom: 16px;
+}
+.period-step {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 8px;
+  color: #d4baeb; font-size: 20px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0;
+}
+.period-step:active { background: rgba(255,255,255,0.12); color: #fff; }
+.period-step:disabled { opacity: 0.25; }
+.period-label {
+  position: relative;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 8px;
+  padding: 9px 12px;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  font-family: 'Bebas Neue', sans-serif;
+  letter-spacing: 1.5px;
+  font-size: 13px;
+  color: #f0e6ff;
+  min-width: 0;
+}
+.period-nav.is-current .period-label {
+  border-color: #e8f84a;
+  box-shadow: 0 0 0 1px rgba(232, 248, 74, 0.3);
+}
+.period-badge {
+  background: #e8f84a; color: #1a0633;
+  font-family: 'Bebas Neue', sans-serif;
+  letter-spacing: 1.5px;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
 .chart-header {
   display: flex; align-items: center; justify-content: space-between;
   gap: 10px; margin-bottom: 14px;
@@ -322,7 +364,27 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
   border-left: 3px solid;
   position: relative;
   backdrop-filter: blur(8px);
+  cursor: pointer;
+  transition: background 0.15s;
 }
+.history-item:active { background: rgba(255,255,255,0.10); }
+.history-item.editing { background: rgba(255,255,255,0.10); cursor: default; }
+.history-item.editing:active { background: rgba(255,255,255,0.10); }
+.history-edit { display: flex; flex-direction: column; gap: 10px; padding-top: 8px; }
+.history-edit-field { display: flex; flex-direction: column; gap: 4px; }
+.history-edit-field-label {
+  font-size: 11px; color: #d4baeb; letter-spacing: 1.5px;
+  font-family: 'Bebas Neue', sans-serif;
+}
+.history-edit-field .input { padding: 10px 12px; font-size: 15px; }
+.history-edit-actions { display: flex; gap: 8px; margin-top: 6px; }
+.history-edit-actions button {
+  flex: 1; padding: 12px; border-radius: 6px;
+  font-family: 'Bebas Neue', sans-serif; letter-spacing: 2px;
+  font-size: 13px; border: none;
+}
+.history-edit-cancel { background: rgba(255,255,255,0.06); color: #d4baeb; border: 1px solid rgba(255,255,255,0.10); }
+.history-edit-save { background: #e8f84a; color: #1a0633; font-weight: 600; }
 .history-item-top {
   display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;
 }
@@ -397,7 +459,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
 <div class="toast" id="toast"></div>
 
 <script>
-const DISCIPLINES = ["Swim", "Run", "Weights", "Row", "Cycle", "Other"];
+const DISCIPLINES = ["Swim", "Run", "Weights", "Row", "Walk", "Other"];
 const DISCIPLINE_CONFIG = {
   Swim: {
     color: "#38bdf8", icon: "🏊",
@@ -434,12 +496,12 @@ const DISCIPLINE_CONFIG = {
       { key: "calories", label: "Calories", type: "number" },
     ],
   },
-  Cycle: {
-    color: "#94a3b8", icon: "🚴",
+  Walk: {
+    color: "#94a3b8", icon: "🚶",
     fields: [
       { key: "distance", label: "Distance (km)", type: "number", step: "0.1" },
       { key: "duration", label: "Duration (min)", type: "number" },
-      { key: "avgSpeed", label: "Avg Speed (km/h)", type: "text", placeholder: "auto-calculated, or e.g. 25.5" },
+      { key: "avgSpeed", label: "Avg Speed (km/h)", type: "text", placeholder: "auto-calculated, or e.g. 5.5" },
       { key: "calories", label: "Calories", type: "number" },
     ],
   },
@@ -455,11 +517,11 @@ const DISCIPLINE_CONFIG = {
 };
 // MET values (Metabolic Equivalent of Task) — used for calorie auto-calc.
 // Calories = MET × weight(kg) × hours. Run/Cycle refine based on pace/speed.
-const MET_DEFAULTS = { Swim: 8, Row: 7, Run: 10, Weights: 5, Cycle: 8, Other: 5 };
+const MET_DEFAULTS = { Swim: 8, Row: 7, Run: 10, Weights: 5, Walk: 3.5, Other: 5 };
 const RPE_LABEL = ["", "Very Easy", "Easy", "Moderate", "Moderate", "Hard", "Hard", "Very Hard", "Very Hard", "Max", "Max"];
 const STORAGE_KEY = "training-log:sessions";
 const SETTINGS_KEY = "training-log:settings";
-const APP_VERSION = "0.8";  // bump this on every deploy so you can verify the right file is live
+const APP_VERSION = "0.12";  // bump this on every deploy so you can verify the right file is live
 
 // ---------- State ----------
 const state = {
@@ -468,7 +530,9 @@ const state = {
   activeDiscipline: "Swim",
   historyTab: "Swim",
   historyRange: "week",  // "week" | "month" | "all"
+  historyOffset: 0,  // 0 = current period, -1 = last week/month, etc.
   historyMetric: "minutes",  // "minutes" | "calories"
+  editingId: null,  // id of the history session currently being edited, or null
   form: emptyForm("Swim"),
   date: todayISO(),
   saved: false,
@@ -495,6 +559,32 @@ function mondayOf(d) {
   out.setDate(out.getDate() - offset);
   return out;
 }
+// Compute the visible period bounds from the selected range + offset.
+// Returns { start, end, label, isCurrent } where start/end are Date objects
+// (or null for all-time which has no fixed bounds).
+function periodBounds(range, offset) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  if (range === "week") {
+    const monday = mondayOf(today);
+    monday.setDate(monday.getDate() + offset * 7);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    const sameMonth = monday.getMonth() === sunday.getMonth();
+    const fmt = d => d.toLocaleDateString("en-AU", { day: "numeric", month: "short" });
+    const label = sameMonth
+      ? `${monday.getDate()} – ${sunday.getDate()} ${monday.toLocaleDateString("en-AU", { month: "short" })}`
+      : `${fmt(monday)} – ${fmt(sunday)}`;
+    return { start: monday, end: sunday, label, isCurrent: offset === 0 };
+  }
+  if (range === "month") {
+    const first = new Date(today.getFullYear(), today.getMonth() + offset, 1);
+    const last = new Date(today.getFullYear(), today.getMonth() + offset + 1, 0);
+    const label = first.toLocaleDateString("en-AU", { month: "long", year: "numeric" }).toUpperCase();
+    return { start: first, end: last, label, isCurrent: offset === 0 };
+  }
+  return { start: null, end: null, label: "ALL TIME", isCurrent: true };
+}
+
 function relativeDayLabel(iso) {
   const todayD = new Date(); todayD.setHours(0, 0, 0, 0);
   const d = parseLocalISO(iso);
@@ -535,7 +625,12 @@ function disciplineBtnStyle(color, active) {
 function loadSessions() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) state.sessions = JSON.parse(raw);
+    if (raw) {
+      state.sessions = JSON.parse(raw);
+      // v0.10 migration: Cycle discipline was retired in favour of Walk.
+      // Rename any legacy sessions so they keep rendering instead of orphaning.
+      state.sessions.forEach(s => { if (s.discipline === "Cycle") s.discipline = "Walk"; });
+    }
   } catch (e) { console.warn("Load failed", e); }
 }
 function saveSessions() {
@@ -598,15 +693,20 @@ function rowingPowerFromSplit500(splitSeconds) {
   const pacePerMeter = splitSeconds / 500;
   return 2.80 / Math.pow(pacePerMeter, 3);
 }
-// MET from power using the 2024 Compendium of Physical Activities anchors
-// (midpoints of each "stationary rowing" power band):
-//   <100W   -> 5.0 MET   (anchor 50W)
-//   100-149W -> 7.5 MET  (anchor 125W)
-//   150-199W -> 11.0 MET (anchor 175W)
-//   >=200W  -> 14.0 MET  (anchor 225W)
+// MET from power using anchors that match runbundle's calculator.
+// First three are midpoints of the 2024 Compendium's stationary-rowing bands;
+// the 200W anchor is the START of the ≥200W band (compendium's 14 MET value
+// pinned exactly); 290W is the male elite peak from runbundle's text, used
+// as the upper extrapolation anchor at 17.5 MET so the curve keeps rising
+// for high-power workouts without an awkward flat-line cap.
+//   50W  -> 5.0 MET   (midpoint of <100W band)
+//   125W -> 7.5 MET   (midpoint of 100-149W band)
+//   175W -> 11.0 MET  (midpoint of 150-199W band)
+//   200W -> 14.0 MET  (start of ≥200W band — pinned to compendium)
+//   290W -> 17.5 MET  (elite reference, extrapolation anchor)
 // Linear interp between, extrapolation outside, MET floor of 3.
 function rowingMetFromPower(watts) {
-  const anchors = [[50, 5.0], [125, 7.5], [175, 11.0], [225, 14.0]];
+  const anchors = [[50, 5.0], [125, 7.5], [175, 11.0], [200, 14.0], [290, 17.5]];
   if (watts <= anchors[0][0]) {
     const [x1, y1] = anchors[0], [x2, y2] = anchors[1];
     const slope = (y2 - y1) / (x2 - x1);
@@ -637,15 +737,23 @@ function metFor(discipline, duration, distance, splitStr) {
     if (pace < 7) return 8.3;
     return 6.8;
   }
-  // Cycle: refine by avg speed (km/h)
-  if (discipline === "Cycle" && dist > 0) {
+  // Walk: refine by avg speed (km/h) — values from 2024 Compendium of
+  // Physical Activities (walking section), thresholds in km/h:
+  //   2 mph (3.2 km/h)  -> 2.8 MET (slow)
+  //   2.5 mph (4.0 km/h) -> 3.0 MET
+  //   3 mph (4.8 km/h)  -> 3.5 MET (moderate)
+  //   3.5 mph (5.6 km/h) -> 4.3 MET (brisk)
+  //   4 mph (6.4 km/h)  -> 5.0 MET (very brisk)
+  //   4.5 mph (7.2 km/h) -> 7.0 MET (essentially light jogging)
+  if (discipline === "Walk" && dist > 0) {
     const speed = (dist / dur) * 60;
-    if (speed > 30) return 15.8;
-    if (speed > 26) return 12;
-    if (speed > 22) return 10;
-    if (speed > 19) return 8;
-    if (speed > 16) return 6.8;
-    return 4;
+    if (speed > 7.2) return 7.0;
+    if (speed > 6.4) return 5.5;
+    if (speed > 5.6) return 5.0;
+    if (speed > 4.8) return 4.3;
+    if (speed > 4.0) return 3.5;
+    if (speed > 3.2) return 3.0;
+    return 2.8;
   }
   // Row: runbundle / 2024 Compendium method via Concept2 split->power.
   // Prefer an explicit avgSplit if the user typed one (most accurate, matches
@@ -810,13 +918,26 @@ function renderRpePreview(cfg) {
 
 function renderHistory() {
   const r = state.historyRange;
+  const period = periodBounds(r, state.historyOffset);
+  const showNav = r === "week" || r === "month";
+  const badgeText = r === "week" ? "THIS WEEK" : r === "month" ? "THIS MONTH" : "NOW";
   return `
     <div class="range-toggle" role="tablist">
-      <button class="range-btn ${r === "week" ? "active" : ""}" data-range="week">THIS WEEK</button>
-      <button class="range-btn ${r === "month" ? "active" : ""}" data-range="month">THIS MONTH</button>
+      <button class="range-btn ${r === "week" ? "active" : ""}" data-range="week">WEEK</button>
+      <button class="range-btn ${r === "month" ? "active" : ""}" data-range="month">MONTH</button>
       <button class="range-btn ${r === "all" ? "active" : ""}" data-range="all">ALL TIME</button>
     </div>
-    ${renderDailyVolume()}
+    ${showNav ? `
+      <div class="period-nav ${period.isCurrent ? "is-current" : ""}">
+        <button class="period-step" type="button" data-period-step="-1" aria-label="Previous ${r}">‹</button>
+        <div class="period-label">
+          <span>${period.label}</span>
+          ${period.isCurrent ? `<span class="period-badge">${badgeText}</span>` : ""}
+        </div>
+        <button class="period-step" type="button" data-period-step="1" aria-label="Next ${r}" ${period.isCurrent ? "disabled" : ""}>›</button>
+      </div>
+    ` : ""}
+    ${renderDailyVolume(period)}
     <div style="margin-top:24px;">
       <div class="today-label">BY DISCIPLINE</div>
       <div class="discipline-grid" style="margin-bottom:16px;">
@@ -834,13 +955,14 @@ function renderHistory() {
           `;
         }).join("")}
       </div>
-      ${renderDisciplineStats(state.historyTab)}
+      ${renderDisciplineStats(state.historyTab, period)}
     </div>
   `;
 }
 
-function renderDailyVolume() {
+function renderDailyVolume(period) {
   const range = state.historyRange || "week";
+  const offset = state.historyOffset || 0;
   const metric = state.historyMetric || "minutes";
   const isMin = metric === "minutes";
   const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -851,8 +973,9 @@ function renderDailyVolume() {
   const metricNoun = isMin ? "TRAINING TIME" : "CALORIES";
 
   if (range === "week") {
-    chartTitle = `THIS WEEK · DAILY ${metricNoun}`;
-    const monday = mondayOf(today);
+    chartTitle = `DAILY ${metricNoun}`;
+    // Walk the selected week (Monday → Sunday); period.start is that Monday.
+    const monday = period && period.start ? new Date(period.start) : mondayOf(today);
     for (let i = 0; i < 7; i++) {
       const d = new Date(monday); d.setDate(monday.getDate() + i);
       buckets.push({
@@ -863,10 +986,9 @@ function renderDailyVolume() {
       });
     }
   } else if (range === "month") {
-    const monthName = today.toLocaleDateString("en-AU", { month: "long" }).toUpperCase();
-    chartTitle = `${monthName} · DAILY ${metricNoun}`;
-    const first = new Date(today.getFullYear(), today.getMonth(), 1);
-    const last = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    chartTitle = `DAILY ${metricNoun}`;
+    const first = period && period.start ? new Date(period.start) : new Date(today.getFullYear(), today.getMonth(), 1);
+    const last = period && period.end ? new Date(period.end) : new Date(today.getFullYear(), today.getMonth() + 1, 0);
     for (let d = new Date(first); d <= last; d.setDate(d.getDate() + 1)) {
       const day = new Date(d);
       buckets.push({
@@ -879,7 +1001,7 @@ function renderDailyVolume() {
   } else {
     // all time: aggregate by week (Mon-Sun) from first session to current week
     granularity = "week";
-    chartTitle = `ALL TIME · WEEKLY ${metricNoun}`;
+    chartTitle = `WEEKLY ${metricNoun}`;
     if (state.sessions.length === 0) {
       // fall back to current week, empty
       const monday = mondayOf(today);
@@ -1034,9 +1156,18 @@ function renderDailyVolume() {
   `;
 }
 
-function renderDisciplineStats(discipline) {
-  const ds = state.sessions.filter(s => s.discipline === discipline);
-  if (ds.length === 0) return `<div class="empty-state">No ${discipline.toLowerCase()} sessions yet.</div>`;
+function renderDisciplineStats(discipline, period) {
+  // Filter to this discipline AND to the selected period (if bounded).
+  let ds = state.sessions.filter(s => s.discipline === discipline);
+  if (period && period.start && period.end) {
+    const startKey = localISO(period.start);
+    const endKey = localISO(period.end);
+    ds = ds.filter(s => s.date >= startKey && s.date <= endKey);
+  }
+  if (ds.length === 0) {
+    const where = period && period.start ? ` in ${period.label.toLowerCase()}` : "";
+    return `<div class="empty-state">No ${discipline.toLowerCase()} sessions${where}.</div>`;
+  }
 
   const cfg = DISCIPLINE_CONFIG[discipline];
   const totalDist = ds.filter(s => s.data.distance).reduce((a, b) => a + Number(b.data.distance), 0);
@@ -1061,6 +1192,7 @@ function renderDisciplineStats(discipline) {
     </div>
     <div class="history-list">
       ${ds.slice().reverse().slice(0, 50).map(s => {
+        if (s.id === state.editingId) return renderHistoryEdit(s, cfg);
         const fieldHtml = cfg.fields.filter(f => s.data[f.key]).map(f => {
           const unit = f.key === "distance" ? "km"
             : f.key === "duration" ? "m"
@@ -1072,7 +1204,7 @@ function renderDisciplineStats(discipline) {
           return `<div class="history-field">${labelShort ? `<span class="history-field-label">${labelShort}</span>` : ""}${escapeHtml(s.data[f.key])}${unit}</div>`;
         }).join("");
         return `
-          <div class="history-item" style="border-left-color:${cfg.color};">
+          <div class="history-item" data-edit="${s.id}" style="border-left-color:${cfg.color};">
             <button class="history-delete" data-delete="${s.id}" aria-label="Delete session">×</button>
             <div class="history-item-top">
               <div class="history-date">${formatDate(s.date)}</div>
@@ -1081,6 +1213,43 @@ function renderDisciplineStats(discipline) {
           </div>
         `;
       }).join("")}
+    </div>
+  `;
+}
+
+function renderHistoryEdit(s, cfg) {
+  return `
+    <div class="history-item editing" style="border-left-color:${cfg.color};">
+      <div class="history-item-top">
+        <div class="history-date" style="color:#fff; font-weight:500;">EDITING · ${cfg.icon} ${s.discipline}</div>
+      </div>
+      <div class="history-edit">
+        <div class="history-edit-field">
+          <label class="history-edit-field-label">Date</label>
+          <input class="input" type="date" data-edit-field="__date" value="${escapeHtml(s.date)}">
+        </div>
+        ${cfg.fields.map(f => {
+          const isNumber = f.type === "number";
+          const allowsDecimal = isNumber && !!f.step;
+          const actualType = isNumber ? "text" : f.type;
+          const inputmode = isNumber ? (allowsDecimal ? "decimal" : "numeric") : "";
+          return `
+            <div class="history-edit-field">
+              <label class="history-edit-field-label">${f.label.toUpperCase()}</label>
+              <input class="input" type="${actualType}"
+                ${inputmode ? `inputmode="${inputmode}"` : ""}
+                autocomplete="off" autocorrect="off" spellcheck="false"
+                placeholder="${escapeHtml(f.placeholder || "")}"
+                value="${escapeHtml(s.data[f.key] || "")}"
+                data-edit-field="${f.key}">
+            </div>
+          `;
+        }).join("")}
+        <div class="history-edit-actions">
+          <button type="button" class="history-edit-cancel" data-edit-cancel>CANCEL</button>
+          <button type="button" class="history-edit-save" data-edit-save="${s.id}">SAVE</button>
+        </div>
+      </div>
     </div>
   `;
 }
@@ -1101,7 +1270,20 @@ function attachHandlers() {
     b.addEventListener("click", () => { state.historyTab = b.dataset.historyTab; render(); });
   });
   document.querySelectorAll("[data-range]").forEach(b => {
-    b.addEventListener("click", () => { state.historyRange = b.dataset.range; render(); });
+    b.addEventListener("click", () => {
+      state.historyRange = b.dataset.range;
+      state.historyOffset = 0;  // always start at the current period when switching
+      render();
+    });
+  });
+  document.querySelectorAll("[data-period-step]").forEach(b => {
+    b.addEventListener("click", () => {
+      const n = parseInt(b.dataset.periodStep, 10) || 0;
+      state.historyOffset = (state.historyOffset || 0) + n;
+      // Clamp: don't go past the current period (no future data).
+      if (state.historyOffset > 0) state.historyOffset = 0;
+      render();
+    });
   });
   document.querySelectorAll("[data-metric]").forEach(b => {
     b.addEventListener("click", () => { state.historyMetric = b.dataset.metric; render(); });
@@ -1167,15 +1349,56 @@ function attachHandlers() {
     });
   });
 
-  // Delete buttons
+  // Delete buttons (stop propagation so they don't trigger the row's edit click)
   document.querySelectorAll("[data-delete]").forEach(btn => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", e => {
+      e.stopPropagation();
       const id = btn.dataset.delete;
       if (!confirm("Delete this session?")) return;
       state.sessions = state.sessions.filter(s => String(s.id) !== String(id));
       saveSessions();
       render();
       showToast("Session deleted");
+    });
+  });
+
+  // Tap a history row to enter edit mode
+  document.querySelectorAll("[data-edit]").forEach(row => {
+    row.addEventListener("click", () => {
+      state.editingId = row.dataset.edit;
+      render();
+    });
+  });
+  // Cancel edit
+  document.querySelectorAll("[data-edit-cancel]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      state.editingId = null;
+      render();
+    });
+  });
+  // Save edit — collect the values from the inline inputs, write back to the
+  // session, persist, then exit edit mode.
+  document.querySelectorAll("[data-edit-save]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.editSave;
+      const session = state.sessions.find(s => String(s.id) === String(id));
+      if (!session) { state.editingId = null; render(); return; }
+      const inputs = document.querySelectorAll("[data-edit-field]");
+      inputs.forEach(inp => {
+        const k = inp.dataset.editField;
+        let v = inp.value;
+        // iOS comma -> period normalization for decimal fields
+        if (inp.getAttribute("inputmode") === "decimal" && v.includes(",")) v = v.replace(/,/g, ".");
+        if (k === "__date") {
+          if (v) session.date = v;
+        } else {
+          session.data[k] = v;
+        }
+      });
+      saveSessions();
+      state.editingId = null;
+      render();
+      showToast("Session updated");
     });
   });
 
