@@ -521,7 +521,7 @@ const MET_DEFAULTS = { Swim: 8, Row: 7, Run: 10, Weights: 5, Walk: 3.5, Other: 5
 const RPE_LABEL = ["", "Very Easy", "Easy", "Moderate", "Moderate", "Hard", "Hard", "Very Hard", "Very Hard", "Max", "Max"];
 const STORAGE_KEY = "training-log:sessions";
 const SETTINGS_KEY = "training-log:settings";
-const APP_VERSION = "0.12";  // bump this on every deploy so you can verify the right file is live
+const APP_VERSION = "0.13";  // bump this on every deploy so you can verify the right file is live
 
 // ---------- State ----------
 const state = {
@@ -944,7 +944,14 @@ function renderHistory() {
         ${DISCIPLINES.map(d => {
           const c = DISCIPLINE_CONFIG[d];
           const active = state.historyTab === d;
-          const count = state.sessions.filter(s => s.discipline === d).length;
+          // Count sessions for this discipline within the selected period
+          // (or all-time, when period has no bounds).
+          const startKey = period && period.start ? localISO(period.start) : null;
+          const endKey = period && period.end ? localISO(period.end) : null;
+          const count = state.sessions.filter(s =>
+            s.discipline === d &&
+            (!startKey || (s.date >= startKey && s.date <= endKey))
+          ).length;
           return `
             <button class="discipline-btn${active ? ' active' : ''}" data-history-tab="${d}"
               style="${disciplineBtnStyle(c.color, active)}">
