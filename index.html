@@ -348,22 +348,22 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
 .weekly-legend-swatch { width: 8px; height: 8px; border-radius: 2px; }
 
 .stats-grid {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(78px, 1fr));
+  display: grid; grid-template-columns: repeat(2, 1fr);
   gap: 8px; margin-bottom: 16px;
 }
 .stat-card {
-  background: rgba(255,255,255,0.06); border-radius: 10px; padding: 12px 10px;
+  background: rgba(255,255,255,0.06); border-radius: 10px; padding: 14px 16px;
   backdrop-filter: blur(8px);
   border: 1px solid rgba(255,255,255,0.08);
   min-width: 0;
   overflow: hidden;
 }
 .stat-value {
-  font-size: 22px; font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.5px;
+  font-size: 26px; font-family: 'Bebas Neue', sans-serif; letter-spacing: 1px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   line-height: 1.1;
 }
-.stat-label { font-size: 11px; color: #d4baeb; margin-top: 2px; }
+.stat-label { font-size: 12px; color: #d4baeb; margin-top: 3px; }
 
 .history-list { display: flex; flex-direction: column; gap: 8px; }
 .history-item {
@@ -530,7 +530,7 @@ const MET_DEFAULTS = { Swim: 8, Row: 7, Run: 10, Weights: 5, Walk: 3.5, Other: 5
 const RPE_LABEL = ["", "Very Easy", "Easy", "Moderate", "Moderate", "Hard", "Hard", "Very Hard", "Very Hard", "Max", "Max"];
 const STORAGE_KEY = "training-log:sessions";
 const SETTINGS_KEY = "training-log:settings";
-const APP_VERSION = "0.17";  // bump this on every deploy so you can verify the right file is live
+const APP_VERSION = "0.18";  // bump this on every deploy so you can verify the right file is live
 
 // ---------- State ----------
 const state = {
