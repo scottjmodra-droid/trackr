@@ -468,7 +468,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
 <div class="toast" id="toast"></div>
 
 <script>
-const DISCIPLINES = ["Swim", "Run", "Weights", "Row", "Walk", "Other"];
+const DISCIPLINES = ["Swim", "Run", "Strength", "Row", "Walk", "Other"];
 const DISCIPLINE_CONFIG = {
   Swim: {
     color: "#38bdf8", icon: "🏊",
@@ -496,7 +496,7 @@ const DISCIPLINE_CONFIG = {
       { key: "calories", label: "Calories", type: "number" },
     ],
   },
-  Weights: {
+  Strength: {
     color: "#e8f84a", icon: "🏋️",
     fields: [
       { key: "duration", label: "Duration (min)", type: "number" },
@@ -526,11 +526,11 @@ const DISCIPLINE_CONFIG = {
 };
 // MET values (Metabolic Equivalent of Task) — used for calorie auto-calc.
 // Calories = MET × weight(kg) × hours. Run/Cycle refine based on pace/speed.
-const MET_DEFAULTS = { Swim: 8, Row: 7, Run: 10, Weights: 5, Walk: 3.5, Other: 5 };
+const MET_DEFAULTS = { Swim: 8, Row: 7, Run: 10, Strength: 5, Walk: 3.5, Other: 5 };
 const RPE_LABEL = ["", "Very Easy", "Easy", "Moderate", "Moderate", "Hard", "Hard", "Very Hard", "Very Hard", "Max", "Max"];
 const STORAGE_KEY = "training-log:sessions";
 const SETTINGS_KEY = "training-log:settings";
-const APP_VERSION = "0.18";  // bump this on every deploy so you can verify the right file is live
+const APP_VERSION = "0.19";  // bump this on every deploy so you can verify the right file is live
 
 // ---------- State ----------
 const state = {
@@ -660,8 +660,8 @@ const APPLE_ACTIVITY_MAP = {
   HKWorkoutActivityTypeRunning: { discipline: "Run" },
   HKWorkoutActivityTypeSwimming: { discipline: "Swim" },
   HKWorkoutActivityTypeRowing: { discipline: "Row" },
-  HKWorkoutActivityTypeTraditionalStrengthTraining: { discipline: "Weights" },
-  HKWorkoutActivityTypeFunctionalStrengthTraining: { discipline: "Weights" },
+  HKWorkoutActivityTypeTraditionalStrengthTraining: { discipline: "Strength" },
+  HKWorkoutActivityTypeFunctionalStrengthTraining: { discipline: "Strength" },
   HKWorkoutActivityTypeWalking: { discipline: "Walk" },
 };
 function mapAppleActivity(type) {
@@ -745,8 +745,11 @@ function loadSessions() {
     if (raw) {
       state.sessions = JSON.parse(raw);
       // v0.10 migration: Cycle discipline was retired in favour of Walk.
-      // Rename any legacy sessions so they keep rendering instead of orphaning.
-      state.sessions.forEach(s => { if (s.discipline === "Cycle") s.discipline = "Walk"; });
+      // v0.19 migration: Weights renamed to Strength.
+      state.sessions.forEach(s => {
+        if (s.discipline === "Cycle") s.discipline = "Walk";
+        if (s.discipline === "Weights") s.discipline = "Strength";
+      });
     }
   } catch (e) { console.warn("Load failed", e); }
 }
