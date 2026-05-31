@@ -281,18 +281,9 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
 
 .daily-avg-line {
   position: absolute; left: 0; right: 0; height: 0;
-  border-top: 1.5px dashed rgba(232, 248, 74, 0.7);
+  border-top: 2px dotted rgba(232, 248, 74, 0.85);
   pointer-events: none;
   z-index: 2;
-}
-.daily-avg-label {
-  position: absolute; right: 0; top: -16px;
-  font-size: 10px; color: #e8f84a;
-  background: rgba(26, 6, 51, 0.9);
-  padding: 1px 6px; border-radius: 3px;
-  font-family: 'DM Sans', sans-serif;
-  letter-spacing: 0.5px;
-  white-space: nowrap;
 }
 
 .daily-chart {
@@ -530,7 +521,7 @@ const MET_DEFAULTS = { Swim: 8, Row: 7, Run: 10, Strength: 5, Walk: 3.5, Other: 
 const RPE_LABEL = ["", "Very Easy", "Easy", "Moderate", "Moderate", "Hard", "Hard", "Very Hard", "Very Hard", "Max", "Max"];
 const STORAGE_KEY = "training-log:sessions";
 const SETTINGS_KEY = "training-log:settings";
-const APP_VERSION = "0.19";  // bump this on every deploy so you can verify the right file is live
+const APP_VERSION = "0.20";  // bump this on every deploy so you can verify the right file is live
 
 // ---------- State ----------
 const state = {
@@ -1246,15 +1237,9 @@ function renderDailyVolume(period) {
   }).join("");
 
   // Average line position (from bottom). Only show if avg > 0 and chart has data.
+  // The line itself communicates the average — no label, since the chart area is tight.
   const avgPctFromBottom = avgVal > 0 ? (avgVal / yMax) * 100 : 0;
-  const avgLabelText = granularity === "month" ? "avg / month"
-    : granularity === "week" ? "avg / week"
-    : "avg / day";
-  const avgLineHTML = avgVal > 0 ? `
-    <div class="daily-avg-line" style="bottom:${avgPctFromBottom}%;">
-      <span class="daily-avg-label">${fmtVal(avgVal)}${unitLabel} ${avgLabelText}</span>
-    </div>
-  ` : "";
+  const avgLineHTML = avgVal > 0 ? `<div class="daily-avg-line" style="bottom:${avgPctFromBottom}%;"></div>` : "";
 
   return `
     <div>
