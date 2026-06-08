@@ -261,6 +261,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
   gap: 10px; margin-bottom: 14px;
 }
 .chart-header .weekly-chart-label { margin-bottom: 0; }
+.chart-header-toggles { display: flex; gap: 6px; flex-shrink: 0; }
 .metric-toggle {
   display: inline-flex; gap: 2px; padding: 3px;
   background: rgba(255,255,255,0.05);
@@ -515,7 +516,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
     <button class="menu-item" id="exportBtn"><span class="menu-icon">⬇</span>Export sessions (JSON)</button>
     <button class="menu-item" id="importBtn"><span class="menu-icon">⬆</span>Import sessions (JSON)</button>
     <button class="menu-item" id="importAppleBtn"><span class="menu-icon">⌚</span>Import from Apple Health</button>
-    <button class="menu-item" id="workoutPlanBtn"><span class="menu-icon">📋</span>Workout plan</button>
+    <button class="menu-item" id="workoutPlanBtn"><span class="menu-icon">📋</span>Exercise reference</button>
     <button class="menu-item" id="exportCsvBtn"><span class="menu-icon">📊</span>Export as CSV</button>
     <button class="menu-item danger" id="clearBtn"><span class="menu-icon">🗑</span>Clear all data</button>
     <button class="menu-item" id="closeMenuBtn" style="color:#666; justify-content:center;">Cancel</button>
@@ -596,7 +597,7 @@ const MET_DEFAULTS = { Swim: 8, Row: 7, Run: 10, Strength: 5, Walk: 3.5, Other: 
 const RPE_LABEL = ["", "Very Easy", "Easy", "Moderate", "Moderate", "Hard", "Hard", "Very Hard", "Very Hard", "Max", "Max"];
 const STORAGE_KEY = "training-log:sessions";
 const SETTINGS_KEY = "training-log:settings";
-const APP_VERSION = "0.23";  // bump this on every deploy so you can verify the right file is live
+const APP_VERSION = "0.25";  // bump this on every deploy so you can verify the right file is live
 
 // Static exercise reference bank — shown via the ⋯ menu so it's always one
 // tap away. To update: edit this constant and redeploy.
@@ -670,6 +671,7 @@ const state = {
   historyRange: "week",  // "week" | "month" | "all"
   historyOffset: 0,  // 0 = current period, -1 = last week/month, etc.
   historyMetric: "minutes",  // "minutes" | "calories"
+  allTimeGranularity: "month",  // "month" | "week" — only used in All Time mode
   editingId: null,  // id of the history session currently being edited, or null
   form: emptyForm("Swim"),
   date: todayISO(),
@@ -1259,36 +1261,59 @@ function renderDailyVolume(period) {
       });
     }
   } else {
-    // all time: aggregate by calendar month from first session to current month
-    granularity = "month";
-    chartTitle = `MONTHLY ${metricNoun}`;
+    // All time: aggregate by calendar month or Mon-Sun week, user toggleable.
+    const allGran = state.allTimeGranularity || "month";
+    granularity = allGran;
+    chartTitle = `${allGran === "week" ? "WEEKLY" : "MONTHLY"} ${metricNoun}`;
     if (state.sessions.length === 0) {
-      // fall back to current month, empty
-      const first = firstOfMonth(today);
-      buckets.push({
-        key: monthKey(first), date: first,
-        label: { top: first.toLocaleDateString("en-AU", { month: "short" }).toUpperCase(), bot: "'" + String(first.getFullYear()).slice(-2) },
-        isToday: true, isWeekend: false,
-      });
+      if (allGran === "week") {
+        const monday = mondayOf(today);
+        buckets.push({
+          key: localISO(monday), date: monday,
+          label: { top: monday.toLocaleDateString("en-AU", { month: "short" }).toUpperCase(), bot: String(monday.getDate()) },
+          isToday: true, isWeekend: false,
+        });
+      } else {
+        const first = firstOfMonth(today);
+        buckets.push({
+          key: monthKey(first), date: first,
+          label: { top: first.toLocaleDateString("en-AU", { month: "short" }).toUpperCase(), bot: "'" + String(first.getFullYear()).slice(-2) },
+          isToday: true, isWeekend: false,
+        });
+      }
     } else {
       let earliest = state.sessions[0].date;
       state.sessions.forEach(s => { if (s.date < earliest) earliest = s.date; });
-      const startMonth = firstOfMonth(parseLocalISO(earliest));
-      const currentMonth = firstOfMonth(today);
-      const thisMonthKey = monthKey(currentMonth);
-      const cursor = new Date(startMonth);
-      while (cursor <= currentMonth) {
-        const m = new Date(cursor);
-        const monthLabel = m.toLocaleDateString("en-AU", { month: "short" }).toUpperCase();
-        // Show year only on January (or the first column) so the row stays readable.
-        const showYear = m.getMonth() === 0 || (buckets.length === 0);
-        buckets.push({
-          key: monthKey(m), date: m,
-          label: { top: monthLabel, bot: showYear ? "'" + String(m.getFullYear()).slice(-2) : "" },
-          isToday: monthKey(m) === thisMonthKey,
-          isWeekend: false,
-        });
-        cursor.setMonth(cursor.getMonth() + 1);
+      if (allGran === "week") {
+        const startMonday = mondayOf(parseLocalISO(earliest));
+        const currentMonday = mondayOf(today);
+        const thisMondayKey = localISO(currentMonday);
+        for (let m = new Date(startMonday); m <= currentMonday; m.setDate(m.getDate() + 7)) {
+          const wk = new Date(m);
+          buckets.push({
+            key: localISO(wk), date: wk,
+            label: { top: wk.toLocaleDateString("en-AU", { month: "short" }).toUpperCase(), bot: String(wk.getDate()) },
+            isToday: localISO(wk) === thisMondayKey,
+            isWeekend: false,
+          });
+        }
+      } else {
+        const startMonth = firstOfMonth(parseLocalISO(earliest));
+        const currentMonth = firstOfMonth(today);
+        const thisMonthKey = monthKey(currentMonth);
+        const cursor = new Date(startMonth);
+        while (cursor <= currentMonth) {
+          const m = new Date(cursor);
+          const monthLabel = m.toLocaleDateString("en-AU", { month: "short" }).toUpperCase();
+          const showYear = m.getMonth() === 0 || (buckets.length === 0);
+          buckets.push({
+            key: monthKey(m), date: m,
+            label: { top: monthLabel, bot: showYear ? "'" + String(m.getFullYear()).slice(-2) : "" },
+            isToday: monthKey(m) === thisMonthKey,
+            isWeekend: false,
+          });
+          cursor.setMonth(cursor.getMonth() + 1);
+        }
       }
     }
   }
@@ -1383,9 +1408,17 @@ function renderDailyVolume(period) {
     <div>
       <div class="chart-header">
         <div class="weekly-chart-label">${chartTitle}</div>
-        <div class="metric-toggle">
-          <button class="metric-btn ${isMin ? "active" : ""}" data-metric="minutes">MIN</button>
-          <button class="metric-btn ${!isMin ? "active" : ""}" data-metric="calories">CAL</button>
+        <div class="chart-header-toggles">
+          ${range === "all" ? `
+            <div class="metric-toggle">
+              <button class="metric-btn ${(state.allTimeGranularity || "month") === "week" ? "active" : ""}" data-all-gran="week">WK</button>
+              <button class="metric-btn ${(state.allTimeGranularity || "month") === "month" ? "active" : ""}" data-all-gran="month">MTH</button>
+            </div>
+          ` : ""}
+          <div class="metric-toggle">
+            <button class="metric-btn ${isMin ? "active" : ""}" data-metric="minutes">MIN</button>
+            <button class="metric-btn ${!isMin ? "active" : ""}" data-metric="calories">CAL</button>
+          </div>
         </div>
       </div>
       <div class="daily-chart ${dense ? "dense" : ""}">
@@ -1560,6 +1593,9 @@ function attachHandlers() {
   });
   document.querySelectorAll("[data-metric]").forEach(b => {
     b.addEventListener("click", () => { state.historyMetric = b.dataset.metric; render(); });
+  });
+  document.querySelectorAll("[data-all-gran]").forEach(b => {
+    b.addEventListener("click", () => { state.allTimeGranularity = b.dataset.allGran; render(); });
   });
   document.querySelectorAll("[data-field]").forEach(input => {
     input.addEventListener("input", e => {
@@ -1744,10 +1780,55 @@ function renderWorkoutPlan() {
 }
 
 // ---------- Menu / Import / Export ----------
+// Attach iOS-style swipe-down-to-dismiss to a bottom sheet. The drag only
+// counts when the inner is scrolled to the top — otherwise the user's
+// touch is interpreted as content scrolling.
+function attachSheetSwipe(sheetEl, innerEl) {
+  if (!sheetEl || !innerEl) return;
+  let startY = null;
+  let dragging = false;
+  innerEl.addEventListener("touchstart", e => {
+    startY = e.touches[0].clientY;
+    dragging = innerEl.scrollTop <= 0;
+    innerEl.style.transition = "none";
+  }, { passive: true });
+  innerEl.addEventListener("touchmove", e => {
+    if (!dragging || startY === null) return;
+    if (innerEl.scrollTop > 0) {
+      dragging = false;
+      innerEl.style.transform = "";
+      return;
+    }
+    const delta = e.touches[0].clientY - startY;
+    if (delta > 0) innerEl.style.transform = `translateY(${delta}px)`;
+  }, { passive: true });
+  innerEl.addEventListener("touchend", e => {
+    if (!dragging || startY === null) { startY = null; return; }
+    const delta = (e.changedTouches[0].clientY || 0) - startY;
+    innerEl.style.transition = "transform 0.25s ease";
+    if (delta > 100) {
+      innerEl.style.transform = "translateY(100%)";
+      setTimeout(() => {
+        sheetEl.classList.remove("open");
+        innerEl.style.transform = "";
+        innerEl.style.transition = "";
+      }, 250);
+    } else {
+      innerEl.style.transform = "";
+    }
+    startY = null;
+    dragging = false;
+  }, { passive: true });
+}
+
 function setupMenu() {
   const sheet = document.getElementById("menuSheet");
   document.getElementById("closeMenuBtn").addEventListener("click", () => sheet.classList.remove("open"));
   sheet.addEventListener("click", e => { if (e.target === sheet) sheet.classList.remove("open"); });
+
+  // Wire up swipe-down on both bottom sheets.
+  attachSheetSwipe(sheet, sheet.querySelector(".menu-sheet-inner"));
+  attachSheetSwipe(document.getElementById("workoutSheet"), document.querySelector("#workoutSheet .workout-sheet-inner"));
 
   document.getElementById("settingsBtn").addEventListener("click", () => {
     const newWeight = prompt(`Bodyweight in kg (used for calorie estimates):`, state.weight);
