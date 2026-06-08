@@ -469,52 +469,27 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
   font-family: 'Bebas Neue', sans-serif; letter-spacing: 1.5px;
   font-size: 15px; color: #fff;
 }
-.workout-card-name .id-chip {
-  display: inline-block; min-width: 22px; text-align: center;
-  background: #e8f84a; color: #1a0633;
-  border-radius: 4px; padding: 1px 6px;
-  font-size: 13px; margin-right: 8px;
-}
 .workout-card-weeks {
-  font-size: 11px; color: #c8a8e8;
+  font-size: 13px; color: #c8a8e8;
   letter-spacing: 1px;
   font-family: 'Bebas Neue', sans-serif;
+  background: rgba(255,255,255,0.06);
+  padding: 2px 8px; border-radius: 10px;
 }
-.workout-card-note {
-  font-size: 12px; color: #d4baeb; margin-bottom: 8px;
-  font-style: italic;
+.workout-legend {
+  display: flex; gap: 14px; margin-bottom: 12px;
+  font-size: 12px; color: #d4baeb;
 }
+.workout-legend .ti { margin-right: 4px; }
 .workout-row {
-  display: flex; justify-content: space-between; align-items: center;
-  gap: 12px; padding: 6px 0;
+  display: flex; align-items: center;
+  gap: 10px; padding: 7px 0;
   font-size: 14px;
   border-top: 1px dashed rgba(255,255,255,0.08);
 }
 .workout-row:first-of-type { border-top: none; }
+.workout-row .ti { font-size: 16px; flex-shrink: 0; min-width: 22px; }
 .workout-row .ex { color: #f0e6ff; }
-.workout-row .reps {
-  color: #c8a8e8; font-family: 'Bebas Neue', sans-serif;
-  letter-spacing: 1px; font-size: 13px; flex-shrink: 0;
-}
-.workout-superset {
-  display: grid; grid-template-columns: 28px 1fr;
-  gap: 10px; padding: 8px 0;
-  border-top: 1px dashed rgba(255,255,255,0.08);
-}
-.workout-superset:first-of-type { border-top: none; }
-.workout-superset-label {
-  font-family: 'Bebas Neue', sans-serif;
-  color: #e8f84a; font-size: 14px; line-height: 1.3;
-}
-.workout-superset-pair { display: flex; flex-direction: column; gap: 2px; }
-.workout-superset-pair .row {
-  display: flex; justify-content: space-between; gap: 8px;
-  font-size: 13px; color: #f0e6ff;
-}
-.workout-superset-pair .row .reps {
-  color: #c8a8e8; font-family: 'Bebas Neue', sans-serif;
-  letter-spacing: 1px; flex-shrink: 0;
-}
 
 .toast {
   position: fixed; bottom: calc(20px + env(safe-area-inset-bottom));
@@ -549,7 +524,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
 <div class="workout-sheet" id="workoutSheet">
   <div class="workout-sheet-inner">
     <div class="menu-handle"></div>
-    <div class="workout-title">Workout Plan</div>
+    <div class="workout-title">Exercise Reference</div>
     <div id="workoutContent"></div>
     <button class="menu-item" id="closeWorkoutBtn" style="color:#666; justify-content:center; margin-top:8px;">Close</button>
   </div>
@@ -621,62 +596,67 @@ const MET_DEFAULTS = { Swim: 8, Row: 7, Run: 10, Strength: 5, Walk: 3.5, Other: 
 const RPE_LABEL = ["", "Very Easy", "Easy", "Moderate", "Moderate", "Hard", "Hard", "Very Hard", "Very Hard", "Max", "Max"];
 const STORAGE_KEY = "training-log:sessions";
 const SETTINGS_KEY = "training-log:settings";
-const APP_VERSION = "0.22";  // bump this on every deploy so you can verify the right file is live
+const APP_VERSION = "0.23";  // bump this on every deploy so you can verify the right file is live
 
-// Static workout plan — shown via the ⋯ menu so it's always one tap away.
-// To update: edit this constant and redeploy. Each session is either an
-// "exercises" list (single moves) or a "supersets" list (paired moves).
+// Static exercise reference bank — shown via the ⋯ menu so it's always one
+// tap away. To update: edit this constant and redeploy.
+//   "w" = weights (rendered with 🏋️ before the name)
+//   "b" = bodyweight (rendered with 💪 before the name)
 const WORKOUT_PLAN = [
   {
-    id: "A",
-    title: "Upper Push + Core",
-    weeks: "Weeks 1 & 3",
+    icon: "💪",
+    title: "Upper Body",
     exercises: [
-      ["Dumbbell Bench Press", "3 × 10"],
-      ["Dumbbell Shoulder Press", "3 × 10"],
-      ["Dumbbell Lateral Raises", "3 × 12"],
-      ["Cable Tricep Pushdown", "3 × 12"],
-      ["Plank", "3 × 45 sec"],
-      ["Medicine Ball Russian Twists", "3 × 20"],
+      ["w", "DB Bench Press"], ["w", "DB Shoulder Press"], ["w", "Lat Pulldown"],
+      ["w", "DB Bent-Over Row"], ["w", "DB Lateral Raises"], ["w", "Cable Tricep Pushdown"],
+      ["w", "DB Bicep Curl"], ["w", "DB Chest Fly"], ["w", "DB Front Raise"],
+      ["b", "Push-Up"], ["b", "Wide Push-Up"], ["b", "Diamond Push-Up"],
+      ["b", "Pike Push-Up"], ["b", "Tricep Dip (bench)"], ["b", "Superman Hold"],
+      ["b", "Bear Crawl"], ["b", "Plank Shoulder Taps"],
     ],
   },
   {
-    id: "B",
-    title: "Upper Pull + Legs",
-    weeks: "Weeks 1 & 3",
+    icon: "🔥",
+    title: "Abs",
     exercises: [
-      ["Lat Pulldown", "3 × 10"],
-      ["Dumbbell Bent-Over Row", "3 × 10 each"],
-      ["Cable Fly (low to high)", "3 × 12"],
-      ["Dumbbell Bicep Curl", "3 × 12"],
-      ["Leg Press", "3 × 12"],
-      ["Dumbbell Sumo Squat", "3 × 12"],
+      ["b", "Plank"], ["b", "Side Plank"], ["b", "Dead Bug"], ["b", "Bicycle Crunch"],
+      ["b", "Leg Raise"], ["b", "Flutter Kicks"], ["b", "V-Sit Hold"],
+      ["b", "Mountain Climbers"], ["b", "Sit-Up"], ["b", "Reverse Crunch"],
+      ["b", "Toe Touches"], ["w", "Med Ball Russian Twist"],
     ],
   },
   {
-    id: "C",
-    title: "Full Body Power",
-    weeks: "Weeks 2 & 4",
+    icon: "🦵",
+    title: "Legs",
     exercises: [
-      ["Leg Extension", "3 × 12"],
-      ["Dumbbell Goblet Squat", "3 × 12"],
-      ["Dumbbell Chest Fly", "3 × 12"],
-      ["Lat Pulldown (close grip)", "3 × 10"],
-      ["Dumbbell Thruster", "3 × 10"],
-      ["Plank with Shoulder Taps", "3 × 20 taps"],
+      ["w", "Leg Press"], ["w", "Leg Extension"], ["w", "DB Goblet Squat"],
+      ["w", "DB Sumo Squat"], ["w", "DB Reverse Lunge"], ["w", "DB Bulgarian Split Squat"],
+      ["w", "DB Step-Up"], ["w", "DB Walking Lunge"],
+      ["b", "Bodyweight Squat"], ["b", "Jump Squat"], ["b", "Reverse Lunge"],
+      ["b", "Bulgarian Split Squat"], ["b", "Wall Sit"], ["b", "Step-Up (bench)"],
+      ["b", "Calf Raise"], ["b", "Single-Leg Squat"], ["b", "Lateral Lunge"],
+      ["b", "Squat Pulse"],
     ],
   },
   {
-    id: "D",
-    title: "Push/Pull Supersets",
-    weeks: "Weeks 2 & 4",
-    note: "3 rounds per superset · ~35–40 min total",
-    supersets: [
-      [["DB Shoulder Press", "10"], ["Lat Pulldown", "10"]],
-      [["DB Bench Press", "10"], ["Bent-Over Row", "10"]],
-      [["Lateral Raises", "12"], ["DB Bicep Curl", "12"]],
-      [["Tricep Pushdown", "12"], ["Cable Fly", "12"]],
-      [["Leg Press", "15"], ["Sumo Squat", "15"]],
+    icon: "❤️",
+    title: "Cardio",
+    exercises: [
+      ["b", "Burpee"], ["b", "High Knees"], ["b", "Box Jump"], ["b", "Star Jumps"],
+      ["b", "Mountain Climbers"], ["b", "Lateral Shuffle"], ["b", "Tuck Jump"],
+      ["b", "Plank to Push-Up"], ["b", "Inchworm"], ["b", "Skipping on the Spot"],
+      ["b", "Squat Jump"], ["b", "Lunge Jump"],
+    ],
+  },
+  {
+    icon: "🍑",
+    title: "Glutes",
+    exercises: [
+      ["b", "Glute Bridge"], ["b", "Single-Leg Glute Bridge"], ["b", "Hip Thrust (bench)"],
+      ["b", "Fire Hydrant"], ["b", "Clamshell"], ["b", "Side-Lying Leg Raise"],
+      ["b", "Reverse Lunge + Knee Drive"], ["b", "Step-Up + Squeeze"], ["b", "Sumo Squat Pulse"],
+      ["w", "DB Sumo Squat"], ["w", "DB Reverse Lunge"], ["w", "DB Step-Up"],
+      ["w", "Leg Press (feet high)"], ["w", "DB Goblet Squat (deep)"],
     ],
   },
 ];
@@ -1737,36 +1717,30 @@ function handleSave() {
 }
 
 function renderWorkoutPlan() {
-  const html = WORKOUT_PLAN.map(s => {
-    const head = `
-      <div class="workout-card-head">
-        <div class="workout-card-name"><span class="id-chip">${s.id}</span>${escapeHtml(s.title)}</div>
-        <div class="workout-card-weeks">${escapeHtml(s.weeks)}</div>
+  const legend = `
+    <div class="workout-legend">
+      <span><span class="ti">🏋️</span> Weights</span>
+      <span><span class="ti">💪</span> Bodyweight</span>
+    </div>
+  `;
+  const cards = WORKOUT_PLAN.map(cat => {
+    const rows = cat.exercises.map(([type, name]) => `
+      <div class="workout-row">
+        <span class="ti">${type === "w" ? "🏋️" : "💪"}</span>
+        <span class="ex">${escapeHtml(name)}</span>
       </div>
-      ${s.note ? `<div class="workout-card-note">${escapeHtml(s.note)}</div>` : ""}
+    `).join("");
+    return `
+      <div class="workout-card">
+        <div class="workout-card-head">
+          <div class="workout-card-name">${cat.icon} ${escapeHtml(cat.title)}</div>
+          <div class="workout-card-weeks">${cat.exercises.length}</div>
+        </div>
+        ${rows}
+      </div>
     `;
-    let body;
-    if (s.supersets) {
-      body = s.supersets.map((pair, i) => `
-        <div class="workout-superset">
-          <div class="workout-superset-label">${i + 1}</div>
-          <div class="workout-superset-pair">
-            <div class="row"><span>${escapeHtml(pair[0][0])}</span><span class="reps">× ${escapeHtml(pair[0][1])}</span></div>
-            <div class="row"><span>${escapeHtml(pair[1][0])}</span><span class="reps">× ${escapeHtml(pair[1][1])}</span></div>
-          </div>
-        </div>
-      `).join("");
-    } else {
-      body = s.exercises.map(([name, reps]) => `
-        <div class="workout-row">
-          <span class="ex">${escapeHtml(name)}</span>
-          <span class="reps">${escapeHtml(reps)}</span>
-        </div>
-      `).join("");
-    }
-    return `<div class="workout-card">${head}${body}</div>`;
   }).join("");
-  document.getElementById("workoutContent").innerHTML = html;
+  document.getElementById("workoutContent").innerHTML = legend + cards;
 }
 
 // ---------- Menu / Import / Export ----------
