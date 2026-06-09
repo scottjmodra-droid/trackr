@@ -531,7 +531,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
 <div class="menu-sheet" id="menuSheet">
   <div class="menu-sheet-inner">
     <div class="menu-handle"></div>
-    <button class="menu-item" id="workoutPlanBtn"><span class="menu-icon">📋</span>Strength Exercises</button>
+    <button class="menu-item" id="workoutPlanBtn"><span class="menu-icon">💪</span>Strength Exercises</button>
     <button class="menu-item" id="settingsBtn"><span class="menu-icon">⚙</span>Bodyweight <span id="weightDisplay" style="color:#666; margin-left:auto;"></span></button>
     <button class="menu-item" id="exportBtn"><span class="menu-icon">⬇</span>Export sessions (JSON)</button>
     <button class="menu-item" id="importBtn"><span class="menu-icon">⬆</span>Import sessions (JSON)</button>
@@ -559,8 +559,8 @@ const DISCIPLINE_CONFIG = {
   Swim: {
     color: "#38bdf8", icon: "🏊",
     fields: [
-      { key: "distance", label: "Distance (km)", type: "number", step: "0.1" },
       { key: "duration", label: "Duration (min)", type: "number" },
+      { key: "distance", label: "Distance (km)", type: "number", step: "0.1" },
       { key: "calories", label: "Calories", type: "number" },
     ],
   },
@@ -576,8 +576,8 @@ const DISCIPLINE_CONFIG = {
   Run: {
     color: "#16a34a", icon: "🏃",
     fields: [
-      { key: "distance", label: "Distance (km)", type: "number", step: "0.1" },
       { key: "duration", label: "Duration (min)", type: "number" },
+      { key: "distance", label: "Distance (km)", type: "number", step: "0.1" },
       { key: "pace", label: "Avg Pace (min/km)", type: "text", placeholder: "auto-calculated, or e.g. 5:30" },
       { key: "calories", label: "Calories", type: "number" },
     ],
@@ -594,8 +594,8 @@ const DISCIPLINE_CONFIG = {
   Walk: {
     color: "#94a3b8", icon: "🚶",
     fields: [
-      { key: "distance", label: "Distance (km)", type: "number", step: "0.1" },
       { key: "duration", label: "Duration (min)", type: "number" },
+      { key: "distance", label: "Distance (km)", type: "number", step: "0.1" },
       { key: "avgSpeed", label: "Avg Speed (km/h)", type: "text", placeholder: "auto-calculated, or e.g. 5.5" },
       { key: "calories", label: "Calories", type: "number" },
     ],
@@ -616,7 +616,7 @@ const MET_DEFAULTS = { Swim: 8, Row: 7, Run: 10, Strength: 5, Walk: 3.5, Other: 
 const RPE_LABEL = ["", "Very Easy", "Easy", "Moderate", "Moderate", "Hard", "Hard", "Very Hard", "Very Hard", "Max", "Max"];
 const STORAGE_KEY = "training-log:sessions";
 const SETTINGS_KEY = "training-log:settings";
-const APP_VERSION = "0.31";  // bump this on every deploy so you can verify the right file is live
+const APP_VERSION = "0.33";  // bump this on every deploy so you can verify the right file is live
 
 // Static exercise reference bank — shown via the ⋯ menu so it's always one
 // tap away. To update: edit this constant and redeploy.
