@@ -512,11 +512,11 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
 <div class="menu-sheet" id="menuSheet">
   <div class="menu-sheet-inner">
     <div class="menu-handle"></div>
+    <button class="menu-item" id="workoutPlanBtn"><span class="menu-icon">📋</span>Strength Exercises</button>
     <button class="menu-item" id="settingsBtn"><span class="menu-icon">⚙</span>Bodyweight <span id="weightDisplay" style="color:#666; margin-left:auto;"></span></button>
     <button class="menu-item" id="exportBtn"><span class="menu-icon">⬇</span>Export sessions (JSON)</button>
     <button class="menu-item" id="importBtn"><span class="menu-icon">⬆</span>Import sessions (JSON)</button>
     <button class="menu-item" id="importAppleBtn"><span class="menu-icon">⌚</span>Import from Apple Health</button>
-    <button class="menu-item" id="workoutPlanBtn"><span class="menu-icon">📋</span>Exercise reference</button>
     <button class="menu-item" id="exportCsvBtn"><span class="menu-icon">📊</span>Export as CSV</button>
     <button class="menu-item danger" id="clearBtn"><span class="menu-icon">🗑</span>Clear all data</button>
     <button class="menu-item" id="closeMenuBtn" style="color:#666; justify-content:center;">Cancel</button>
@@ -525,7 +525,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
 <div class="workout-sheet" id="workoutSheet">
   <div class="workout-sheet-inner">
     <div class="menu-handle"></div>
-    <div class="workout-title">Exercise Reference</div>
+    <div class="workout-title">Strength Exercises</div>
     <div id="workoutContent"></div>
     <button class="menu-item" id="closeWorkoutBtn" style="color:#666; justify-content:center; margin-top:8px;">Close</button>
   </div>
@@ -567,8 +567,8 @@ const DISCIPLINE_CONFIG = {
     color: "#e8f84a", icon: "🏋️",
     fields: [
       { key: "duration", label: "Duration (min)", type: "number" },
-      { key: "totalSets", label: "Total Sets", type: "number" },
-      { key: "topLift", label: "Top Lift & Weight", type: "text", placeholder: "e.g. Squat 100kg" },
+      { key: "type", label: "Type (optional)", type: "text", placeholder: "e.g. Upper Push, Pull, Full Body" },
+      { key: "details", label: "Details (optional)", type: "text", placeholder: "Exercises, sets, top lift…" },
       { key: "calories", label: "Calories", type: "number" },
     ],
   },
@@ -597,7 +597,7 @@ const MET_DEFAULTS = { Swim: 8, Row: 7, Run: 10, Strength: 5, Walk: 3.5, Other: 
 const RPE_LABEL = ["", "Very Easy", "Easy", "Moderate", "Moderate", "Hard", "Hard", "Very Hard", "Very Hard", "Max", "Max"];
 const STORAGE_KEY = "training-log:sessions";
 const SETTINGS_KEY = "training-log:settings";
-const APP_VERSION = "0.25";  // bump this on every deploy so you can verify the right file is live
+const APP_VERSION = "0.28";  // bump this on every deploy so you can verify the right file is live
 
 // Static exercise reference bank — shown via the ⋯ menu so it's always one
 // tap away. To update: edit this constant and redeploy.
@@ -875,11 +875,23 @@ function loadSessions() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       state.sessions = JSON.parse(raw);
-      // v0.10 migration: Cycle discipline was retired in favour of Walk.
-      // v0.19 migration: Weights renamed to Strength.
+      // v0.10: Cycle -> Walk.  v0.19: Weights -> Strength.
+      // v0.26: Strength's totalSets + topLift collapse into a single "details" field.
       state.sessions.forEach(s => {
         if (s.discipline === "Cycle") s.discipline = "Walk";
         if (s.discipline === "Weights") s.discipline = "Strength";
+        if (s.discipline === "Strength" && s.data) {
+          const sets = (s.data.totalSets || "").toString().trim();
+          const lift = (s.data.topLift || "").toString().trim();
+          if ((sets || lift) && !s.data.details) {
+            const parts = [];
+            if (sets) parts.push(sets + " sets");
+            if (lift) parts.push(lift);
+            s.data.details = parts.join(" · ");
+          }
+          delete s.data.totalSets;
+          delete s.data.topLift;
+        }
       });
     }
   } catch (e) { console.warn("Load failed", e); }
@@ -1975,6 +1987,14 @@ loadSettings();
 loadSessions();
 render();
 setupMenu();
+
+// Register the service worker so the app keeps working offline once it's
+// been opened at least once on the network. Quiet failure if unsupported.
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch(err => console.warn("SW reg failed", err));
+  });
+}
 </script>
 </body>
 </html>
