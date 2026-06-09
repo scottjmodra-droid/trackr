@@ -616,7 +616,7 @@ const MET_DEFAULTS = { Swim: 8, Row: 7, Run: 10, Strength: 5, Walk: 3.5, Other: 
 const RPE_LABEL = ["", "Very Easy", "Easy", "Moderate", "Moderate", "Hard", "Hard", "Very Hard", "Very Hard", "Max", "Max"];
 const STORAGE_KEY = "training-log:sessions";
 const SETTINGS_KEY = "training-log:settings";
-const APP_VERSION = "0.30";  // bump this on every deploy so you can verify the right file is live
+const APP_VERSION = "0.31";  // bump this on every deploy so you can verify the right file is live
 
 // Static exercise reference bank — shown via the ⋯ menu so it's always one
 // tap away. To update: edit this constant and redeploy.
@@ -1423,6 +1423,15 @@ function renderDailyVolume(period) {
   }
   const fmtVal = isMin ? fmtMin : fmtCal;
   const unitLabel = isMin ? "" : " kcal";
+  // Y-axis: plain integer minutes in Week view, otherwise the normal h/m mix.
+  const fmtYAxis = (range === "week" && isMin)
+    ? (v => v === 0 ? "0" : String(v))
+    : fmtVal;
+  // Bar labels on All Time + minutes: convert to hours with one decimal.
+  // Otherwise (Week minutes, any mode calories) just an integer of the unit.
+  const fmtBarLabel = (range === "all" && isMin)
+    ? (v => (v / 60).toFixed(1))
+    : (v => String(Math.round(v)));
 
   // Build y-axis ticks (every step from 0 to yMax inclusive)
   const ticks = [];
@@ -1432,7 +1441,7 @@ function renderDailyVolume(period) {
   const yAxisHTML = ticks.map(v => {
     const pctFromTop = ((yMax - v) / yMax) * 100;
     const zero = v === 0 ? "y-zero" : "";
-    return `<span class="${zero}" style="top:${pctFromTop}%;">${fmtVal(v)}</span>`;
+    return `<span class="${zero}" style="top:${pctFromTop}%;">${fmtYAxis(v)}</span>`;
   }).join("");
   const gridHTML = ticks.map(v => {
     const pctFromTop = ((yMax - v) / yMax) * 100;
@@ -1476,11 +1485,11 @@ function renderDailyVolume(period) {
                 const segPct = (b.totals[d] / b.total) * 100;
                 const segHeightPx = (b.totals[d] / yMax) * chartHeight;
                 const segLabel = (showLabels && segHeightPx >= SEG_MIN_PX)
-                  ? `<span class="daily-bar-seg-label">${Math.round(b.totals[d])}</span>` : "";
+                  ? `<span class="daily-bar-seg-label">${fmtBarLabel(b.totals[d])}</span>` : "";
                 return `<div class="daily-bar-seg" title="${d}: ${fmtVal(b.totals[d])}${unitLabel}" style="height:${segPct}%; background:${DISCIPLINE_CONFIG[d].color};">${segLabel}</div>`;
               }).join("");
               const colTotal = (showLabels && b.total > 0)
-                ? `<div class="daily-bar-total" style="bottom:${stackHeight + 3}px;">${Math.round(b.total)}</div>` : "";
+                ? `<div class="daily-bar-total" style="bottom:${stackHeight + 3}px;">${fmtBarLabel(b.total)}</div>` : "";
               const cls = [b.isWeekend ? "weekend" : "", b.isToday ? "today" : ""].filter(Boolean).join(" ");
               return `
                 <div class="daily-bar-col" title="${fmtVal(b.total)}${unitLabel}">
