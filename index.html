@@ -597,7 +597,7 @@ const MET_DEFAULTS = { Swim: 8, Row: 7, Run: 10, Strength: 5, Walk: 3.5, Other: 
 const RPE_LABEL = ["", "Very Easy", "Easy", "Moderate", "Moderate", "Hard", "Hard", "Very Hard", "Very Hard", "Max", "Max"];
 const STORAGE_KEY = "training-log:sessions";
 const SETTINGS_KEY = "training-log:settings";
-const APP_VERSION = "0.28";  // bump this on every deploy so you can verify the right file is live
+const APP_VERSION = "0.29";  // bump this on every deploy so you can verify the right file is live
 
 // Static exercise reference bank — shown via the ⋯ menu so it's always one
 // tap away. To update: edit this constant and redeploy.
@@ -1333,6 +1333,16 @@ function renderDailyVolume(period) {
   // zero out totals
   buckets.forEach(b => { b.totals = {}; DISCIPLINES.forEach(d => b.totals[d] = 0); b.total = 0; });
 
+  // Weekly All Time view crams a lot of columns in. Thin the x-axis labels
+  // to every 4th bucket (counting back from the most recent) so today's
+  // column always anchors the chart.
+  if (range === "all" && granularity === "week") {
+    const lastIdx = buckets.length - 1;
+    buckets.forEach((b, i) => {
+      if ((lastIdx - i) % 4 !== 0) b.hideLabel = true;
+    });
+  }
+
   // aggregate session values (duration in minutes OR calories) per bucket
   state.sessions.forEach(s => {
     const val = parseFloat(isMin ? s.data?.duration : s.data?.calories);
@@ -1448,8 +1458,7 @@ function renderDailyVolume(period) {
               <div class="daily-bar-col" title="${fmtVal(b.total)}${unitLabel}">
                 <div class="daily-bar-stack" style="height:${stackHeight}px;">${segments}</div>
                 <div class="daily-bar-label ${cls}">
-                  <span class="dow">${b.label.top}</span>
-                  <span class="dom">${b.label.bot}</span>
+                  ${b.hideLabel ? "" : `<span class="dow">${b.label.top}</span><span class="dom">${b.label.bot}</span>`}
                 </div>
               </div>
             `;
