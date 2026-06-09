@@ -331,7 +331,26 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
   width: 100%; display: flex; flex-direction: column-reverse;
   border-radius: 3px 3px 0 0; overflow: hidden; min-height: 0;
 }
-.daily-bar-seg { width: 100%; min-height: 2px; }
+.daily-bar-seg { width: 100%; min-height: 2px; position: relative; }
+.daily-bar-seg-label {
+  position: absolute; left: 0; right: 0; top: 50%;
+  transform: translateY(-50%);
+  text-align: center;
+  font-size: 9px; line-height: 1;
+  color: #fff;
+  font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.3px; font-weight: 700;
+  text-shadow: 0 0 2px rgba(0,0,0,0.7), 0 0 3px rgba(0,0,0,0.5);
+  pointer-events: none;
+}
+.daily-bar-total {
+  position: absolute; left: -10px; right: -10px;
+  text-align: center;
+  font-size: 10px; line-height: 1;
+  color: #e8f84a;
+  font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.5px;
+  white-space: nowrap;
+  pointer-events: none;
+}
 .daily-bar-label {
   position: absolute; bottom: -20px; left: 0; right: 0;
   font-size: 10px; color: #9684b8; text-align: center; line-height: 1.2;
@@ -597,7 +616,7 @@ const MET_DEFAULTS = { Swim: 8, Row: 7, Run: 10, Strength: 5, Walk: 3.5, Other: 
 const RPE_LABEL = ["", "Very Easy", "Easy", "Moderate", "Moderate", "Hard", "Hard", "Very Hard", "Very Hard", "Max", "Max"];
 const STORAGE_KEY = "training-log:sessions";
 const SETTINGS_KEY = "training-log:settings";
-const APP_VERSION = "0.29";  // bump this on every deploy so you can verify the right file is live
+const APP_VERSION = "0.30";  // bump this on every deploy so you can verify the right file is live
 
 // Static exercise reference bank — shown via the ⋯ menu so it's always one
 // tap away. To update: edit this constant and redeploy.
@@ -1447,22 +1466,33 @@ function renderDailyVolume(period) {
         <div class="daily-y-axis">${yAxisHTML}</div>
         <div class="daily-grid">${gridHTML}${avgLineHTML}</div>
         <div class="daily-bars">
-          ${buckets.map(b => {
-            const stackHeight = b.total > 0 ? (b.total / yMax) * chartHeight : 0;
-            const segments = DISCIPLINES.filter(d => b.totals[d] > 0).map(d => {
-              const segPct = (b.totals[d] / b.total) * 100;
-              return `<div class="daily-bar-seg" title="${d}: ${fmtVal(b.totals[d])}${unitLabel}" style="height:${segPct}%; background:${DISCIPLINE_CONFIG[d].color};"></div>`;
-            }).join("");
-            const cls = [b.isWeekend ? "weekend" : "", b.isToday ? "today" : ""].filter(Boolean).join(" ");
-            return `
-              <div class="daily-bar-col" title="${fmtVal(b.total)}${unitLabel}">
-                <div class="daily-bar-stack" style="height:${stackHeight}px;">${segments}</div>
-                <div class="daily-bar-label ${cls}">
-                  ${b.hideLabel ? "" : `<span class="dow">${b.label.top}</span><span class="dom">${b.label.bot}</span>`}
+          ${(() => {
+            // Show numeric totals only on the views where columns are wide enough.
+            const showLabels = range === "week" || (range === "all" && granularity === "month");
+            const SEG_MIN_PX = 16;  // hide segment label if segment shorter than this
+            return buckets.map(b => {
+              const stackHeight = b.total > 0 ? (b.total / yMax) * chartHeight : 0;
+              const segments = DISCIPLINES.filter(d => b.totals[d] > 0).map(d => {
+                const segPct = (b.totals[d] / b.total) * 100;
+                const segHeightPx = (b.totals[d] / yMax) * chartHeight;
+                const segLabel = (showLabels && segHeightPx >= SEG_MIN_PX)
+                  ? `<span class="daily-bar-seg-label">${Math.round(b.totals[d])}</span>` : "";
+                return `<div class="daily-bar-seg" title="${d}: ${fmtVal(b.totals[d])}${unitLabel}" style="height:${segPct}%; background:${DISCIPLINE_CONFIG[d].color};">${segLabel}</div>`;
+              }).join("");
+              const colTotal = (showLabels && b.total > 0)
+                ? `<div class="daily-bar-total" style="bottom:${stackHeight + 3}px;">${Math.round(b.total)}</div>` : "";
+              const cls = [b.isWeekend ? "weekend" : "", b.isToday ? "today" : ""].filter(Boolean).join(" ");
+              return `
+                <div class="daily-bar-col" title="${fmtVal(b.total)}${unitLabel}">
+                  ${colTotal}
+                  <div class="daily-bar-stack" style="height:${stackHeight}px;">${segments}</div>
+                  <div class="daily-bar-label ${cls}">
+                    ${b.hideLabel ? "" : `<span class="dow">${b.label.top}</span><span class="dom">${b.label.bot}</span>`}
+                  </div>
                 </div>
-              </div>
-            `;
-          }).join("")}
+              `;
+            }).join("");
+          })()}
         </div>
       </div>
       <div class="weekly-legend">
