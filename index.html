@@ -501,6 +501,36 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
   font-size: 12px; color: #d4baeb;
 }
 .workout-legend .ti { margin-right: 4px; }
+
+.workout-card.is-workout { border-left-color: #38bdf8; }
+.workout-section { margin-top: 10px; }
+.workout-section-title {
+  font-family: 'Bebas Neue', sans-serif;
+  letter-spacing: 2px;
+  color: #38bdf8;
+  font-size: 12px;
+  margin: 0 0 4px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(255,255,255,0.10);
+}
+.workout-section:first-of-type .workout-section-title {
+  border-top: none; padding-top: 0;
+}
+.workout-step {
+  display: flex; align-items: center; gap: 10px;
+  padding: 4px 0;
+  font-size: 14px; color: #f0e6ff;
+}
+.workout-step.is-rest .move { color: #9684b8; font-style: italic; }
+.workout-step .step-num {
+  display: inline-block; min-width: 18px; text-align: center;
+  font-family: 'Bebas Neue', sans-serif;
+  color: #c8a8e8; font-size: 12px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 3px;
+  padding: 1px 0;
+  flex-shrink: 0;
+}
 .workout-row {
   display: flex; align-items: center;
   gap: 10px; padding: 7px 0;
@@ -531,6 +561,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
 <div class="menu-sheet" id="menuSheet">
   <div class="menu-sheet-inner">
     <div class="menu-handle"></div>
+    <button class="menu-item" id="workoutBtn"><span class="menu-icon">⏱️</span>Workout #1</button>
     <button class="menu-item" id="workoutPlanBtn"><span class="menu-icon">💪</span>Strength Exercises</button>
     <button class="menu-item" id="settingsBtn"><span class="menu-icon">⚙</span>Bodyweight <span id="weightDisplay" style="color:#666; margin-left:auto;"></span></button>
     <button class="menu-item" id="exportBtn"><span class="menu-icon">⬇</span>Export sessions (JSON)</button>
@@ -616,7 +647,24 @@ const MET_DEFAULTS = { Swim: 8, Row: 7, Run: 10, Strength: 5, Walk: 3.5, Other: 
 const RPE_LABEL = ["", "Very Easy", "Easy", "Moderate", "Moderate", "Hard", "Hard", "Very Hard", "Very Hard", "Max", "Max"];
 const STORAGE_KEY = "training-log:sessions";
 const SETTINGS_KEY = "training-log:settings";
-const APP_VERSION = "0.33";  // bump this on every deploy so you can verify the right file is live
+const APP_VERSION = "0.35";  // bump this on every deploy so you can verify the right file is live
+
+// Structured workouts — rendered first in the Strength Exercises sheet.
+// To update: edit this constant and redeploy.
+const WORKOUTS = [
+  {
+    icon: "⏱️",
+    title: "40 min HIIT",
+    note: "45s on · 15s off · 40 moves",
+    sections: [
+      { title: "Cardio", moves: ["Boxing", "Jumping jacks", "Lateral Shuffle", "Mountain Climbers", "High Knees", "Boxing", "Burpees", "Rest"] },
+      { title: "Legs",   moves: ["Wall sit", "Squat", "Step ups", "Squat pulse", "Walking Lunges", "Calf raises", "Squat", "Rest"] },
+      { title: "Upper",  moves: ["Boxing", "Push-ups", "Dips", "Plank shoulder taps", "Pushup", "Boxing", "Boxing", "Rest"] },
+      { title: "Glutes", moves: ["RS knee-ankle taps", "RS Leg Raises", "RS Circles", "LS knee-ankle taps", "LS Leg Raises", "LS Circles", "Glute Bridge", "Rest"] },
+      { title: "Abs",    moves: ["Flutterkicks", "Bicycle", "Russian Twists", "Ankle taps", "Side plank R", "Side Plank L", "High plank", "Crunches"] },
+    ],
+  },
+];
 
 // Static exercise reference bank — shown via the ⋯ menu so it's always one
 // tap away. To update: edit this constant and redeploy.
@@ -1812,31 +1860,69 @@ function handleSave() {
   setTimeout(() => { state.saved = false; render(); }, 2000);
 }
 
-function renderWorkoutPlan() {
-  const legend = `
-    <div class="workout-legend">
-      <span><span class="ti">🏋️</span> Weights</span>
-      <span><span class="ti">💪</span> Bodyweight</span>
-    </div>
-  `;
-  const cards = WORKOUT_PLAN.map(cat => {
-    const rows = cat.exercises.map(([type, name]) => `
-      <div class="workout-row">
-        <span class="ti">${type === "w" ? "🏋️" : "💪"}</span>
-        <span class="ex">${escapeHtml(name)}</span>
-      </div>
-    `).join("");
-    return `
-      <div class="workout-card">
-        <div class="workout-card-head">
-          <div class="workout-card-name">${cat.icon} ${escapeHtml(cat.title)}</div>
-          <div class="workout-card-weeks">${cat.exercises.length}</div>
+function renderWorkoutPlan(mode) {
+  // mode: "workout" -> show only structured workouts;
+  //       "exercises" -> show only the exercise reference bank.
+  const titleEl = document.querySelector("#workoutSheet .workout-title");
+  let content = "";
+  if (mode === "workout") {
+    if (titleEl) titleEl.textContent = "Workout #1";
+    content = WORKOUTS.map(w => {
+      const sections = w.sections.map(sec => {
+        const moves = sec.moves.map((name, i) => {
+          const isRest = name.toLowerCase() === "rest";
+          return `
+            <div class="workout-step ${isRest ? "is-rest" : ""}">
+              <span class="step-num">${i + 1}</span>
+              <span class="move">${escapeHtml(name)}</span>
+            </div>
+          `;
+        }).join("");
+        return `
+          <div class="workout-section">
+            <div class="workout-section-title">${escapeHtml(sec.title)}</div>
+            ${moves}
+          </div>
+        `;
+      }).join("");
+      return `
+        <div class="workout-card is-workout">
+          <div class="workout-card-head">
+            <div class="workout-card-name">${w.icon} ${escapeHtml(w.title)}</div>
+            ${w.note ? `<div class="workout-card-weeks">${escapeHtml(w.note)}</div>` : ""}
+          </div>
+          ${sections}
         </div>
-        ${rows}
+      `;
+    }).join("");
+  } else {
+    if (titleEl) titleEl.textContent = "Strength Exercises";
+    const legend = `
+      <div class="workout-legend">
+        <span><span class="ti">🏋️</span> Weights</span>
+        <span><span class="ti">💪</span> Bodyweight</span>
       </div>
     `;
-  }).join("");
-  document.getElementById("workoutContent").innerHTML = legend + cards;
+    const cards = WORKOUT_PLAN.map(cat => {
+      const rows = cat.exercises.map(([type, name]) => `
+        <div class="workout-row">
+          <span class="ti">${type === "w" ? "🏋️" : "💪"}</span>
+          <span class="ex">${escapeHtml(name)}</span>
+        </div>
+      `).join("");
+      return `
+        <div class="workout-card">
+          <div class="workout-card-head">
+            <div class="workout-card-name">${cat.icon} ${escapeHtml(cat.title)}</div>
+            <div class="workout-card-weeks">${cat.exercises.length}</div>
+          </div>
+          ${rows}
+        </div>
+      `;
+    }).join("");
+    content = legend + cards;
+  }
+  document.getElementById("workoutContent").innerHTML = content;
 }
 
 // ---------- Menu / Import / Export ----------
@@ -1919,8 +2005,13 @@ function setupMenu() {
   document.getElementById("importAppleBtn").addEventListener("click", () => {
     document.getElementById("importAppleFile").click();
   });
+  document.getElementById("workoutBtn").addEventListener("click", () => {
+    renderWorkoutPlan("workout");
+    sheet.classList.remove("open");
+    document.getElementById("workoutSheet").classList.add("open");
+  });
   document.getElementById("workoutPlanBtn").addEventListener("click", () => {
-    renderWorkoutPlan();
+    renderWorkoutPlan("exercises");
     sheet.classList.remove("open");
     document.getElementById("workoutSheet").classList.add("open");
   });
