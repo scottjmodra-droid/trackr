@@ -683,7 +683,7 @@ const MET_DEFAULTS = { Swim: 8, Row: 7, Run: 10, Strength: 5, Walk: 3.5, Other: 
 const RPE_LABEL = ["", "Very Easy", "Easy", "Moderate", "Moderate", "Hard", "Hard", "Very Hard", "Very Hard", "Max", "Max"];
 const STORAGE_KEY = "training-log:sessions";
 const SETTINGS_KEY = "training-log:settings";
-const APP_VERSION = "0.36";  // bump this on every deploy so you can verify the right file is live
+const APP_VERSION = "0.37";  // bump this on every deploy so you can verify the right file is live
 
 // Structured workouts — rendered first in the Strength Exercises sheet.
 // To update: edit this constant and redeploy.
@@ -1057,14 +1057,40 @@ function daysSinceLastBackup() {
   return (Date.now() - new Date(state.lastBackup).getTime()) / 86400000;
 }
 function shouldShowBackupBanner() {
-  return !state.bannerDismissed && state.sessions.length > 0 && daysSinceLastBackup() >= SNAPSHOT_DAYS;
+  if (state.bannerDismissed) return false;
+  if (state.sessions.length === 0) return false;
+  // Sunday-only reminder: show on Sunday unless we already backed up today.
+  const today = new Date();
+  if (today.getDay() !== 0) return false;     // 0 = Sunday
+  if (state.lastBackup && new Date(state.lastBackup).toDateString() === today.toDateString()) return false;
+  return true;
 }
-function triggerBackupExport() {
+async function triggerBackupExport() {
   const stamp = todayISO();
-  download(`trackr-backup-${stamp}.json`, JSON.stringify(state.sessions, null, 2), "application/json");
+  const filename = `trackr-backup-${stamp}.json`;
+  const jsonStr = JSON.stringify(state.sessions, null, 2);
+  // Try the Web Share API first so iOS users get a Share sheet with
+  // "Save to Files → iCloud Drive" right there. Falls back to a normal
+  // download for browsers that don't support sharing files.
+  if (navigator.canShare && typeof File !== "undefined") {
+    try {
+      const file = new File([jsonStr], filename, { type: "application/json" });
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: "TRACKR backup" });
+        state.lastBackup = new Date().toISOString();
+        saveSettings();
+        showToast("Saved. Pick 'Save to Files → iCloud Drive'");
+        return;
+      }
+    } catch (e) {
+      if (e.name === "AbortError") return;   // user cancelled the share sheet
+      console.warn("Share failed, falling back to download", e);
+    }
+  }
+  download(filename, jsonStr, "application/json");
   state.lastBackup = new Date().toISOString();
   saveSettings();
-  showToast("Backup saved. Move it to iCloud Drive!");
+  showToast("Backup saved. Move it to iCloud Drive.");
 }
 
 // ---------- Computed helpers ----------
@@ -1218,13 +1244,9 @@ function render() {
 }
 
 function renderBackupBanner() {
-  const days = daysSinceLastBackup();
-  const msg = state.lastBackup
-    ? `It's been <strong>${Math.floor(days)} day${Math.floor(days) === 1 ? "" : "s"}</strong> since your last backup.`
-    : `<strong>No backup yet.</strong> Save a copy in case your phone goes for a swim.`;
   return `
     <div class="backup-banner">
-      <div class="backup-banner-text">${msg}</div>
+      <div class="backup-banner-text"><strong>Sunday backup time.</strong> Save your sessions to iCloud Drive.</div>
       <button class="backup-banner-action" id="backupNowBtn">BACK UP</button>
       <button class="backup-banner-dismiss" id="backupDismissBtn" aria-label="Dismiss">×</button>
     </div>
