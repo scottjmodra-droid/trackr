@@ -541,6 +541,32 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
 .workout-row .ti { font-size: 16px; flex-shrink: 0; min-width: 22px; }
 .workout-row .ex { color: #f0e6ff; }
 
+.backup-banner {
+  margin: 14px 20px 0;
+  background: linear-gradient(90deg, rgba(232,248,74,0.22), rgba(232,248,74,0.10));
+  border: 1px solid rgba(232,248,74,0.40);
+  border-radius: 10px;
+  padding: 11px 12px 11px 14px;
+  display: flex; align-items: center; gap: 10px;
+}
+.backup-banner-text {
+  flex: 1; font-size: 13px; color: #f0e6ff; line-height: 1.35;
+}
+.backup-banner-text strong { color: #e8f84a; }
+.backup-banner-action {
+  background: #e8f84a; color: #1a0633;
+  border: none; border-radius: 6px;
+  padding: 8px 11px;
+  font-family: 'Bebas Neue', sans-serif; letter-spacing: 1.5px;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.backup-banner-dismiss {
+  background: transparent; border: none;
+  color: #9684b8; font-size: 20px; line-height: 1;
+  padding: 4px 6px; flex-shrink: 0;
+}
+
 .toast {
   position: fixed; bottom: calc(20px + env(safe-area-inset-bottom));
   left: 50%; transform: translateX(-50%);
@@ -567,9 +593,19 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
     <button class="menu-item" id="exportBtn"><span class="menu-icon">⬇</span>Export sessions (JSON)</button>
     <button class="menu-item" id="importBtn"><span class="menu-icon">⬆</span>Import sessions (JSON)</button>
     <button class="menu-item" id="importAppleBtn"><span class="menu-icon">⌚</span>Import from Apple Health</button>
+    <button class="menu-item" id="restoreBtn"><span class="menu-icon">🛟</span>Recent backups</button>
     <button class="menu-item" id="exportCsvBtn"><span class="menu-icon">📊</span>Export as CSV</button>
     <button class="menu-item danger" id="clearBtn"><span class="menu-icon">🗑</span>Clear all data</button>
     <button class="menu-item" id="closeMenuBtn" style="color:#666; justify-content:center;">Cancel</button>
+  </div>
+</div>
+<div class="workout-sheet" id="restoreSheet">
+  <div class="workout-sheet-inner">
+    <div class="menu-handle"></div>
+    <div class="workout-title">Recent backups</div>
+    <div class="workout-card-note" style="color:#d4baeb; margin-bottom:12px;">In-device snapshots, taken once a week automatically. These survive a Clear-All-Data, but not phone loss — use the BACK UP banner for that.</div>
+    <div id="restoreContent"></div>
+    <button class="menu-item" id="closeRestoreBtn" style="color:#666; justify-content:center; margin-top:8px;">Close</button>
   </div>
 </div>
 <div class="workout-sheet" id="workoutSheet">
@@ -647,7 +683,7 @@ const MET_DEFAULTS = { Swim: 8, Row: 7, Run: 10, Strength: 5, Walk: 3.5, Other: 
 const RPE_LABEL = ["", "Very Easy", "Easy", "Moderate", "Moderate", "Hard", "Hard", "Very Hard", "Very Hard", "Max", "Max"];
 const STORAGE_KEY = "training-log:sessions";
 const SETTINGS_KEY = "training-log:settings";
-const APP_VERSION = "0.35";  // bump this on every deploy so you can verify the right file is live
+const APP_VERSION = "0.36";  // bump this on every deploy so you can verify the right file is live
 
 // Structured workouts — rendered first in the Strength Exercises sheet.
 // To update: edit this constant and redeploy.
@@ -745,7 +781,14 @@ const state = {
   saved: false,
   weight: 94,
   height: 180,
+  lastBackup: null,         // ISO timestamp of the most recent successful export
+  bannerDismissed: false,   // session-only; banner re-appears on next visit
 };
+// Storage key for rolling weekly snapshots — separate from the sessions key
+// so "Clear all data" doesn't wipe the safety net.
+const SNAPSHOT_KEY = "training-log:snapshots";
+const SNAPSHOT_DAYS = 7;     // snapshot at most once per N days
+const SNAPSHOT_MAX = 4;      // keep this many weeks of history
 
 // Local-date version of YYYY-MM-DD (avoids the UTC off-by-one when the user
 // is east of UTC — Sydney midnight is the previous day in UTC).
@@ -974,12 +1017,54 @@ function loadSettings() {
       const s = JSON.parse(raw);
       if (s.weight) state.weight = Number(s.weight);
       if (s.height) state.height = Number(s.height);
+      if (s.lastBackup) state.lastBackup = s.lastBackup;
     }
   } catch (e) { console.warn("Load settings failed", e); }
 }
 function saveSettings() {
-  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify({ weight: state.weight, height: state.height })); }
-  catch (e) { console.warn("Save settings failed", e); }
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify({
+      weight: state.weight, height: state.height, lastBackup: state.lastBackup,
+    }));
+  } catch (e) { console.warn("Save settings failed", e); }
+}
+
+// ---------- Backups ----------
+function loadSnapshots() {
+  try { return JSON.parse(localStorage.getItem(SNAPSHOT_KEY) || "[]"); }
+  catch (e) { return []; }
+}
+function saveSnapshots(list) {
+  try { localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(list)); }
+  catch (e) { console.warn("Save snapshots failed", e); }
+}
+function maybeTakeSnapshot() {
+  // Take a snapshot if it's been ≥ SNAPSHOT_DAYS since the last one (or none exist).
+  if (state.sessions.length === 0) return;
+  const list = loadSnapshots();
+  const now = Date.now();
+  const latest = list[0];
+  if (latest && (now - new Date(latest.date).getTime()) < SNAPSHOT_DAYS * 86400000) return;
+  list.unshift({
+    date: new Date().toISOString(),
+    count: state.sessions.length,
+    data: state.sessions,
+  });
+  saveSnapshots(list.slice(0, SNAPSHOT_MAX));
+}
+function daysSinceLastBackup() {
+  if (!state.lastBackup) return Infinity;
+  return (Date.now() - new Date(state.lastBackup).getTime()) / 86400000;
+}
+function shouldShowBackupBanner() {
+  return !state.bannerDismissed && state.sessions.length > 0 && daysSinceLastBackup() >= SNAPSHOT_DAYS;
+}
+function triggerBackupExport() {
+  const stamp = todayISO();
+  download(`trackr-backup-${stamp}.json`, JSON.stringify(state.sessions, null, 2), "application/json");
+  state.lastBackup = new Date().toISOString();
+  saveSettings();
+  showToast("Backup saved. Move it to iCloud Drive!");
 }
 
 // ---------- Computed helpers ----------
@@ -1111,6 +1196,7 @@ function calcCalories(discipline, duration, distance, splitStr) {
 // ---------- Render ----------
 function render() {
   const app = document.getElementById("app");
+  const banner = shouldShowBackupBanner() ? renderBackupBanner() : "";
   app.innerHTML = `
     <div class="header">
       <div class="title">
@@ -1123,11 +1209,26 @@ function render() {
         <button class="tab ${state.view === "history" ? "active" : ""}" data-view="history" role="tab">HISTORY</button>
       </div>
     </div>
+    ${banner}
     <div class="section">
       ${state.view === "log" ? renderLog() : renderHistory()}
     </div>
   `;
   attachHandlers();
+}
+
+function renderBackupBanner() {
+  const days = daysSinceLastBackup();
+  const msg = state.lastBackup
+    ? `It's been <strong>${Math.floor(days)} day${Math.floor(days) === 1 ? "" : "s"}</strong> since your last backup.`
+    : `<strong>No backup yet.</strong> Save a copy in case your phone goes for a swim.`;
+  return `
+    <div class="backup-banner">
+      <div class="backup-banner-text">${msg}</div>
+      <button class="backup-banner-action" id="backupNowBtn">BACK UP</button>
+      <button class="backup-banner-dismiss" id="backupDismissBtn" aria-label="Dismiss">×</button>
+    </div>
+  `;
 }
 
 function renderLog() {
@@ -1825,6 +1926,18 @@ function attachHandlers() {
     document.getElementById("weightDisplay").textContent = state.weight + "kg";
     document.getElementById("menuSheet").classList.add("open");
   });
+
+  // Backup banner
+  const backupBtn = document.getElementById("backupNowBtn");
+  if (backupBtn) backupBtn.addEventListener("click", () => {
+    triggerBackupExport();
+    render();
+  });
+  const dismissBtn = document.getElementById("backupDismissBtn");
+  if (dismissBtn) dismissBtn.addEventListener("click", () => {
+    state.bannerDismissed = true;
+    render();
+  });
 }
 
 function handleSave() {
@@ -1858,6 +1971,47 @@ function handleSave() {
   state.saved = true;
   render();
   setTimeout(() => { state.saved = false; render(); }, 2000);
+}
+
+function renderRestoreSheet() {
+  const snapshots = loadSnapshots();
+  const content = document.getElementById("restoreContent");
+  if (!content) return;
+  if (snapshots.length === 0) {
+    content.innerHTML = `<div class="empty-state">No snapshots yet — TRACKR takes one automatically every 7 days.</div>`;
+    return;
+  }
+  content.innerHTML = snapshots.map((snap, i) => {
+    const when = new Date(snap.date);
+    const dateStr = when.toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" });
+    const timeStr = when.toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit" });
+    return `
+      <div class="workout-card" style="border-left-color:#94a3b8;">
+        <div class="workout-card-head">
+          <div class="workout-card-name">${dateStr} <span style="opacity:0.6; font-size:13px;">${timeStr}</span></div>
+          <div class="workout-card-weeks">${snap.count} sess.</div>
+        </div>
+        <button class="backup-banner-action" data-restore-snap="${i}" style="width:100%; margin-top:6px;">RESTORE THIS</button>
+      </div>
+    `;
+  }).join("");
+
+  content.querySelectorAll("[data-restore-snap]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const idx = parseInt(btn.dataset.restoreSnap, 10);
+      const snap = snapshots[idx];
+      if (!snap) return;
+      const when = new Date(snap.date).toLocaleDateString("en-AU", { day: "numeric", month: "short" });
+      if (!confirm(`Replace your current ${state.sessions.length} session${state.sessions.length === 1 ? "" : "s"} with the ${snap.count}-session backup from ${when}? This can't be undone (but a new snapshot is taken first).`)) return;
+      // Take a fresh "before restore" snapshot so the restore itself can be undone.
+      maybeTakeSnapshot();
+      state.sessions = snap.data;
+      saveSessions();
+      document.getElementById("restoreSheet").classList.remove("open");
+      render();
+      showToast(`Restored ${snap.count} sessions`);
+    });
+  });
 }
 
 function renderWorkoutPlan(mode) {
@@ -2005,6 +2159,19 @@ function setupMenu() {
   document.getElementById("importAppleBtn").addEventListener("click", () => {
     document.getElementById("importAppleFile").click();
   });
+  document.getElementById("restoreBtn").addEventListener("click", () => {
+    renderRestoreSheet();
+    sheet.classList.remove("open");
+    document.getElementById("restoreSheet").classList.add("open");
+  });
+  document.getElementById("closeRestoreBtn").addEventListener("click", () => {
+    document.getElementById("restoreSheet").classList.remove("open");
+  });
+  document.getElementById("restoreSheet").addEventListener("click", e => {
+    if (e.target.id === "restoreSheet") e.target.classList.remove("open");
+  });
+  attachSheetSwipe(document.getElementById("restoreSheet"), document.querySelector("#restoreSheet .workout-sheet-inner"));
+
   document.getElementById("workoutBtn").addEventListener("click", () => {
     renderWorkoutPlan("workout");
     sheet.classList.remove("open");
@@ -2124,6 +2291,15 @@ function showToast(msg) {
 // ---------- Boot ----------
 loadSettings();
 loadSessions();
+maybeTakeSnapshot();
+// Shortcuts trigger: if the URL hash is #export, auto-download then strip
+// the hash so a refresh doesn't fire it again.
+if (window.location.hash === "#export") {
+  setTimeout(() => {
+    triggerBackupExport();
+    history.replaceState(null, "", window.location.pathname);
+  }, 300);
+}
 render();
 setupMenu();
 
