@@ -683,7 +683,7 @@ const MET_DEFAULTS = { Swim: 8, Row: 7, Run: 10, Strength: 5, Walk: 3.5, Other: 
 const RPE_LABEL = ["", "Very Easy", "Easy", "Moderate", "Moderate", "Hard", "Hard", "Very Hard", "Very Hard", "Max", "Max"];
 const STORAGE_KEY = "training-log:sessions";
 const SETTINGS_KEY = "training-log:settings";
-const APP_VERSION = "0.37";  // bump this on every deploy so you can verify the right file is live
+const APP_VERSION = "0.38";  // bump this on every deploy so you can verify the right file is live
 
 // Structured workouts — rendered first in the Strength Exercises sheet.
 // To update: edit this constant and redeploy.
@@ -695,7 +695,7 @@ const WORKOUTS = [
     sections: [
       { title: "Cardio", moves: ["Boxing", "Jumping jacks", "Lateral Shuffle", "Mountain Climbers", "High Knees", "Boxing", "Burpees", "Rest"] },
       { title: "Legs",   moves: ["Wall sit", "Squat", "Step ups", "Squat pulse", "Walking Lunges", "Calf raises", "Squat", "Rest"] },
-      { title: "Upper",  moves: ["Boxing", "Push-ups", "Dips", "Plank shoulder taps", "Pushup", "Boxing", "Boxing", "Rest"] },
+      { title: "Upper",  moves: ["Boxing", "Push-ups", "Dips", "Plank shoulder taps", "Pushup", "Mountain Climbers", "Boxing", "Rest"] },
       { title: "Glutes", moves: ["RS knee-ankle taps", "RS Leg Raises", "RS Circles", "LS knee-ankle taps", "LS Leg Raises", "LS Circles", "Glute Bridge", "Rest"] },
       { title: "Abs",    moves: ["Flutterkicks", "Bicycle", "Russian Twists", "Ankle taps", "Side plank R", "Side Plank L", "High plank", "Crunches"] },
     ],
@@ -1589,7 +1589,7 @@ function renderDailyVolume(period) {
   }
   function fmtCal(c) {
     c = Math.round(c);
-    if (c >= 1000) return (c / 1000).toFixed(c % 1000 === 0 ? 0 : 1) + "k";
+    if (c >= 1000) return (c / 1000).toFixed(1) + "k";
     return String(c);
   }
   const fmtVal = isMin ? fmtMin : fmtCal;
@@ -1601,8 +1601,10 @@ function renderDailyVolume(period) {
   // Bar labels on All Time + minutes: convert to hours with one decimal.
   // Otherwise (Week minutes, any mode calories) just an integer of the unit.
   const fmtBarLabel = (range === "all" && isMin)
-    ? (v => (v / 60).toFixed(1))
-    : (v => String(Math.round(v)));
+    ? (v => (v / 60).toFixed(1))           // hours w/ 1dp for All Time minutes
+    : isMin
+    ? (v => String(Math.round(v)))         // plain integer minutes
+    : fmtCal;                              // calories share fmtCal's k-format
 
   // Build y-axis ticks (every step from 0 to yMax inclusive)
   const ticks = [];
