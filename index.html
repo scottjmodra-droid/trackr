@@ -541,6 +541,152 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
 .workout-row .ti { font-size: 16px; flex-shrink: 0; min-width: 22px; }
 .workout-row .ex { color: #f0e6ff; }
 
+.workout-start-btn {
+  width: 100%; padding: 14px; margin: 6px 0 14px;
+  background: #e8f84a; color: #1a0633;
+  border: none; border-radius: 10px;
+  font-family: 'Bebas Neue', sans-serif;
+  letter-spacing: 2px; font-size: 16px;
+}
+.workout-start-btn:active { transform: translateY(1px); }
+
+.workout-overlay {
+  position: fixed; inset: 0;
+  background: radial-gradient(ellipse at 30% 25%, #4a1480 0%, #1a0633 55%, #0d031f 100%);
+  z-index: 200;
+  display: flex; flex-direction: column;
+  padding: calc(36px + env(safe-area-inset-top)) 24px calc(28px + env(safe-area-inset-bottom));
+  gap: 14px; overflow: hidden;
+}
+.workout-overlay.is-paused::after {
+  content: "PAUSED"; position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(13,3,31,0.55);
+  font-family: 'Bebas Neue', sans-serif; letter-spacing: 6px;
+  font-size: 36px; color: #fff; pointer-events: none;
+}
+.workout-overlay .workout-top { display: flex; justify-content: center; }
+.workout-overlay .workout-section-name {
+  font-family: 'Bebas Neue', sans-serif; letter-spacing: 3px;
+  color: #c8a8e8; font-size: 14px;
+}
+.workout-overlay .workout-move-name {
+  font-family: 'Bebas Neue', sans-serif; font-size: 38px; color: #fff;
+  letter-spacing: 1px; line-height: 1.1;
+  text-align: center; padding: 6px 0;
+}
+.workout-overlay .workout-move-name.is-rest-move { color: #38bdf8; }
+.workout-overlay .workout-countdown {
+  display: flex; flex-direction: column; align-items: center;
+  flex: 1; justify-content: center; gap: 4px;
+}
+.workout-overlay .workout-sec {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 140px; line-height: 1;
+}
+.workout-overlay .workout-countdown.work .workout-sec { color: #e8f84a; }
+.workout-overlay .workout-countdown.rest .workout-sec { color: #38bdf8; }
+.workout-overlay .workout-phase {
+  font-family: 'Bebas Neue', sans-serif; letter-spacing: 4px;
+  font-size: 18px;
+}
+.workout-overlay .workout-countdown.work .workout-phase { color: #e8f84a; }
+.workout-overlay .workout-countdown.rest .workout-phase { color: #38bdf8; }
+.workout-overlay .workout-progress {
+  width: 100%; height: 6px; background: rgba(255,255,255,0.08);
+  border-radius: 3px; overflow: hidden;
+}
+.workout-overlay .workout-progress .workout-progress-bar { height: 100%; transition: width 0.18s linear; }
+.workout-overlay .workout-progress.work .workout-progress-bar { background: #e8f84a; }
+.workout-overlay .workout-progress.rest .workout-progress-bar { background: #38bdf8; }
+.workout-overlay .workout-next {
+  color: #c8a8e8; font-size: 14px;
+  text-align: center; padding: 4px 0;
+}
+.workout-overlay .workout-next strong { color: #fff; font-weight: 600; }
+.workout-overlay .workout-controls { display: flex; gap: 8px; }
+.workout-overlay .workout-controls button {
+  flex: 1; padding: 14px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: #f0e6ff;
+  border-radius: 10px;
+  font-family: 'Bebas Neue', sans-serif; letter-spacing: 2px; font-size: 14px;
+}
+.workout-overlay .workout-end-btn {
+  padding: 12px; background: transparent;
+  border: 1px solid rgba(255,87,119,0.4); color: #ff5577;
+  border-radius: 10px;
+  font-family: 'Bebas Neue', sans-serif; letter-spacing: 2px; font-size: 13px;
+}
+
+.pr-records {
+  background: rgba(232, 248, 74, 0.06);
+  border: 1px solid rgba(232, 248, 74, 0.2);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  display: grid; gap: 6px;
+}
+.pr-records-title {
+  font-family: 'Bebas Neue', sans-serif;
+  letter-spacing: 2px;
+  color: #e8f84a;
+  font-size: 11px;
+}
+.pr-record-row {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: 10px; font-size: 13px;
+}
+.pr-record-row .label { color: #d4baeb; }
+.pr-record-row .val { color: #fff; font-weight: 500; }
+.pr-record-row .date { font-size: 11px; color: #9684b8; margin-left: 6px; }
+.pr-badge {
+  display: inline-flex; align-items: center;
+  background: rgba(232, 248, 74, 0.18);
+  color: #e8f84a;
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 10px;
+  font-family: 'Bebas Neue', sans-serif; letter-spacing: 1px;
+  margin-left: 6px;
+  line-height: 1.3;
+}
+
+.heatmap-wrap { margin-top: 24px; }
+.heatmap-months {
+  display: grid;
+  grid-template-columns: 16px repeat(16, 13px);
+  gap: 2px;
+  margin-bottom: 6px;
+  font-size: 10px;
+  color: #9684b8;
+  font-family: 'Bebas Neue', sans-serif;
+  letter-spacing: 1px;
+}
+.heatmap-row {
+  display: grid;
+  grid-template-columns: 16px repeat(16, 13px);
+  gap: 2px;
+  margin-bottom: 2px;
+  align-items: center;
+}
+.heatmap-row-label {
+  font-size: 9px; color: #9684b8;
+  font-family: 'DM Sans', sans-serif;
+  line-height: 1; text-align: right; padding-right: 2px;
+}
+.heatmap-cell {
+  width: 13px; height: 13px; border-radius: 2px;
+}
+.heatmap-cell.is-today { box-shadow: 0 0 0 1.5px #e8f84a; }
+.heatmap-cell.is-future { background: transparent !important; }
+.heatmap-legend {
+  display: flex; align-items: center; gap: 6px; margin-top: 10px;
+  font-size: 10px; color: #9684b8;
+}
+.heatmap-legend-cell { width: 11px; height: 11px; border-radius: 2px; }
+
 .backup-banner {
   margin: 14px 20px 0;
   background: linear-gradient(90deg, rgba(232,248,74,0.22), rgba(232,248,74,0.10));
@@ -683,7 +829,7 @@ const MET_DEFAULTS = { Swim: 8, Row: 7, Run: 10, Strength: 5, Walk: 3.5, Other: 
 const RPE_LABEL = ["", "Very Easy", "Easy", "Moderate", "Moderate", "Hard", "Hard", "Very Hard", "Very Hard", "Max", "Max"];
 const STORAGE_KEY = "training-log:sessions";
 const SETTINGS_KEY = "training-log:settings";
-const APP_VERSION = "0.38";  // bump this on every deploy so you can verify the right file is live
+const APP_VERSION = "0.41";  // bump this on every deploy so you can verify the right file is live
 
 // Structured workouts — rendered first in the Strength Exercises sheet.
 // To update: edit this constant and redeploy.
@@ -776,6 +922,7 @@ const state = {
   historyMetric: "minutes",  // "minutes" | "calories"
   allTimeGranularity: "month",  // "month" | "week" — only used in All Time mode
   editingId: null,  // id of the history session currently being edited, or null
+  workoutTimer: null,  // when active: { startedAt, totalPausedMs, pausedAt }
   form: emptyForm("Swim"),
   date: todayISO(),
   saved: false,
@@ -1223,7 +1370,8 @@ function calcCalories(discipline, duration, distance, splitStr) {
 function render() {
   const app = document.getElementById("app");
   const banner = shouldShowBackupBanner() ? renderBackupBanner() : "";
-  app.innerHTML = `
+  const workoutOverlay = renderWorkoutOverlay();
+  app.innerHTML = workoutOverlay + `
     <div class="header">
       <div class="title">
         <span>TRACKR</span>
@@ -1395,6 +1543,7 @@ function renderHistory() {
       </div>
     ` : ""}
     ${renderDailyVolume(period)}
+    ${renderHeatmap()}
     <div style="margin-top:24px;">
       <div class="today-label">BY DISCIPLINE</div>
       <div class="discipline-grid" style="margin-bottom:16px;">
@@ -1689,6 +1838,366 @@ function renderDailyVolume(period) {
   `;
 }
 
+// ---------- Active Workout Timer ----------
+let workoutTickHandle = null;
+let workoutWakeLock = null;
+let workoutLastVibKey = "";
+let workoutAudioCtx = null;
+let workoutFiredBeeps = new Set();  // tracks which "bip" cues have already played
+
+// Web Audio API beep. Frequency 800Hz for short bips, 1200Hz for long start beep.
+function ensureAudioCtx() {
+  if (workoutAudioCtx) return workoutAudioCtx;
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if (!Ctx) return null;
+  try { workoutAudioCtx = new Ctx(); } catch (e) { return null; }
+  return workoutAudioCtx;
+}
+// Default gain at 0.8 lets the iOS media volume / side rocker do most of the
+// scaling. Anything higher than ~0.9 clips on some devices.
+function playBeep(freq, durationMs, volume = 0.8) {
+  const ctx = workoutAudioCtx;
+  if (!ctx) return;
+  if (ctx.state === "suspended") ctx.resume();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.type = "sine";
+  osc.frequency.value = freq;
+  const t0 = ctx.currentTime;
+  const t1 = t0 + durationMs / 1000;
+  gain.gain.setValueAtTime(0, t0);
+  gain.gain.linearRampToValueAtTime(volume, t0 + 0.008);
+  gain.gain.setValueAtTime(volume, t1 - 0.02);
+  gain.gain.linearRampToValueAtTime(0, t1);
+  osc.start(t0); osc.stop(t1);
+}
+
+function flattenWorkout(workout) {
+  const flat = [];
+  workout.sections.forEach(sec => sec.moves.forEach(move => flat.push({ section: sec.title, move })));
+  return flat;
+}
+// Each move slot is 60s: 45s "work" then 15s "rest". 40 slots = 40 minutes total.
+function computeWorkoutState() {
+  const t = state.workoutTimer;
+  if (!t) return null;
+  const now = t.pausedAt || Date.now();
+  const elapsedMs = now - t.startedAt - t.totalPausedMs;
+  const elapsedSec = elapsedMs / 1000;
+  const moveIdx = Math.floor(elapsedSec / 60);
+  if (moveIdx >= 40) return { done: true, moveIdx: 40, elapsedSec };
+  const intoMove = elapsedSec % 60;
+  const phase = intoMove < 45 ? "work" : "rest";
+  const phaseDur = phase === "work" ? 45 : 15;
+  const phaseElapsed = phase === "work" ? intoMove : intoMove - 45;
+  return {
+    done: false,
+    moveIdx,
+    phase,
+    phaseRemaining: Math.max(0, Math.ceil(phaseDur - phaseElapsed)),
+    phasePct: (phaseElapsed / phaseDur) * 100,
+    elapsedSec,
+  };
+}
+async function acquireWorkoutWakeLock() {
+  if (!("wakeLock" in navigator)) return;
+  try { workoutWakeLock = await navigator.wakeLock.request("screen"); }
+  catch (e) { /* ignore — non-fatal */ }
+}
+function releaseWorkoutWakeLock() {
+  if (workoutWakeLock) { try { workoutWakeLock.release(); } catch (e) {} workoutWakeLock = null; }
+}
+function startWorkout() {
+  state.workoutTimer = { startedAt: Date.now(), totalPausedMs: 0, pausedAt: null };
+  workoutLastVibKey = "0-work";   // skip vibration for first move start
+  workoutFiredBeeps = new Set();
+  acquireWorkoutWakeLock();
+  // Initialise audio context inside the user-gesture stack so iOS lets us play.
+  ensureAudioCtx();
+  playBeep(1200, 450);             // GO beep
+  navigator.vibrate?.([60, 60, 60]);
+  document.getElementById("workoutSheet").classList.remove("open");
+  scheduleWorkoutTick();
+  render();
+}
+function pauseWorkout() {
+  if (!state.workoutTimer || state.workoutTimer.pausedAt) return;
+  state.workoutTimer.pausedAt = Date.now();
+  render();
+}
+function resumeWorkout() {
+  const t = state.workoutTimer;
+  if (!t || !t.pausedAt) return;
+  t.totalPausedMs += Date.now() - t.pausedAt;
+  t.pausedAt = null;
+  render();
+}
+function skipWorkoutMove() {
+  const t = state.workoutTimer; if (!t) return;
+  const c = computeWorkoutState(); if (!c || c.done) return;
+  // Move startedAt back so elapsedSec becomes (moveIdx+1) * 60
+  const newElapsedMs = (c.moveIdx + 1) * 60 * 1000;
+  const ref = t.pausedAt || Date.now();
+  t.startedAt = ref - t.totalPausedMs - newElapsedMs;
+  navigator.vibrate?.(60);
+  render();
+}
+function logWorkoutSession(elapsedMin, completed) {
+  if (elapsedMin < 5) return false;
+  const finalMin = Math.min(40, elapsedMin);
+  state.sessions.push({
+    id: uid(),
+    date: todayISO(),
+    discipline: "Strength",
+    data: {
+      duration: String(finalMin),
+      type: "Workout #1",
+      details: completed
+        ? "Completed all 40 moves · 45s on / 15s off"
+        : `Ended at move ${Math.min(40, elapsedMin)} of 40`,
+      calories: calcCalories("Strength", String(finalMin), ""),
+    },
+  });
+  saveSessions();
+  return true;
+}
+function finishWorkout() {
+  if (!state.workoutTimer) return;
+  const c = computeWorkoutState();
+  const elapsedMin = c ? Math.round(c.elapsedSec / 60) : 40;
+  const logged = logWorkoutSession(elapsedMin, true);
+  navigator.vibrate?.([240, 100, 240, 100, 320]);
+  cleanupWorkout();
+  if (logged) showToast(`Workout complete · ${Math.min(40, elapsedMin)}-min Strength logged`);
+}
+function endWorkout() {
+  if (!state.workoutTimer) return;
+  const c = computeWorkoutState();
+  const elapsedMin = c ? Math.max(0, Math.round(c.elapsedSec / 60)) : 0;
+  let logged = false;
+  if (elapsedMin >= 5) {
+    if (confirm(`End workout? Log ${elapsedMin}-minute Strength session?`)) {
+      logged = logWorkoutSession(elapsedMin, false);
+    }
+  }
+  cleanupWorkout();
+  if (logged) showToast(`Logged ${elapsedMin}-min Strength session`);
+}
+function cleanupWorkout() {
+  state.workoutTimer = null;
+  workoutLastVibKey = "";
+  workoutFiredBeeps = new Set();
+  if (workoutTickHandle) { clearInterval(workoutTickHandle); workoutTickHandle = null; }
+  releaseWorkoutWakeLock();
+  render();
+}
+function scheduleWorkoutTick() {
+  if (workoutTickHandle) clearInterval(workoutTickHandle);
+  workoutTickHandle = setInterval(() => {
+    if (!state.workoutTimer) { clearInterval(workoutTickHandle); workoutTickHandle = null; return; }
+    if (state.workoutTimer.pausedAt) return;
+    const c = computeWorkoutState();
+    if (c.done) { finishWorkout(); return; }
+
+    // Phase change → haptic + a distinctive beep for each kind of transition.
+    //   work → rest  (mid-move, t=45s): long 900Hz "beeeeep" — work bit is done
+    //   rest → work  (new move starting, t=0s of next): long 1200Hz "beeeeep"
+    const vibKey = `${c.moveIdx}-${c.phase}`;
+    if (vibKey !== workoutLastVibKey) {
+      const isNewMove = c.phase === "work";
+      navigator.vibrate?.(isNewMove ? [80, 40, 120] : 50);
+      if (isNewMove) playBeep(1200, 450);      // higher pitch = new move
+      else           playBeep(900, 600);       // lower pitch + longer = end of work
+      workoutLastVibKey = vibKey;
+    }
+
+    // Two short "bip" cues at the last 2 seconds of each 60-second move slot.
+    const intoMove = c.elapsedSec - c.moveIdx * 60;
+    if (intoMove >= 58 && intoMove < 59) {
+      const k = `bip1-${c.moveIdx}`;
+      if (!workoutFiredBeeps.has(k)) { workoutFiredBeeps.add(k); playBeep(800, 110); }
+    }
+    if (intoMove >= 59 && intoMove < 60) {
+      const k = `bip2-${c.moveIdx}`;
+      if (!workoutFiredBeeps.has(k)) { workoutFiredBeeps.add(k); playBeep(800, 110); }
+    }
+
+    render();
+  }, 250);
+}
+
+function renderWorkoutOverlay() {
+  if (!state.workoutTimer) return "";
+  const c = computeWorkoutState();
+  if (!c || c.done) return "";
+  const flat = flattenWorkout(WORKOUTS[0]);
+  const current = flat[c.moveIdx];
+  const next = flat[c.moveIdx + 1];
+  const isPaused = !!state.workoutTimer.pausedAt;
+  const isRestSlot = current.move.toLowerCase() === "rest";
+  const phaseClass = (c.phase === "work" && !isRestSlot) ? "work" : "rest";
+  const phaseLabel = (c.phase === "work" && !isRestSlot) ? "GO" : "REST";
+  return `
+    <div class="workout-overlay ${isPaused ? "is-paused" : ""}">
+      <div class="workout-top">
+        <div class="workout-section-name">${current.section} · ${c.moveIdx + 1} / 40</div>
+      </div>
+      <div class="workout-move-name ${isRestSlot ? "is-rest-move" : ""}">${escapeHtml(current.move)}</div>
+      <div class="workout-countdown ${phaseClass}">
+        <div class="workout-sec">${c.phaseRemaining}</div>
+        <div class="workout-phase">${phaseLabel}</div>
+      </div>
+      <div class="workout-progress ${phaseClass}">
+        <div class="workout-progress-bar" style="width:${c.phasePct}%;"></div>
+      </div>
+      <div class="workout-next">
+        ${next ? `Next: <strong>${escapeHtml(next.move)}</strong>` : `Last one — finish strong!`}
+      </div>
+      <div class="workout-controls">
+        <button data-workout-action="${isPaused ? "resume" : "pause"}">${isPaused ? "RESUME" : "PAUSE"}</button>
+        <button data-workout-action="skip">SKIP ›</button>
+      </div>
+      <button class="workout-end-btn" data-workout-action="end">END WORKOUT</button>
+    </div>
+  `;
+}
+
+// Parse a pace string like "5:30" into total seconds (for Run PRs).
+function paceToSeconds(s) {
+  if (!s) return Infinity;
+  const m = /^(\d+):(\d+(?:\.\d+)?)$/.exec(String(s).trim());
+  if (!m) return Infinity;
+  return parseInt(m[1], 10) * 60 + parseFloat(m[2]);
+}
+
+// Compute personal records for a discipline. Returns a map of recordKey ->
+// session, where recordKey is the metric name (e.g., "longestDistance").
+// Records require at least 2 qualifying sessions to "feel earned".
+function computePRs(discipline, sessions) {
+  const ds = sessions.filter(s => s.discipline === discipline);
+  if (ds.length < 2) return {};
+  const records = {};
+  const max = (arr, getter, label) => {
+    const filtered = arr.filter(s => getter(s) > 0);
+    if (filtered.length < 2) return;
+    records[label] = filtered.reduce((b, s) => getter(s) > getter(b) ? s : b);
+  };
+  const min = (arr, getter, label, minQual) => {
+    const filtered = arr.filter(s => getter(s) > 0 && getter(s) < Infinity && minQual(s));
+    if (filtered.length < 2) return;
+    records[label] = filtered.reduce((b, s) => getter(s) < getter(b) ? s : b);
+  };
+  max(ds, s => parseFloat(s.data.distance) || 0, "longestDistance");
+  max(ds, s => parseFloat(s.data.duration) || 0, "longestDuration");
+  max(ds, s => parseFloat(s.data.calories) || 0, "mostCalories");
+  if (discipline === "Run") {
+    // Fastest pace, but only for runs of at least 3 km (so a 200m sprint doesn't dominate)
+    min(ds, s => paceToSeconds(s.data.pace), "fastestPace",
+        s => (parseFloat(s.data.distance) || 0) >= 3);
+  }
+  if (discipline === "Row") {
+    min(ds, s => parseSplitToSeconds(s.data.avgSplit) || Infinity, "bestSplit",
+        s => (parseFloat(s.data.distance) || 0) >= 2);
+  }
+  return records;
+}
+
+// PR label / value formatters
+const PR_LABELS = {
+  longestDistance: "Longest",
+  longestDuration: "Longest time",
+  mostCalories: "Most kcal",
+  fastestPace: "Fastest pace",
+  bestSplit: "Best /500m",
+};
+function prValue(key, session) {
+  switch (key) {
+    case "longestDistance": return parseFloat(session.data.distance).toFixed(1) + "km";
+    case "longestDuration": return fmtDuration(session.data.duration);
+    case "mostCalories":    return session.data.calories + " kcal";
+    case "fastestPace":     return session.data.pace + "/km";
+    case "bestSplit":       return session.data.avgSplit;
+    default: return "";
+  }
+}
+
+function renderHeatmap() {
+  const WEEKS = 16;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const todayKey = localISO(today);
+  const currentMonday = mondayOf(today);
+  const firstMonday = new Date(currentMonday);
+  firstMonday.setDate(firstMonday.getDate() - (WEEKS - 1) * 7);
+
+  // Pre-aggregate daily totals so each cell lookup is O(1)
+  const totalsByDay = {};
+  state.sessions.forEach(s => {
+    const m = parseFloat(s.data?.duration) || 0;
+    if (m > 0) totalsByDay[s.date] = (totalsByDay[s.date] || 0) + m;
+  });
+
+  function colorFor(min) {
+    if (min <= 0) return "rgba(255,255,255,0.06)";
+    if (min < 30)  return "rgba(232,248,74,0.22)";
+    if (min < 60)  return "rgba(232,248,74,0.42)";
+    if (min < 120) return "rgba(232,248,74,0.65)";
+    return "rgba(232,248,74,0.92)";
+  }
+
+  // Month-label row above the grid
+  let lastMonth = -1;
+  let monthsRow = '<div></div>'; // empty cell over the day-label column
+  for (let col = 0; col < WEEKS; col++) {
+    const d = new Date(firstMonday);
+    d.setDate(d.getDate() + col * 7);
+    const m = d.getMonth();
+    if (m !== lastMonth) {
+      monthsRow += `<div>${d.toLocaleDateString("en-AU", { month: "short" }).toUpperCase()}</div>`;
+      lastMonth = m;
+    } else {
+      monthsRow += `<div></div>`;
+    }
+  }
+
+  // 7 day rows, each with a label + 16 cells
+  const dayLabels = ["M", "T", "W", "T", "F", "S", "S"];
+  const rows = dayLabels.map((label, row) => {
+    let cells = `<div class="heatmap-row-label">${label}</div>`;
+    for (let col = 0; col < WEEKS; col++) {
+      const d = new Date(firstMonday);
+      d.setDate(firstMonday.getDate() + col * 7 + row);
+      const key = localISO(d);
+      const isFuture = d > today;
+      const isToday = key === todayKey;
+      const total = totalsByDay[key] || 0;
+      const tip = isFuture ? "" :
+        `${d.toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" })}: ${Math.round(total)} min`;
+      cells += `<div class="heatmap-cell ${isToday ? "is-today" : ""} ${isFuture ? "is-future" : ""}"
+        style="background:${colorFor(total)};"
+        title="${tip}"></div>`;
+    }
+    return `<div class="heatmap-row">${cells}</div>`;
+  }).join("");
+
+  return `
+    <div class="heatmap-wrap">
+      <div class="today-label">16-WEEK ACTIVITY</div>
+      <div class="heatmap-months">${monthsRow}</div>
+      ${rows}
+      <div class="heatmap-legend">
+        Less
+        <div class="heatmap-legend-cell" style="background:${colorFor(0)};"></div>
+        <div class="heatmap-legend-cell" style="background:${colorFor(15)};"></div>
+        <div class="heatmap-legend-cell" style="background:${colorFor(45)};"></div>
+        <div class="heatmap-legend-cell" style="background:${colorFor(90)};"></div>
+        <div class="heatmap-legend-cell" style="background:${colorFor(150)};"></div>
+        More
+      </div>
+    </div>
+  `;
+}
+
 function renderDisciplineStats(discipline, period) {
   // Filter to this discipline AND to the selected period (if bounded).
   let ds = state.sessions.filter(s => s.discipline === discipline);
@@ -1714,6 +2223,30 @@ function renderDisciplineStats(discipline, period) {
     totalCal > 0 ? { value: Math.round(totalCal).toLocaleString(), label: "Total kcal" } : null,
   ].filter(Boolean);
 
+  // Personal records are computed across ALL sessions for this discipline,
+  // not just the visible period — a PR is a PR forever.
+  const allTimeDs = state.sessions.filter(s => s.discipline === discipline);
+  const prs = computePRs(discipline, state.sessions);
+  const prSessionIds = new Set(Object.values(prs).map(s => s.id));
+  // Reverse lookup: sessionId -> array of record keys it holds
+  const prByIdLookup = {};
+  Object.entries(prs).forEach(([k, sess]) => {
+    if (!prByIdLookup[sess.id]) prByIdLookup[sess.id] = [];
+    prByIdLookup[sess.id].push(k);
+  });
+
+  const recordsHTML = Object.keys(prs).length > 0 ? `
+    <div class="pr-records">
+      <div class="pr-records-title">🏆 PERSONAL RECORDS</div>
+      ${Object.keys(prs).map(k => `
+        <div class="pr-record-row">
+          <span class="label">${PR_LABELS[k]}</span>
+          <span><span class="val">${prValue(k, prs[k])}</span><span class="date">${formatDate(prs[k].date)}</span></span>
+        </div>
+      `).join("")}
+    </div>
+  ` : "";
+
   return `
     <div class="stats-grid">
       ${cards.map(c => `
@@ -1723,9 +2256,14 @@ function renderDisciplineStats(discipline, period) {
         </div>
       `).join("")}
     </div>
+    ${recordsHTML}
     <div class="history-list">
       ${ds.slice().reverse().slice(0, 50).map(s => {
         if (s.id === state.editingId) return renderHistoryEdit(s, cfg);
+        const prKeysHere = prByIdLookup[s.id] || [];
+        const prTitle = prKeysHere.map(k => PR_LABELS[k]).join(", ");
+        const prBadge = prKeysHere.length > 0
+          ? `<span class="pr-badge" title="${escapeHtml(prTitle)}">🏆 PR</span>` : "";
         const fieldHtml = cfg.fields.filter(f => s.data[f.key]).map(f => {
           // duration gets the smart formatter so 90 -> "1h 30m"; others use a static unit.
           let displayVal;
@@ -1746,7 +2284,7 @@ function renderDisciplineStats(discipline, period) {
           <div class="history-item" data-edit="${s.id}" style="border-left-color:${cfg.color};">
             <button class="history-delete" data-delete="${s.id}" aria-label="Delete session">×</button>
             <div class="history-item-top">
-              <div class="history-date">${formatDate(s.date)}</div>
+              <div class="history-date">${formatDate(s.date)}${prBadge}</div>
             </div>
             <div class="history-data">${fieldHtml}</div>
           </div>
@@ -2069,6 +2607,7 @@ function renderWorkoutPlan(mode) {
             <div class="workout-card-name">${w.icon} ${escapeHtml(w.title)}</div>
             ${w.note ? `<div class="workout-card-weeks">${escapeHtml(w.note)}</div>` : ""}
           </div>
+          <button class="workout-start-btn" data-workout-start>▶ START WORKOUT</button>
           ${sections}
         </div>
       `;
@@ -2311,6 +2850,17 @@ function showToast(msg) {
   t.classList.add("show");
   setTimeout(() => t.classList.remove("show"), 2000);
 }
+
+// Document-level click delegation for workout buttons — survives re-renders.
+document.addEventListener("click", e => {
+  if (e.target.closest("[data-workout-start]")) { startWorkout(); return; }
+  const action = e.target.closest("[data-workout-action]")?.dataset.workoutAction;
+  if (!action) return;
+  if (action === "pause") pauseWorkout();
+  else if (action === "resume") resumeWorkout();
+  else if (action === "skip") skipWorkoutMove();
+  else if (action === "end") endWorkout();
+});
 
 // ---------- Boot ----------
 loadSettings();
