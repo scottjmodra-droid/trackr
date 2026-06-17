@@ -68,6 +68,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
   padding: 4px 8px; line-height: 1; border-radius: 6px;
 }
 .menu-btn:active { background: rgba(255,255,255,0.1); }
+.title-actions { display: flex; align-items: center; gap: 2px; }
 
 .tabs { display: flex; gap: 0; }
 .tab {
@@ -541,6 +542,37 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
 .workout-row .ti { font-size: 16px; flex-shrink: 0; min-width: 22px; }
 .workout-row .ex { color: #f0e6ff; }
 
+.workout-list-item {
+  width: 100%; display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-left: 3px solid #e8f84a;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.workout-list-item:active { background: rgba(255,255,255,0.09); }
+.workout-list-item-main { flex: 1; min-width: 0; }
+.workout-list-item-title {
+  font-family: 'Bebas Neue', sans-serif; letter-spacing: 1.5px;
+  font-size: 16px; color: #fff;
+}
+.workout-list-item-note {
+  font-size: 12px; color: #c8a8e8; margin-top: 4px;
+}
+.workout-list-item-chev {
+  color: #c8a8e8; font-size: 22px; line-height: 1;
+}
+.workout-back-btn {
+  background: transparent; border: none; color: #d4baeb;
+  font-size: 14px; padding: 6px 0; margin: 0 0 8px;
+  font-family: 'DM Sans', sans-serif;
+}
+.workout-back-btn:active { color: #fff; }
+
 .workout-start-btn {
   width: 100%; padding: 14px; margin: 6px 0 14px;
   background: #e8f84a; color: #1a0633;
@@ -733,8 +765,6 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
 <div class="menu-sheet" id="menuSheet">
   <div class="menu-sheet-inner">
     <div class="menu-handle"></div>
-    <button class="menu-item" id="workoutBtn"><span class="menu-icon">⏱️</span>Workout #1</button>
-    <button class="menu-item" id="workoutPlanBtn"><span class="menu-icon">💪</span>Strength Exercises</button>
     <button class="menu-item" id="settingsBtn"><span class="menu-icon">⚙</span>Bodyweight <span id="weightDisplay" style="color:#666; margin-left:auto;"></span></button>
     <button class="menu-item" id="exportBtn"><span class="menu-icon">⬇</span>Export sessions (JSON)</button>
     <button class="menu-item" id="importBtn"><span class="menu-icon">⬆</span>Import sessions (JSON)</button>
@@ -829,14 +859,14 @@ const MET_DEFAULTS = { Swim: 8, Row: 7, Run: 10, Strength: 5, Walk: 3.5, Other: 
 const RPE_LABEL = ["", "Very Easy", "Easy", "Moderate", "Moderate", "Hard", "Hard", "Very Hard", "Very Hard", "Max", "Max"];
 const STORAGE_KEY = "training-log:sessions";
 const SETTINGS_KEY = "training-log:settings";
-const APP_VERSION = "0.42";  // bump this on every deploy so you can verify the right file is live
+const APP_VERSION = "0.45";  // bump this on every deploy so you can verify the right file is live
 
 // Structured workouts — rendered first in the Strength Exercises sheet.
 // To update: edit this constant and redeploy.
 const WORKOUTS = [
   {
     icon: "⏱️",
-    title: "40 min HIIT",
+    title: "Full Body (40mins)",
     note: "45s on · 15s off · 40 moves",
     sections: [
       { title: "Cardio", moves: ["Boxing", "Jumping jacks", "Lateral Shuffle", "Mountain Climbers", "High Knees", "Boxing", "Burpees", "Rest"] },
@@ -844,6 +874,46 @@ const WORKOUTS = [
       { title: "Upper",  moves: ["Boxing", "Push-ups", "Dips", "Plank shoulder taps", "Pushup", "Mountain Climbers", "Boxing", "Rest"] },
       { title: "Glutes", moves: ["RS knee-ankle taps", "RS Leg Raises", "RS Circles", "LS knee-ankle taps", "LS Leg Raises", "LS Circles", "Glute Bridge", "Rest"] },
       { title: "Abs",    moves: ["Flutterkicks", "Bicycle", "Russian Twists", "Ankle taps", "Side plank R", "Side Plank L", "High plank", "Crunches"] },
+    ],
+  },
+  {
+    icon: "❤️",
+    title: "Cardio (24mins)",
+    note: "45s on · 15s off · 24 moves",
+    sections: [
+      { title: "Set 1", moves: ["Burpees", "Boxing", "Mountain Climbers", "Jumping Jacks", "Lateral Shuffle", "Burpees", "High Knees", "Rest"] },
+      { title: "Set 2", moves: ["Star Jumps", "Squat Jumps", "Lateral Shuffle", "Mountain Climbers", "Boxing", "Burpees", "High Knees", "Rest"] },
+      { title: "Set 3", moves: ["Flutter Kicks", "Bicycle Crunch", "Russian Twists", "Heel Taps", "Mountain Climbers", "Side Plank R", "Side Plank L", "Rest"] },
+    ],
+  },
+  {
+    icon: "🦵",
+    title: "Lower (24mins)",
+    note: "45s on · 15s off · 24 moves",
+    sections: [
+      { title: "Set 1", moves: ["Squat", "Walking Lunges", "Squat Pulse", "Step Ups", "Reverse Lunge", "Calf Raises", "Wall Sit", "Rest"] },
+      { title: "Set 2", moves: ["RS Heel Knee Tap", "RS Leg Raises", "RS Leg Circles", "LS Heel Knee Tap", "LS Leg Raises", "LS Leg Circles", "Glute Bridge", "Rest"] },
+      { title: "Set 3", moves: ["Plank", "Bicycle Crunch", "Flutter Kicks", "Heel Taps", "Russian Twists", "Crunches", "Plank", "Rest"] },
+    ],
+  },
+  {
+    icon: "🔥",
+    title: "Core (24mins)",
+    note: "45s on · 15s off · 24 moves",
+    sections: [
+      { title: "Set 1", moves: ["Plank", "Bicycle Crunch", "Russian Twists", "Flutter Kicks", "Heel Taps", "Crunches", "Plank", "Rest"] },
+      { title: "Set 2", moves: ["Side Plank R", "Side Plank L", "Dead Bug", "V-Sit Hold", "Mountain Climbers", "Low Plank", "Heel Taps", "Rest"] },
+      { title: "Set 3", moves: ["Push-Ups", "Plank Shoulder Taps", "Dips", "Mountain Climbers", "Boxing", "Push-Ups", "Superman Hold", "Rest"] },
+    ],
+  },
+  {
+    icon: "💪",
+    title: "Upper (24mins)",
+    note: "45s on · 15s off · 24 moves",
+    sections: [
+      { title: "Set 1", moves: ["Push-Ups", "Boxing", "Dips", "Burpees", "Supermans", "YTW", "Boxing", "Rest"] },
+      { title: "Set 2", moves: ["Superman Hold", "Bear Crawl Hold", "Plank Shoulder Taps", "Inchworm", "Push-Ups", "Boxing", "Dips", "Rest"] },
+      { title: "Set 3", moves: ["Plank", "Bicycle Crunch", "Russian Twists", "Flutter Kicks", "Heel Taps", "Side Plank R", "Side Plank L", "Rest"] },
     ],
   },
 ];
@@ -922,7 +992,8 @@ const state = {
   historyMetric: "minutes",  // "minutes" | "calories"
   allTimeGranularity: "month",  // "month" | "week" — only used in All Time mode
   editingId: null,  // id of the history session currently being edited, or null
-  workoutTimer: null,  // when active: { startedAt, totalPausedMs, pausedAt }
+  workoutTimer: null,  // when active: { workoutIdx, totalMoves, startedAt, totalPausedMs, pausedAt }
+  workoutDetailIdx: null,  // which workout's detail is open in the sheet; null = list view
   form: emptyForm("Swim"),
   date: todayISO(),
   saved: false,
@@ -1375,7 +1446,10 @@ function render() {
     <div class="header">
       <div class="title">
         <span>TRACKR</span>
-        <button class="menu-btn" id="openMenu" aria-label="Menu">⋯</button>
+        <div class="title-actions">
+          <button class="menu-btn" id="openWorkouts" aria-label="Workouts">⏱</button>
+          <button class="menu-btn" id="openMenu" aria-label="Menu">⋯</button>
+        </div>
       </div>
       <div class="title-meta">${state.sessions.length} session${state.sessions.length === 1 ? "" : "s"} tracked <span style="opacity:0.5; margin-left:6px;">v${APP_VERSION}</span></div>
       <div class="tabs" role="tablist">
@@ -1881,11 +1955,12 @@ function flattenWorkout(workout) {
 function computeWorkoutState() {
   const t = state.workoutTimer;
   if (!t) return null;
+  const totalMoves = t.totalMoves || 40;
   const now = t.pausedAt || Date.now();
   const elapsedMs = now - t.startedAt - t.totalPausedMs;
   const elapsedSec = elapsedMs / 1000;
   const moveIdx = Math.floor(elapsedSec / 60);
-  if (moveIdx >= 40) return { done: true, moveIdx: 40, elapsedSec };
+  if (moveIdx >= totalMoves) return { done: true, moveIdx: totalMoves, elapsedSec };
   const intoMove = elapsedSec % 60;
   const phase = intoMove < 45 ? "work" : "rest";
   const phaseDur = phase === "work" ? 45 : 15;
@@ -1907,8 +1982,14 @@ async function acquireWorkoutWakeLock() {
 function releaseWorkoutWakeLock() {
   if (workoutWakeLock) { try { workoutWakeLock.release(); } catch (e) {} workoutWakeLock = null; }
 }
-function startWorkout() {
-  state.workoutTimer = { startedAt: Date.now(), totalPausedMs: 0, pausedAt: null };
+function startWorkout(workoutIdx = 0) {
+  const workout = WORKOUTS[workoutIdx];
+  if (!workout) return;
+  const totalMoves = workout.sections.reduce((a, s) => a + s.moves.length, 0);
+  state.workoutTimer = {
+    workoutIdx, totalMoves,
+    startedAt: Date.now(), totalPausedMs: 0, pausedAt: null,
+  };
   workoutLastVibKey = "0-work";   // skip vibration for first move start
   workoutFiredBeeps = new Set();
   acquireWorkoutWakeLock();
@@ -1944,17 +2025,20 @@ function skipWorkoutMove() {
 }
 function logWorkoutSession(elapsedMin, completed) {
   if (elapsedMin < 5) return false;
-  const finalMin = Math.min(40, elapsedMin);
+  const t = state.workoutTimer || {};
+  const workout = WORKOUTS[t.workoutIdx] || WORKOUTS[0];
+  const totalMoves = t.totalMoves || 40;
+  const finalMin = Math.min(totalMoves, elapsedMin);
   state.sessions.push({
     id: uid(),
     date: todayISO(),
     discipline: "Strength",
     data: {
       duration: String(finalMin),
-      type: "Workout #1",
+      type: workout.title,
       details: completed
-        ? "Completed all 40 moves · 45s on / 15s off"
-        : `Ended at move ${Math.min(40, elapsedMin)} of 40`,
+        ? `Completed all ${totalMoves} moves · 45s on / 15s off`
+        : `Ended at move ${Math.min(totalMoves, elapsedMin)} of ${totalMoves}`,
       calories: calcCalories("Strength", String(finalMin), ""),
     },
   });
@@ -1963,12 +2047,13 @@ function logWorkoutSession(elapsedMin, completed) {
 }
 function finishWorkout() {
   if (!state.workoutTimer) return;
+  const totalMoves = state.workoutTimer.totalMoves || 40;
   const c = computeWorkoutState();
-  const elapsedMin = c ? Math.round(c.elapsedSec / 60) : 40;
+  const elapsedMin = c ? Math.round(c.elapsedSec / 60) : totalMoves;
   const logged = logWorkoutSession(elapsedMin, true);
   navigator.vibrate?.([240, 100, 240, 100, 320]);
   cleanupWorkout();
-  if (logged) showToast(`Workout complete · ${Math.min(40, elapsedMin)}-min Strength logged`);
+  if (logged) showToast(`Workout complete · ${Math.min(totalMoves, elapsedMin)}-min Strength logged`);
 }
 function endWorkout() {
   if (!state.workoutTimer) return;
@@ -2030,7 +2115,8 @@ function renderWorkoutOverlay() {
   if (!state.workoutTimer) return "";
   const c = computeWorkoutState();
   if (!c || c.done) return "";
-  const flat = flattenWorkout(WORKOUTS[0]);
+  const workout = WORKOUTS[state.workoutTimer.workoutIdx] || WORKOUTS[0];
+  const flat = flattenWorkout(workout);
   const current = flat[c.moveIdx];
   const next = flat[c.moveIdx + 1];
   const isPaused = !!state.workoutTimer.pausedAt;
@@ -2040,7 +2126,7 @@ function renderWorkoutOverlay() {
   return `
     <div class="workout-overlay ${isPaused ? "is-paused" : ""}">
       <div class="workout-top">
-        <div class="workout-section-name">${current.section} · ${c.moveIdx + 1} / 40</div>
+        <div class="workout-section-name">${current.section} · ${c.moveIdx + 1} / ${flat.length}</div>
       </div>
       <div class="workout-move-name ${isRestSlot ? "is-rest-move" : ""}">${escapeHtml(current.move)}</div>
       <div class="workout-countdown ${phaseClass}">
@@ -2222,30 +2308,6 @@ function renderDisciplineStats(discipline, period) {
     totalCal > 0 ? { value: Math.round(totalCal).toLocaleString(), label: "Total kcal" } : null,
   ].filter(Boolean);
 
-  // Personal records are computed across ALL sessions for this discipline,
-  // not just the visible period — a PR is a PR forever.
-  const allTimeDs = state.sessions.filter(s => s.discipline === discipline);
-  const prs = computePRs(discipline, state.sessions);
-  const prSessionIds = new Set(Object.values(prs).map(s => s.id));
-  // Reverse lookup: sessionId -> array of record keys it holds
-  const prByIdLookup = {};
-  Object.entries(prs).forEach(([k, sess]) => {
-    if (!prByIdLookup[sess.id]) prByIdLookup[sess.id] = [];
-    prByIdLookup[sess.id].push(k);
-  });
-
-  const recordsHTML = Object.keys(prs).length > 0 ? `
-    <div class="pr-records">
-      <div class="pr-records-title">🏆 PERSONAL RECORDS</div>
-      ${Object.keys(prs).map(k => `
-        <div class="pr-record-row">
-          <span class="label">${PR_LABELS[k]}</span>
-          <span><span class="val">${prValue(k, prs[k])}</span><span class="date">${formatDate(prs[k].date)}</span></span>
-        </div>
-      `).join("")}
-    </div>
-  ` : "";
-
   return `
     <div class="stats-grid">
       ${cards.map(c => `
@@ -2255,14 +2317,10 @@ function renderDisciplineStats(discipline, period) {
         </div>
       `).join("")}
     </div>
-    ${recordsHTML}
     <div class="history-list">
       ${ds.slice().reverse().slice(0, 50).map(s => {
         if (s.id === state.editingId) return renderHistoryEdit(s, cfg);
-        const prKeysHere = prByIdLookup[s.id] || [];
-        const prTitle = prKeysHere.map(k => PR_LABELS[k]).join(", ");
-        const prBadge = prKeysHere.length > 0
-          ? `<span class="pr-badge" title="${escapeHtml(prTitle)}">🏆 PR</span>` : "";
+        const prBadge = "";
         const fieldHtml = cfg.fields.filter(f => s.data[f.key]).map(f => {
           // duration gets the smart formatter so 90 -> "1h 30m"; others use a static unit.
           let displayVal;
@@ -2487,6 +2545,13 @@ function attachHandlers() {
     document.getElementById("weightDisplay").textContent = state.weight + "kg";
     document.getElementById("menuSheet").classList.add("open");
   });
+  // Workouts shortcut (⏱) — always opens to the list view.
+  const openWorkouts = document.getElementById("openWorkouts");
+  if (openWorkouts) openWorkouts.addEventListener("click", () => {
+    state.workoutDetailIdx = null;
+    renderWorkoutPlan("workout");
+    document.getElementById("workoutSheet").classList.add("open");
+  });
 
   // Backup banner
   const backupBtn = document.getElementById("backupNowBtn");
@@ -2576,42 +2641,38 @@ function renderRestoreSheet() {
 }
 
 function renderWorkoutPlan(mode) {
-  // mode: "workout" -> show only structured workouts;
-  //       "exercises" -> show only the exercise reference bank.
+  // The sheet now hosts three views, all reached via state.workoutDetailIdx:
+  //   null         → list of all workouts + Strength Exercises row
+  //   number       → that workout's detail (sections + START)
+  //   "exercises"  → strength-exercises reference bank
   const titleEl = document.querySelector("#workoutSheet .workout-title");
   let content = "";
-  if (mode === "workout") {
-    if (titleEl) titleEl.textContent = "Workout #1";
-    content = WORKOUTS.map(w => {
-      const sections = w.sections.map(sec => {
-        const moves = sec.moves.map((name, i) => {
-          const isRest = name.toLowerCase() === "rest";
-          return `
-            <div class="workout-step ${isRest ? "is-rest" : ""}">
-              <span class="step-num">${i + 1}</span>
-              <span class="move">${escapeHtml(name)}</span>
-            </div>
-          `;
-        }).join("");
-        return `
-          <div class="workout-section">
-            <div class="workout-section-title">${escapeHtml(sec.title)}</div>
-            ${moves}
-          </div>
-        `;
-      }).join("");
-      return `
-        <div class="workout-card is-workout">
-          <div class="workout-card-head">
-            <div class="workout-card-name">${w.icon} ${escapeHtml(w.title)}</div>
-            ${w.note ? `<div class="workout-card-weeks">${escapeHtml(w.note)}</div>` : ""}
-          </div>
-          <button class="workout-start-btn" data-workout-start>▶ START WORKOUT</button>
-          ${sections}
+  const detailIdx = state.workoutDetailIdx;
+
+  if (detailIdx === null || detailIdx === undefined) {
+    // LIST view
+    if (titleEl) titleEl.textContent = "Workouts";
+    content = WORKOUTS.map((w, idx) => `
+      <button class="workout-list-item" data-workout-detail="${idx}">
+        <div class="workout-list-item-main">
+          <div class="workout-list-item-title">${w.icon} ${escapeHtml(w.title)}</div>
+          ${w.note ? `<div class="workout-list-item-note">${escapeHtml(w.note)}</div>` : ""}
         </div>
-      `;
-    }).join("");
-  } else {
+        <div class="workout-list-item-chev">›</div>
+      </button>
+    `).join("");
+    // Strength Exercises row at the bottom — same look, different destination.
+    content += `
+      <button class="workout-list-item" data-workout-detail="exercises">
+        <div class="workout-list-item-main">
+          <div class="workout-list-item-title">💪 Strength Exercises</div>
+          <div class="workout-list-item-note">Reference bank · 73 exercises</div>
+        </div>
+        <div class="workout-list-item-chev">›</div>
+      </button>
+    `;
+  } else if (detailIdx === "exercises") {
+    // EXERCISES view
     if (titleEl) titleEl.textContent = "Strength Exercises";
     const legend = `
       <div class="workout-legend">
@@ -2636,7 +2697,39 @@ function renderWorkoutPlan(mode) {
         </div>
       `;
     }).join("");
-    content = legend + cards;
+    content = `<button class="workout-back-btn" data-workout-back>‹ All workouts</button>` + legend + cards;
+  } else {
+    // WORKOUT DETAIL view
+    if (titleEl) titleEl.textContent = "Workouts";
+    const w = WORKOUTS[detailIdx] || WORKOUTS[0];
+    const sections = w.sections.map(sec => {
+      const moves = sec.moves.map((name, i) => {
+        const isRest = name.toLowerCase() === "rest";
+        return `
+          <div class="workout-step ${isRest ? "is-rest" : ""}">
+            <span class="step-num">${i + 1}</span>
+            <span class="move">${escapeHtml(name)}</span>
+          </div>
+        `;
+      }).join("");
+      return `
+        <div class="workout-section">
+          <div class="workout-section-title">${escapeHtml(sec.title)}</div>
+          ${moves}
+        </div>
+      `;
+    }).join("");
+    content = `
+      <button class="workout-back-btn" data-workout-back>‹ All workouts</button>
+      <div class="workout-card is-workout">
+        <div class="workout-card-head">
+          <div class="workout-card-name">${w.icon} ${escapeHtml(w.title)}</div>
+          ${w.note ? `<div class="workout-card-weeks">${escapeHtml(w.note)}</div>` : ""}
+        </div>
+        <button class="workout-start-btn" data-workout-start="${detailIdx}">▶ START WORKOUT</button>
+        ${sections}
+      </div>
+    `;
   }
   document.getElementById("workoutContent").innerHTML = content;
 }
@@ -2734,16 +2827,6 @@ function setupMenu() {
   });
   attachSheetSwipe(document.getElementById("restoreSheet"), document.querySelector("#restoreSheet .workout-sheet-inner"));
 
-  document.getElementById("workoutBtn").addEventListener("click", () => {
-    renderWorkoutPlan("workout");
-    sheet.classList.remove("open");
-    document.getElementById("workoutSheet").classList.add("open");
-  });
-  document.getElementById("workoutPlanBtn").addEventListener("click", () => {
-    renderWorkoutPlan("exercises");
-    sheet.classList.remove("open");
-    document.getElementById("workoutSheet").classList.add("open");
-  });
   document.getElementById("closeWorkoutBtn").addEventListener("click", () => {
     document.getElementById("workoutSheet").classList.remove("open");
   });
@@ -2852,7 +2935,28 @@ function showToast(msg) {
 
 // Document-level click delegation for workout buttons — survives re-renders.
 document.addEventListener("click", e => {
-  if (e.target.closest("[data-workout-start]")) { startWorkout(); return; }
+  // Detail drill-in — either a numeric workout index or the "exercises" key
+  const detailBtn = e.target.closest("[data-workout-detail]");
+  if (detailBtn) {
+    const raw = detailBtn.dataset.workoutDetail;
+    const n = parseInt(raw, 10);
+    state.workoutDetailIdx = isNaN(n) ? raw : n;
+    renderWorkoutPlan("workout");
+    return;
+  }
+  // Back to list
+  if (e.target.closest("[data-workout-back]")) {
+    state.workoutDetailIdx = null;
+    renderWorkoutPlan("workout");
+    return;
+  }
+  // Start a workout
+  const startBtn = e.target.closest("[data-workout-start]");
+  if (startBtn) {
+    const idx = parseInt(startBtn.dataset.workoutStart, 10) || 0;
+    startWorkout(idx);
+    return;
+  }
   const action = e.target.closest("[data-workout-action]")?.dataset.workoutAction;
   if (!action) return;
   if (action === "pause") pauseWorkout();
