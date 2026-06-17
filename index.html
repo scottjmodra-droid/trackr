@@ -829,7 +829,7 @@ const MET_DEFAULTS = { Swim: 8, Row: 7, Run: 10, Strength: 5, Walk: 3.5, Other: 
 const RPE_LABEL = ["", "Very Easy", "Easy", "Moderate", "Moderate", "Hard", "Hard", "Very Hard", "Very Hard", "Max", "Max"];
 const STORAGE_KEY = "training-log:sessions";
 const SETTINGS_KEY = "training-log:settings";
-const APP_VERSION = "0.41";  // bump this on every deploy so you can verify the right file is live
+const APP_VERSION = "0.42";  // bump this on every deploy so you can verify the right file is live
 
 // Structured workouts — rendered first in the Strength Exercises sheet.
 // To update: edit this constant and redeploy.
@@ -1543,7 +1543,6 @@ function renderHistory() {
       </div>
     ` : ""}
     ${renderDailyVolume(period)}
-    ${renderHeatmap()}
     <div style="margin-top:24px;">
       <div class="today-label">BY DISCIPLINE</div>
       <div class="discipline-grid" style="margin-bottom:16px;">
