@@ -614,7 +614,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
 }
 .workout-overlay .workout-sec {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 140px; line-height: 1;
+  font-size: clamp(160px, 48vw, 220px); line-height: 1;
 }
 .workout-overlay .workout-countdown.work .workout-sec { color: #e8f84a; }
 .workout-overlay .workout-countdown.rest .workout-sec { color: #38bdf8; }
@@ -634,8 +634,19 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
 .workout-overlay .workout-next {
   color: #c8a8e8; font-size: 14px;
   text-align: center; padding: 4px 0;
+  line-height: 1.25;
 }
 .workout-overlay .workout-next strong { color: #fff; font-weight: 600; }
+/* During rest, give the user a clear "what's coming up" cue. */
+.workout-overlay.is-rest-phase .workout-next {
+  font-size: 18px; padding: 10px 0;
+}
+.workout-overlay.is-rest-phase .workout-next strong {
+  display: block; margin-top: 6px;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 44px; letter-spacing: 1px;
+  font-weight: 400;
+}
 .workout-overlay .workout-controls { display: flex; gap: 8px; }
 .workout-overlay .workout-controls button {
   flex: 1; padding: 14px;
@@ -859,7 +870,7 @@ const MET_DEFAULTS = { Swim: 8, Row: 7, Run: 10, Strength: 5, Walk: 3.5, Other: 
 const RPE_LABEL = ["", "Very Easy", "Easy", "Moderate", "Moderate", "Hard", "Hard", "Very Hard", "Very Hard", "Max", "Max"];
 const STORAGE_KEY = "training-log:sessions";
 const SETTINGS_KEY = "training-log:settings";
-const APP_VERSION = "0.45";  // bump this on every deploy so you can verify the right file is live
+const APP_VERSION = "0.46";  // bump this on every deploy so you can verify the right file is live
 
 // Structured workouts — rendered first in the Strength Exercises sheet.
 // To update: edit this constant and redeploy.
@@ -868,6 +879,7 @@ const WORKOUTS = [
     icon: "⏱️",
     title: "Full Body (40mins)",
     note: "45s on · 15s off · 40 moves",
+    met: 6.65,
     sections: [
       { title: "Cardio", moves: ["Boxing", "Jumping jacks", "Lateral Shuffle", "Mountain Climbers", "High Knees", "Boxing", "Burpees", "Rest"] },
       { title: "Legs",   moves: ["Wall sit", "Squat", "Step ups", "Squat pulse", "Walking Lunges", "Calf raises", "Squat", "Rest"] },
@@ -880,40 +892,44 @@ const WORKOUTS = [
     icon: "❤️",
     title: "Cardio (24mins)",
     note: "45s on · 15s off · 24 moves",
+    met: 6.65,
     sections: [
       { title: "Set 1", moves: ["Burpees", "Boxing", "Mountain Climbers", "Jumping Jacks", "Lateral Shuffle", "Burpees", "High Knees", "Rest"] },
       { title: "Set 2", moves: ["Star Jumps", "Squat Jumps", "Lateral Shuffle", "Mountain Climbers", "Boxing", "Burpees", "High Knees", "Rest"] },
-      { title: "Set 3", moves: ["Flutter Kicks", "Bicycle Crunch", "Russian Twists", "Heel Taps", "Mountain Climbers", "Side Plank R", "Side Plank L", "Rest"] },
+      { title: "Set 3", moves: ["Flutter Kicks", "Bicycle Crunch", "Russian Twists", "Heel Taps", "Mountain Climbers", "Side Plank R", "Side Plank L", "Plank"] },
     ],
   },
   {
     icon: "🦵",
     title: "Lower (24mins)",
     note: "45s on · 15s off · 24 moves",
+    met: 6.65,
     sections: [
       { title: "Set 1", moves: ["Squat", "Walking Lunges", "Squat Pulse", "Step Ups", "Reverse Lunge", "Calf Raises", "Wall Sit", "Rest"] },
       { title: "Set 2", moves: ["RS Heel Knee Tap", "RS Leg Raises", "RS Leg Circles", "LS Heel Knee Tap", "LS Leg Raises", "LS Leg Circles", "Glute Bridge", "Rest"] },
-      { title: "Set 3", moves: ["Plank", "Bicycle Crunch", "Flutter Kicks", "Heel Taps", "Russian Twists", "Crunches", "Plank", "Rest"] },
+      { title: "Set 3", moves: ["Plank", "Bicycle Crunch", "Flutter Kicks", "Heel Taps", "Russian Twists", "Crunches", "Plank", "Wall Sit"] },
     ],
   },
   {
     icon: "🔥",
     title: "Core (24mins)",
     note: "45s on · 15s off · 24 moves",
+    met: 6.65,
     sections: [
       { title: "Set 1", moves: ["Plank", "Bicycle Crunch", "Russian Twists", "Flutter Kicks", "Heel Taps", "Crunches", "Plank", "Rest"] },
       { title: "Set 2", moves: ["Side Plank R", "Side Plank L", "Dead Bug", "V-Sit Hold", "Mountain Climbers", "Low Plank", "Heel Taps", "Rest"] },
-      { title: "Set 3", moves: ["Push-Ups", "Plank Shoulder Taps", "Dips", "Mountain Climbers", "Boxing", "Push-Ups", "Superman Hold", "Rest"] },
+      { title: "Set 3", moves: ["Push-Ups", "Plank Shoulder Taps", "Dips", "Mountain Climbers", "Boxing", "Push-Ups", "Superman Hold", "Plank"] },
     ],
   },
   {
     icon: "💪",
     title: "Upper (24mins)",
     note: "45s on · 15s off · 24 moves",
+    met: 6.65,
     sections: [
       { title: "Set 1", moves: ["Push-Ups", "Boxing", "Dips", "Burpees", "Supermans", "YTW", "Boxing", "Rest"] },
       { title: "Set 2", moves: ["Superman Hold", "Bear Crawl Hold", "Plank Shoulder Taps", "Inchworm", "Push-Ups", "Boxing", "Dips", "Rest"] },
-      { title: "Set 3", moves: ["Plank", "Bicycle Crunch", "Russian Twists", "Flutter Kicks", "Heel Taps", "Side Plank R", "Side Plank L", "Rest"] },
+      { title: "Set 3", moves: ["Plank", "Bicycle Crunch", "Russian Twists", "Flutter Kicks", "Heel Taps", "Side Plank R", "Side Plank L", "Plank"] },
     ],
   },
 ];
@@ -1931,7 +1947,10 @@ function ensureAudioCtx() {
 function playBeep(freq, durationMs, volume = 0.8) {
   const ctx = workoutAudioCtx;
   if (!ctx) return;
-  if (ctx.state === "suspended") ctx.resume();
+  // iOS uses both "suspended" and "interrupted" — resume() is a no-op when
+  // already running, so we can call it unconditionally and avoid a race
+  // where the first beep after returning from background goes silent.
+  if (ctx.state !== "running") ctx.resume().catch(() => {});
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.connect(gain); gain.connect(ctx.destination);
@@ -1976,12 +1995,27 @@ function computeWorkoutState() {
 }
 async function acquireWorkoutWakeLock() {
   if (!("wakeLock" in navigator)) return;
-  try { workoutWakeLock = await navigator.wakeLock.request("screen"); }
-  catch (e) { /* ignore — non-fatal */ }
+  try {
+    workoutWakeLock = await navigator.wakeLock.request("screen");
+    // iOS releases the lock when the page is hidden. We re-acquire it on
+    // visibilitychange below, so just clear our handle when it goes.
+    workoutWakeLock.addEventListener("release", () => { workoutWakeLock = null; });
+  } catch (e) { /* ignore — non-fatal */ }
 }
 function releaseWorkoutWakeLock() {
   if (workoutWakeLock) { try { workoutWakeLock.release(); } catch (e) {} workoutWakeLock = null; }
 }
+// When iOS suspends our tab in the background, both the wake lock and the
+// AudioContext get released. Re-acquire both whenever we come back to the
+// foreground during an active workout — otherwise the screen sleeps and
+// later workouts go silent.
+document.addEventListener("visibilitychange", () => {
+  if (!state.workoutTimer) return;
+  if (document.visibilityState !== "visible") return;
+  if (!workoutWakeLock) acquireWorkoutWakeLock();
+  const ctx = workoutAudioCtx;
+  if (ctx && ctx.state !== "running") ctx.resume().catch(() => {});
+});
 function startWorkout(workoutIdx = 0) {
   const workout = WORKOUTS[workoutIdx];
   if (!workout) return;
@@ -2029,6 +2063,11 @@ function logWorkoutSession(elapsedMin, completed) {
   const workout = WORKOUTS[t.workoutIdx] || WORKOUTS[0];
   const totalMoves = t.totalMoves || 40;
   const finalMin = Math.min(totalMoves, elapsedMin);
+  // HIIT workouts have their own MET (calibrated so a 24min session at 94kg
+  // ≈ 250 kcal). Fall back to the Strength default if a workout omits it.
+  const met = workout.met || MET_DEFAULTS.Strength || 5;
+  const weight = state.weight || 94;
+  const calories = String(Math.round(met * weight * (finalMin / 60)));
   state.sessions.push({
     id: uid(),
     date: todayISO(),
@@ -2039,7 +2078,7 @@ function logWorkoutSession(elapsedMin, completed) {
       details: completed
         ? `Completed all ${totalMoves} moves · 45s on / 15s off`
         : `Ended at move ${Math.min(totalMoves, elapsedMin)} of ${totalMoves}`,
-      calories: calcCalories("Strength", String(finalMin), ""),
+      calories,
     },
   });
   saveSessions();
@@ -2124,7 +2163,7 @@ function renderWorkoutOverlay() {
   const phaseClass = (c.phase === "work" && !isRestSlot) ? "work" : "rest";
   const phaseLabel = (c.phase === "work" && !isRestSlot) ? "GO" : "REST";
   return `
-    <div class="workout-overlay ${isPaused ? "is-paused" : ""}">
+    <div class="workout-overlay ${isPaused ? "is-paused" : ""} ${phaseClass === "rest" ? "is-rest-phase" : ""}">
       <div class="workout-top">
         <div class="workout-section-name">${current.section} · ${c.moveIdx + 1} / ${flat.length}</div>
       </div>
