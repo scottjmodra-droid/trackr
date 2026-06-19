@@ -786,6 +786,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
     <button class="menu-item" id="closeMenuBtn" style="color:#666; justify-content:center;">Cancel</button>
   </div>
 </div>
+<audio id="iosUnmuteHack" preload="auto" loop playsinline src="data:audio/mpeg;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaWdTb3VuZEJhbmsuY29tIC8gTGFTb25vdGhlcXVlLm9yZwBURU5DAAAAHQAAA1N3aXRjaCBQbHVzIMKpIE5DSCBTb2Z0d2FyZQBUSVQyAAAABgAAAzIyMzUAVFNTRQAAAA8AAANMYXZmNTcuODMuMTAwAAAAAAAAAAAAAAD/80DEAAAAA0gAAAAATEFNRTMuMTAwVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV/zQsQbAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV"></audio>
 <div class="workout-sheet" id="restoreSheet">
   <div class="workout-sheet-inner">
     <div class="menu-handle"></div>
@@ -870,7 +871,7 @@ const MET_DEFAULTS = { Swim: 8, Row: 7, Run: 10, Strength: 5, Walk: 3.5, Other: 
 const RPE_LABEL = ["", "Very Easy", "Easy", "Moderate", "Moderate", "Hard", "Hard", "Very Hard", "Very Hard", "Max", "Max"];
 const STORAGE_KEY = "training-log:sessions";
 const SETTINGS_KEY = "training-log:settings";
-const APP_VERSION = "0.46";  // bump this on every deploy so you can verify the right file is live
+const APP_VERSION = "0.48";  // bump this on every deploy so you can verify the right file is live
 
 // Structured workouts — rendered first in the Strength Exercises sheet.
 // To update: edit this constant and redeploy.
@@ -1933,36 +1934,76 @@ let workoutWakeLock = null;
 let workoutLastVibKey = "";
 let workoutAudioCtx = null;
 let workoutFiredBeeps = new Set();  // tracks which "bip" cues have already played
+let workoutSilentNode = null;       // zero-gain oscillator that keeps AudioContext alive on iOS
 
 // Web Audio API beep. Frequency 800Hz for short bips, 1200Hz for long start beep.
-function ensureAudioCtx() {
-  if (workoutAudioCtx) return workoutAudioCtx;
-  const Ctx = window.AudioContext || window.webkitAudioContext;
-  if (!Ctx) return null;
-  try { workoutAudioCtx = new Ctx(); } catch (e) { return null; }
+//
+// iOS audio unlock strategy (three layers):
+//   1. Play the iosUnmuteHack <audio> element first. This flips Safari's
+//      AVAudioSession from "Ambient" (muted by the hardware side switch) to
+//      "Playback" (ignores the switch). Must be awaited before Web Audio output.
+//   2. Await AudioContext.resume() so the context is actually "running" before
+//      we schedule oscillator nodes — otherwise the first beep is swallowed.
+//   3. Keep a zero-gain oscillator running for the whole workout (startSilentKeepAlive).
+//      This prevents iOS auto-suspending the context mid-session, which would
+//      silence all tick-driven beeps that aren't inside a user gesture.
+async function ensureAudioCtx() {
+  try {
+    const unmute = document.getElementById("iosUnmuteHack");
+    if (unmute && unmute.paused) {
+      unmute.volume = 0.001;
+      await unmute.play().catch(() => {});
+    }
+  } catch (e) {}
+  if (!workoutAudioCtx) {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return null;
+    try { workoutAudioCtx = new Ctx(); } catch (e) { return null; }
+  }
+  if (workoutAudioCtx.state !== "running") {
+    await workoutAudioCtx.resume().catch(() => {});
+  }
   return workoutAudioCtx;
+}
+function startSilentKeepAlive(ctx) {
+  if (workoutSilentNode) return;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  gain.gain.value = 0;  // completely silent — just keeps the context alive
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start();
+  workoutSilentNode = osc;
+}
+function stopSilentKeepAlive() {
+  if (workoutSilentNode) { try { workoutSilentNode.stop(); } catch (e) {} workoutSilentNode = null; }
 }
 // Default gain at 0.8 lets the iOS media volume / side rocker do most of the
 // scaling. Anything higher than ~0.9 clips on some devices.
 function playBeep(freq, durationMs, volume = 0.8) {
   const ctx = workoutAudioCtx;
   if (!ctx) return;
-  // iOS uses both "suspended" and "interrupted" — resume() is a no-op when
-  // already running, so we can call it unconditionally and avoid a race
-  // where the first beep after returning from background goes silent.
-  if (ctx.state !== "running") ctx.resume().catch(() => {});
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.connect(gain); gain.connect(ctx.destination);
-  osc.type = "sine";
-  osc.frequency.value = freq;
-  const t0 = ctx.currentTime;
-  const t1 = t0 + durationMs / 1000;
-  gain.gain.setValueAtTime(0, t0);
-  gain.gain.linearRampToValueAtTime(volume, t0 + 0.008);
-  gain.gain.setValueAtTime(volume, t1 - 0.02);
-  gain.gain.linearRampToValueAtTime(0, t1);
-  osc.start(t0); osc.stop(t1);
+  const schedule = () => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = "sine";
+    osc.frequency.value = freq;
+    const t0 = ctx.currentTime;
+    const t1 = t0 + durationMs / 1000;
+    gain.gain.setValueAtTime(0, t0);
+    gain.gain.linearRampToValueAtTime(volume, t0 + 0.008);
+    gain.gain.setValueAtTime(volume, t1 - 0.02);
+    gain.gain.linearRampToValueAtTime(0, t1);
+    osc.start(t0); osc.stop(t1);
+  };
+  // Schedule after resume() resolves — avoids the race where the context is
+  // still "suspended" when the oscillator node tries to start.
+  if (ctx.state !== "running") {
+    ctx.resume().then(schedule).catch(() => {});
+  } else {
+    schedule();
+  }
 }
 
 function flattenWorkout(workout) {
@@ -1978,6 +2019,10 @@ function computeWorkoutState() {
   const now = t.pausedAt || Date.now();
   const elapsedMs = now - t.startedAt - t.totalPausedMs;
   const elapsedSec = elapsedMs / 1000;
+  if (elapsedSec < 0) {
+    // Pre-workout "get ready" countdown
+    return { pending: true, countdown: Math.max(1, Math.ceil(-elapsedSec)), elapsedSec };
+  }
   const moveIdx = Math.floor(elapsedSec / 60);
   if (moveIdx >= totalMoves) return { done: true, moveIdx: totalMoves, elapsedSec };
   const intoMove = elapsedSec % 60;
@@ -2014,23 +2059,39 @@ document.addEventListener("visibilitychange", () => {
   if (document.visibilityState !== "visible") return;
   if (!workoutWakeLock) acquireWorkoutWakeLock();
   const ctx = workoutAudioCtx;
-  if (ctx && ctx.state !== "running") ctx.resume().catch(() => {});
+  if (ctx && ctx.state !== "running") {
+    ctx.resume().then(() => {
+      // Restart the keep-alive if iOS killed it while backgrounded.
+      if (!workoutSilentNode) startSilentKeepAlive(ctx);
+    }).catch(() => {});
+  }
 });
-function startWorkout(workoutIdx = 0) {
+async function startWorkout(workoutIdx = 0) {
   const workout = WORKOUTS[workoutIdx];
   if (!workout) return;
   const totalMoves = workout.sections.reduce((a, s) => a + s.moves.length, 0);
+  acquireWorkoutWakeLock();
+  // Unlock audio BEFORE starting the timer. We're inside the user gesture
+  // here, so await is safe — iOS extends the gesture context through short
+  // promise chains. Ensures the AudioContext is "running" for both the
+  // immediate warning beeps and all subsequent tick-driven cues.
+  const ctx = await ensureAudioCtx();
+  if (ctx) startSilentKeepAlive(ctx);
+  // Offset startedAt by 2 s so the user gets a "get ready" countdown
+  // with two warning beeps before move 0's work phase kicks in.
   state.workoutTimer = {
     workoutIdx, totalMoves,
-    startedAt: Date.now(), totalPausedMs: 0, pausedAt: null,
+    startedAt: Date.now() + 2000,
+    totalPausedMs: 0, pausedAt: null,
   };
-  workoutLastVibKey = "0-work";   // skip vibration for first move start
+  workoutLastVibKey = "PENDING";
   workoutFiredBeeps = new Set();
-  acquireWorkoutWakeLock();
-  // Initialise audio context inside the user-gesture stack so iOS lets us play.
-  ensureAudioCtx();
-  playBeep(1200, 450);             // GO beep
-  navigator.vibrate?.([60, 60, 60]);
+  // Two warning beeps spaced 1 s apart while the user braces.
+  playBeep(800, 200);
+  navigator.vibrate?.(60);
+  setTimeout(() => { playBeep(800, 200); navigator.vibrate?.(60); }, 1000);
+  // GO beep + the first-move vibration are fired by the tick when the
+  // pending phase ends — see scheduleWorkoutTick below.
   document.getElementById("workoutSheet").classList.remove("open");
   scheduleWorkoutTick();
   render();
@@ -2040,9 +2101,13 @@ function pauseWorkout() {
   state.workoutTimer.pausedAt = Date.now();
   render();
 }
-function resumeWorkout() {
+async function resumeWorkout() {
   const t = state.workoutTimer;
   if (!t || !t.pausedAt) return;
+  // Re-unlock audio in the user gesture in case iOS suspended the context
+  // while the workout was paused or the screen was locked.
+  const ctx = await ensureAudioCtx();
+  if (ctx && !workoutSilentNode) startSilentKeepAlive(ctx);
   t.totalPausedMs += Date.now() - t.pausedAt;
   t.pausedAt = null;
   render();
@@ -2113,6 +2178,9 @@ function cleanupWorkout() {
   workoutFiredBeeps = new Set();
   if (workoutTickHandle) { clearInterval(workoutTickHandle); workoutTickHandle = null; }
   releaseWorkoutWakeLock();
+  stopSilentKeepAlive();
+  // Pause the unmute hack so it doesn't drain battery when idle.
+  try { const u = document.getElementById("iosUnmuteHack"); if (u) u.pause(); } catch (e) {}
   render();
 }
 function scheduleWorkoutTick() {
@@ -2123,7 +2191,11 @@ function scheduleWorkoutTick() {
     const c = computeWorkoutState();
     if (c.done) { finishWorkout(); return; }
 
+    // Still in the pre-start "get ready" window — just refresh the display.
+    if (c.pending) { render(); return; }
+
     // Phase change → haptic + a distinctive beep for each kind of transition.
+    //   PENDING → work (very first move starts after countdown): long GO beep
     //   work → rest  (mid-move, t=45s): long 900Hz "beeeeep" — work bit is done
     //   rest → work  (new move starting, t=0s of next): long 1200Hz "beeeeep"
     const vibKey = `${c.moveIdx}-${c.phase}`;
@@ -2155,6 +2227,22 @@ function renderWorkoutOverlay() {
   const c = computeWorkoutState();
   if (!c || c.done) return "";
   const workout = WORKOUTS[state.workoutTimer.workoutIdx] || WORKOUTS[0];
+  // Pre-workout "get ready" countdown screen
+  if (c.pending) {
+    return `
+      <div class="workout-overlay">
+        <div class="workout-top">
+          <div class="workout-section-name">${escapeHtml(workout.title)}</div>
+        </div>
+        <div class="workout-move-name">GET READY</div>
+        <div class="workout-countdown work">
+          <div class="workout-sec">${c.countdown}</div>
+          <div class="workout-phase">GET SET</div>
+        </div>
+        <button class="workout-end-btn" data-workout-action="end" style="margin-top:auto;">CANCEL</button>
+      </div>
+    `;
+  }
   const flat = flattenWorkout(workout);
   const current = flat[c.moveIdx];
   const next = flat[c.moveIdx + 1];
