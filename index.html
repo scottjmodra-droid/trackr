@@ -637,15 +637,58 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
   line-height: 1.25;
 }
 .workout-overlay .workout-next strong { color: #fff; font-weight: 600; }
-/* During rest, give the user a clear "what's coming up" cue. */
-.workout-overlay.is-rest-phase .workout-next {
-  font-size: 18px; padding: 10px 0;
+/* UP NEXT block shown at the top during the 15s inter-exercise rest */
+.workout-overlay .workout-up-next-label {
+  font-family: 'Bebas Neue', sans-serif; letter-spacing: 3px;
+  font-size: 13px; color: #9684b8; text-align: center; margin-top: 4px;
 }
-.workout-overlay.is-rest-phase .workout-next strong {
-  display: block; margin-top: 6px;
+.workout-overlay .workout-up-next-name {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 44px; letter-spacing: 1px;
-  font-weight: 400;
+  font-size: 44px; letter-spacing: 1px; line-height: 1.1;
+  color: #fff; text-align: center;
+}
+/* View workout button */
+.workout-overlay .workout-view-btn {
+  width: 100%; padding: 11px; background: transparent;
+  border: 1px solid rgba(255,255,255,0.15); color: #d4baeb;
+  border-radius: 10px;
+  font-family: 'Bebas Neue', sans-serif; letter-spacing: 2px; font-size: 13px;
+}
+/* Full workout peek overlay */
+.workout-overlay.workout-peek { overflow-y: auto; padding-top: calc(16px + env(safe-area-inset-top)); gap: 10px; }
+.workout-peek-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 6px;
+}
+.workout-peek-close {
+  background: transparent; border: none; color: #d4baeb;
+  font-family: 'Bebas Neue', sans-serif; letter-spacing: 1.5px; font-size: 13px;
+  padding: 4px 0;
+}
+.workout-peek-list { display: flex; flex-direction: column; gap: 2px; }
+.workout-peek-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; border-radius: 8px;
+  font-size: 15px; color: #c8a8e8;
+}
+.workout-peek-row.done { opacity: 0.28; }
+.workout-peek-row.active {
+  background: rgba(232,248,74,0.12);
+  border: 1px solid rgba(232,248,74,0.3);
+  color: #fff;
+}
+.workout-peek-row.is-rest { color: #38bdf8; }
+.workout-peek-num {
+  font-family: 'Bebas Neue', sans-serif; font-size: 12px; color: #9684b8;
+  min-width: 22px; text-align: center;
+  background: rgba(255,255,255,0.06); border-radius: 3px; padding: 1px 4px;
+  flex-shrink: 0;
+}
+.workout-peek-now {
+  margin-left: auto; flex-shrink: 0;
+  font-family: 'Bebas Neue', sans-serif; letter-spacing: 1.5px;
+  font-size: 11px; color: #e8f84a;
+  background: rgba(232,248,74,0.15); padding: 2px 7px; border-radius: 4px;
 }
 .workout-overlay .workout-controls { display: flex; gap: 8px; }
 .workout-overlay .workout-controls button {
@@ -871,7 +914,7 @@ const MET_DEFAULTS = { Swim: 8, Row: 7, Run: 10, Strength: 5, Walk: 3.5, Other: 
 const RPE_LABEL = ["", "Very Easy", "Easy", "Moderate", "Moderate", "Hard", "Hard", "Very Hard", "Very Hard", "Max", "Max"];
 const STORAGE_KEY = "training-log:sessions";
 const SETTINGS_KEY = "training-log:settings";
-const APP_VERSION = "0.48";  // bump this on every deploy so you can verify the right file is live
+const APP_VERSION = "0.49";  // bump this on every deploy so you can verify the right file is live
 
 // Structured workouts — rendered first in the Strength Exercises sheet.
 // To update: edit this constant and redeploy.
@@ -1011,6 +1054,7 @@ const state = {
   editingId: null,  // id of the history session currently being edited, or null
   workoutTimer: null,  // when active: { workoutIdx, totalMoves, startedAt, totalPausedMs, pausedAt }
   workoutDetailIdx: null,  // which workout's detail is open in the sheet; null = list view
+  workoutPeekOpen: false,  // true when the in-workout full move list is visible
   form: emptyForm("Swim"),
   date: todayISO(),
   saved: false,
@@ -2174,6 +2218,7 @@ function endWorkout() {
 }
 function cleanupWorkout() {
   state.workoutTimer = null;
+  state.workoutPeekOpen = false;
   workoutLastVibKey = "";
   workoutFiredBeeps = new Set();
   if (workoutTickHandle) { clearInterval(workoutTickHandle); workoutTickHandle = null; }
@@ -2198,12 +2243,18 @@ function scheduleWorkoutTick() {
     //   PENDING → work (very first move starts after countdown): long GO beep
     //   work → rest  (mid-move, t=45s): long 900Hz "beeeeep" — work bit is done
     //   rest → work  (new move starting, t=0s of next): long 1200Hz "beeeeep"
+    // Exception: dedicated "Rest" slots are shown as one 60s block, so the
+    // work→rest mid-slot transition is suppressed (no beep, no vibration).
     const vibKey = `${c.moveIdx}-${c.phase}`;
     if (vibKey !== workoutLastVibKey) {
       const isNewMove = c.phase === "work";
-      navigator.vibrate?.(isNewMove ? [80, 40, 120] : 50);
-      if (isNewMove) playBeep(1200, 450);      // higher pitch = new move
-      else           playBeep(900, 600);       // lower pitch + longer = end of work
+      const _flat = flattenWorkout(WORKOUTS[state.workoutTimer.workoutIdx] || WORKOUTS[0]);
+      const isRestSlotMove = _flat[c.moveIdx]?.move?.toLowerCase() === "rest";
+      if (!isRestSlotMove || isNewMove) {
+        navigator.vibrate?.(isNewMove ? [80, 40, 120] : 50);
+        if (isNewMove) playBeep(1200, 450);    // higher pitch = new move
+        else           playBeep(900, 600);     // lower pitch + longer = end of work
+      }
       workoutLastVibKey = vibKey;
     }
 
@@ -2248,20 +2299,82 @@ function renderWorkoutOverlay() {
   const next = flat[c.moveIdx + 1];
   const isPaused = !!state.workoutTimer.pausedAt;
   const isRestSlot = current.move.toLowerCase() === "rest";
+  // True during the 15s rest between regular exercises (not a dedicated Rest slot)
+  const isRestPhase = c.phase === "rest" && !isRestSlot;
+  // Dedicated Rest slots show a combined 60s countdown (45s work + 15s rest merged)
+  const intoMove = c.elapsedSec - c.moveIdx * 60;
+  const restSlotRemaining = Math.max(0, Math.ceil(60 - intoMove));
+  const restSlotPct = Math.min(100, (intoMove / 60) * 100);
   const phaseClass = (c.phase === "work" && !isRestSlot) ? "work" : "rest";
-  const phaseLabel = (c.phase === "work" && !isRestSlot) ? "GO" : "REST";
+  const countdown = isRestSlot ? restSlotRemaining : c.phaseRemaining;
+  const progressPct = isRestSlot ? restSlotPct : c.phasePct;
+
+  // Full workout peek — scrollable list of all moves with current highlighted
+  if (state.workoutPeekOpen) {
+    return `
+      <div class="workout-overlay workout-peek">
+        <div class="workout-peek-header">
+          <button class="workout-peek-close" data-workout-action="peek-close">✕ CLOSE</button>
+          <div class="workout-section-name">${escapeHtml(workout.title)}</div>
+          <div style="width:60px;"></div>
+        </div>
+        <div class="workout-peek-list">
+          ${flat.map((m, i) => {
+            const done = i < c.moveIdx;
+            const active = i === c.moveIdx;
+            const isRest = m.move.toLowerCase() === "rest";
+            return `<div class="workout-peek-row${done ? " done" : ""}${active ? " active" : ""}${isRest ? " is-rest" : ""}">
+              <span class="workout-peek-num">${i + 1}</span>
+              <span>${escapeHtml(m.move)}</span>
+              ${active ? `<span class="workout-peek-now">NOW</span>` : ""}
+            </div>`;
+          }).join("")}
+        </div>
+      </div>
+    `;
+  }
+
+  // 15s inter-exercise rest: UP NEXT at top, no previous exercise name
+  if (isRestPhase) {
+    return `
+      <div class="workout-overlay ${isPaused ? "is-paused" : ""}">
+        <div class="workout-top">
+          <div class="workout-section-name">${current.section} · ${c.moveIdx + 1} / ${flat.length}</div>
+        </div>
+        ${next
+          ? `<div class="workout-up-next-label">UP NEXT</div>
+             <div class="workout-up-next-name">${escapeHtml(next.move)}</div>`
+          : `<div class="workout-up-next-name" style="color:#c8a8e8;">LAST ONE!</div>`}
+        <div class="workout-countdown rest" style="flex:1;">
+          <div class="workout-sec">${c.phaseRemaining}</div>
+          <div class="workout-phase">REST</div>
+        </div>
+        <div class="workout-progress rest">
+          <div class="workout-progress-bar" style="width:${c.phasePct}%;"></div>
+        </div>
+        <div class="workout-controls">
+          <button data-workout-action="${isPaused ? "resume" : "pause"}">${isPaused ? "RESUME" : "PAUSE"}</button>
+          <button data-workout-action="skip">SKIP ›</button>
+        </div>
+        <button class="workout-view-btn" data-workout-action="peek">VIEW WORKOUT ↓</button>
+        <button class="workout-end-btn" data-workout-action="end">END WORKOUT</button>
+      </div>
+    `;
+  }
+
+  // Work phase (exercise) or dedicated Rest slot (combined 60s)
   return `
-    <div class="workout-overlay ${isPaused ? "is-paused" : ""} ${phaseClass === "rest" ? "is-rest-phase" : ""}">
+    <div class="workout-overlay ${isPaused ? "is-paused" : ""}">
       <div class="workout-top">
         <div class="workout-section-name">${current.section} · ${c.moveIdx + 1} / ${flat.length}</div>
       </div>
       <div class="workout-move-name ${isRestSlot ? "is-rest-move" : ""}">${escapeHtml(current.move)}</div>
       <div class="workout-countdown ${phaseClass}">
-        <div class="workout-sec">${c.phaseRemaining}</div>
-        <div class="workout-phase">${phaseLabel}</div>
+        <div class="workout-sec">${countdown}</div>
+        <div class="workout-phase">${isRestSlot ? "REST" : (c.phase === "work" ? "GO" : "REST")}</div>
       </div>
       <div class="workout-progress ${phaseClass}">
-        <div class="workout-progress-bar" style="width:${c.phasePct}%;"></div>
+        <div class="workout-progress-bar" style="width:${progressPct}%;"></div>
       </div>
       <div class="workout-next">
         ${next ? `Next: <strong>${escapeHtml(next.move)}</strong>` : `Last one — finish strong!`}
@@ -2270,6 +2383,7 @@ function renderWorkoutOverlay() {
         <button data-workout-action="${isPaused ? "resume" : "pause"}">${isPaused ? "RESUME" : "PAUSE"}</button>
         <button data-workout-action="skip">SKIP ›</button>
       </div>
+      <button class="workout-view-btn" data-workout-action="peek">VIEW WORKOUT ↓</button>
       <button class="workout-end-btn" data-workout-action="end">END WORKOUT</button>
     </div>
   `;
@@ -3090,6 +3204,8 @@ document.addEventListener("click", e => {
   else if (action === "resume") resumeWorkout();
   else if (action === "skip") skipWorkoutMove();
   else if (action === "end") endWorkout();
+  else if (action === "peek") { state.workoutPeekOpen = true; render(); }
+  else if (action === "peek-close") { state.workoutPeekOpen = false; render(); }
 });
 
 // ---------- Boot ----------
