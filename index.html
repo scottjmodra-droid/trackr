@@ -914,7 +914,7 @@ const MET_DEFAULTS = { Swim: 8, Row: 7, Run: 10, Strength: 5, Walk: 3.5, Other: 
 const RPE_LABEL = ["", "Very Easy", "Easy", "Moderate", "Moderate", "Hard", "Hard", "Very Hard", "Very Hard", "Max", "Max"];
 const STORAGE_KEY = "training-log:sessions";
 const SETTINGS_KEY = "training-log:settings";
-const APP_VERSION = "0.49";  // bump this on every deploy so you can verify the right file is live
+const APP_VERSION = "0.50";  // bump this on every deploy so you can verify the right file is live
 
 // Structured workouts — rendered first in the Strength Exercises sheet.
 // To update: edit this constant and redeploy.
@@ -951,7 +951,7 @@ const WORKOUTS = [
     sections: [
       { title: "Set 1", moves: ["Squat", "Walking Lunges", "Squat Pulse", "Step Ups", "Reverse Lunge", "Calf Raises", "Wall Sit", "Rest"] },
       { title: "Set 2", moves: ["RS Heel Knee Tap", "RS Leg Raises", "RS Leg Circles", "LS Heel Knee Tap", "LS Leg Raises", "LS Leg Circles", "Glute Bridge", "Rest"] },
-      { title: "Set 3", moves: ["Plank", "Bicycle Crunch", "Flutter Kicks", "Heel Taps", "Russian Twists", "Crunches", "Plank", "Wall Sit"] },
+      { title: "Set 3", moves: ["RS Heel Knee Tap", "RS Leg Raises", "RS Leg Circles", "LS Heel Knee Tap", "LS Leg Raises", "LS Leg Circles", "Walking Lunges", "Wall Sit"] },
     ],
   },
   {
@@ -2111,18 +2111,18 @@ document.addEventListener("visibilitychange", () => {
   }
 });
 async function startWorkout(workoutIdx = 0) {
+  // Guard: block re-entry if a workout is already running OR if this function
+  // is mid-flight (state.workoutTimer is set immediately below so a second tap
+  // will hit this check before the await resumes).
+  if (state.workoutTimer) return;
   const workout = WORKOUTS[workoutIdx];
   if (!workout) return;
   const totalMoves = workout.sections.reduce((a, s) => a + s.moves.length, 0);
   acquireWorkoutWakeLock();
-  // Unlock audio BEFORE starting the timer. We're inside the user gesture
-  // here, so await is safe — iOS extends the gesture context through short
-  // promise chains. Ensures the AudioContext is "running" for both the
-  // immediate warning beeps and all subsequent tick-driven cues.
-  const ctx = await ensureAudioCtx();
-  if (ctx) startSilentKeepAlive(ctx);
-  // Offset startedAt by 2 s so the user gets a "get ready" countdown
-  // with two warning beeps before move 0's work phase kicks in.
+  // Set up the timer and show the GET READY screen IMMEDIATELY so the user
+  // gets instant visual feedback and any concurrent tap is blocked by the
+  // guard above. Audio unlock runs in the background — the 2-second countdown
+  // gives it time to complete before real beeps need to fire.
   state.workoutTimer = {
     workoutIdx, totalMoves,
     startedAt: Date.now() + 2000,
@@ -2130,15 +2130,19 @@ async function startWorkout(workoutIdx = 0) {
   };
   workoutLastVibKey = "PENDING";
   workoutFiredBeeps = new Set();
+  document.getElementById("workoutSheet").classList.remove("open");
+  scheduleWorkoutTick();
+  render();
+  // Now unlock audio asynchronously. Still within the original user gesture
+  // context on iOS (short promise chains keep the gesture active).
+  const ctx = await ensureAudioCtx();
+  if (ctx) startSilentKeepAlive(ctx);
   // Two warning beeps spaced 1 s apart while the user braces.
   playBeep(800, 200);
   navigator.vibrate?.(60);
   setTimeout(() => { playBeep(800, 200); navigator.vibrate?.(60); }, 1000);
   // GO beep + the first-move vibration are fired by the tick when the
   // pending phase ends — see scheduleWorkoutTick below.
-  document.getElementById("workoutSheet").classList.remove("open");
-  scheduleWorkoutTick();
-  render();
 }
 function pauseWorkout() {
   if (!state.workoutTimer || state.workoutTimer.pausedAt) return;
