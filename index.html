@@ -632,11 +632,20 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
 .workout-overlay .workout-progress.work .workout-progress-bar { background: #e8f84a; }
 .workout-overlay .workout-progress.rest .workout-progress-bar { background: #38bdf8; }
 .workout-overlay .workout-next {
-  color: #c8a8e8; font-size: 14px;
-  text-align: center; padding: 4px 0;
-  line-height: 1.25;
+  text-align: center; padding: 2px 0;
 }
-.workout-overlay .workout-next strong { color: #fff; font-weight: 600; }
+.workout-overlay .workout-next-label {
+  display: block; font-family: 'Bebas Neue', sans-serif;
+  letter-spacing: 3px; font-size: 12px; color: #9684b8;
+}
+.workout-overlay .workout-next-name {
+  display: block; font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(26px, 7vw, 34px); letter-spacing: 1px;
+  color: #d4baeb; line-height: 1.1;
+}
+.workout-overlay .workout-next-last {
+  font-size: 16px; color: #c8a8e8; font-style: italic;
+}
 /* UP NEXT block shown at the top during the 15s inter-exercise rest */
 .workout-overlay .workout-up-next-label {
   font-family: 'Bebas Neue', sans-serif; letter-spacing: 4px;
@@ -914,7 +923,7 @@ const MET_DEFAULTS = { Swim: 8, Row: 7, Run: 10, Strength: 5, Walk: 3.5, Other: 
 const RPE_LABEL = ["", "Very Easy", "Easy", "Moderate", "Moderate", "Hard", "Hard", "Very Hard", "Very Hard", "Max", "Max"];
 const STORAGE_KEY = "training-log:sessions";
 const SETTINGS_KEY = "training-log:settings";
-const APP_VERSION = "0.52";  // bump this on every deploy so you can verify the right file is live
+const APP_VERSION = "0.53";  // bump this on every deploy so you can verify the right file is live
 
 // Structured workouts — rendered first in the Strength Exercises sheet.
 // To update: edit this constant and redeploy.
@@ -2388,7 +2397,9 @@ function renderWorkoutOverlay() {
         <div class="workout-progress-bar" style="width:${progressPct}%;"></div>
       </div>
       <div class="workout-next">
-        ${next ? `Next: <strong>${escapeHtml(next.move)}</strong>` : `Last one — finish strong!`}
+        ${next
+          ? `<span class="workout-next-label">NEXT</span><span class="workout-next-name">${escapeHtml(next.move)}</span>`
+          : `<span class="workout-next-last">Last one — finish strong!</span>`}
       </div>
       <div class="workout-controls">
         <button data-workout-action="${isPaused ? "resume" : "pause"}">${isPaused ? "RESUME" : "PAUSE"}</button>
