@@ -639,12 +639,12 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
 .workout-overlay .workout-next strong { color: #fff; font-weight: 600; }
 /* UP NEXT block shown at the top during the 15s inter-exercise rest */
 .workout-overlay .workout-up-next-label {
-  font-family: 'Bebas Neue', sans-serif; letter-spacing: 3px;
-  font-size: 13px; color: #9684b8; text-align: center; margin-top: 4px;
+  font-family: 'Bebas Neue', sans-serif; letter-spacing: 4px;
+  font-size: 16px; color: #9684b8; text-align: center; margin-top: 4px;
 }
 .workout-overlay .workout-up-next-name {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 44px; letter-spacing: 1px; line-height: 1.1;
+  font-size: clamp(64px, 18vw, 88px); letter-spacing: 1px; line-height: 1.05;
   color: #fff; text-align: center;
 }
 /* View workout button */
@@ -914,7 +914,7 @@ const MET_DEFAULTS = { Swim: 8, Row: 7, Run: 10, Strength: 5, Walk: 3.5, Other: 
 const RPE_LABEL = ["", "Very Easy", "Easy", "Moderate", "Moderate", "Hard", "Hard", "Very Hard", "Very Hard", "Max", "Max"];
 const STORAGE_KEY = "training-log:sessions";
 const SETTINGS_KEY = "training-log:settings";
-const APP_VERSION = "0.50";  // bump this on every deploy so you can verify the right file is live
+const APP_VERSION = "0.51";  // bump this on every deploy so you can verify the right file is live
 
 // Structured workouts — rendered first in the Strength Exercises sheet.
 // To update: edit this constant and redeploy.
@@ -2123,6 +2123,8 @@ async function startWorkout(workoutIdx = 0) {
   // gets instant visual feedback and any concurrent tap is blocked by the
   // guard above. Audio unlock runs in the background — the 2-second countdown
   // gives it time to complete before real beeps need to fire.
+  // Set state BEFORE the await so the guard above blocks any concurrent tap
+  // even while ensureAudioCtx is resolving.
   state.workoutTimer = {
     workoutIdx, totalMoves,
     startedAt: Date.now() + 2000,
@@ -2130,13 +2132,15 @@ async function startWorkout(workoutIdx = 0) {
   };
   workoutLastVibKey = "PENDING";
   workoutFiredBeeps = new Set();
+  // Unlock audio BEFORE render() — iOS drops the user gesture context after
+  // significant DOM manipulation, so we must call ctx.resume() here while the
+  // gesture is still fresh. state.workoutTimer is already set so re-entry
+  // is blocked for the duration of this await.
+  const ctx = await ensureAudioCtx();
+  if (ctx) startSilentKeepAlive(ctx);
   document.getElementById("workoutSheet").classList.remove("open");
   scheduleWorkoutTick();
   render();
-  // Now unlock audio asynchronously. Still within the original user gesture
-  // context on iOS (short promise chains keep the gesture active).
-  const ctx = await ensureAudioCtx();
-  if (ctx) startSilentKeepAlive(ctx);
   // Two warning beeps spaced 1 s apart while the user braces.
   playBeep(800, 200);
   navigator.vibrate?.(60);
