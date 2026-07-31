@@ -144,7 +144,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
 .date-nav:active { background: rgba(255,255,255,0.12); color: #fff; }
 .date-input-wrap { position: relative; min-width: 0; overflow: hidden; }
 .date-input-wrap .input {
-  width: 100%; min-width: 0; padding-right: 70px;
+  width: 100%; min-width: 0; padding-left: 66px; padding-right: 72px;
   -webkit-appearance: none; appearance: none;
   display: block; box-sizing: border-box;
   min-height: 50px;
@@ -159,7 +159,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
   box-shadow: 0 0 0 1px rgba(232, 248, 74, 0.3);
 }
 .date-day-badge {
-  position: absolute; top: 50%; right: 10px; transform: translateY(-50%);
+  position: absolute; top: 50%; left: 10px; transform: translateY(-50%);
   background: rgba(255,255,255,0.10); color: #d4baeb;
   font-family: 'Bebas Neue', sans-serif; letter-spacing: 1.5px;
   font-size: 11px; padding: 3px 8px; border-radius: 4px;
@@ -319,7 +319,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
 .daily-chart {
   position: relative;
   padding-left: 38px;
-  padding-bottom: 22px;
+  padding-bottom: 30px;
 }
 .daily-y-axis {
   position: absolute; left: 0; top: 0; width: 34px; height: 160px;
@@ -373,16 +373,16 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
   pointer-events: none;
 }
 .daily-bar-label {
-  position: absolute; bottom: -20px; left: 0; right: 0;
+  position: absolute; bottom: -26px; left: 0; right: 0;
   font-size: 10px; color: #9684b8; text-align: center; line-height: 1.2;
 }
-.daily-bar-label .dow { display: block; font-weight: 500; font-size: 10px; }
-.daily-bar-label .dom { display: block; color: #7a6394; font-size: 9px; }
+.daily-bar-label .dow { display: block; font-weight: 500; font-size: 12px; }
+.daily-bar-label .dom { display: block; color: #7a6394; font-size: 11px; }
 .daily-bar-label.weekend .dow { color: #c8a8e8; }
 .daily-bar-label.today .dow { color: #e8f84a; font-weight: 700; }
 .daily-bar-label.today .dom { color: #e8f84a; }
-.daily-chart.dense .daily-bar-label .dow { font-size: 8px; }
-.daily-chart.dense .daily-bar-label .dom { font-size: 8px; }
+.daily-chart.dense .daily-bar-label .dow { font-size: 9px; }
+.daily-chart.dense .daily-bar-label .dom { font-size: 9px; }
 .weekly-legend { display: flex; gap: 8px; margin-top: 20px; flex-wrap: nowrap; overflow: hidden; }
 .weekly-legend-item { display: flex; align-items: center; gap: 4px; font-size: 10px; color: #d4baeb; white-space: nowrap; }
 .weekly-legend-swatch { width: 7px; height: 7px; border-radius: 2px; flex-shrink: 0; }
@@ -1004,7 +1004,7 @@ function getActiveFields() {
 const RPE_LABEL = ["", "Very Easy", "Easy", "Moderate", "Moderate", "Hard", "Hard", "Very Hard", "Very Hard", "Max", "Max"];
 const STORAGE_KEY = "training-log:sessions";
 const SETTINGS_KEY = "training-log:settings";
-const APP_VERSION = "0.65";  // bump this on every deploy so you can verify the right file is live
+const APP_VERSION = "0.74";  // bump this on every deploy so you can verify the right file is live
 
 // Structured workouts — rendered first in the Strength Exercises sheet.
 // To update: edit this constant and redeploy.
@@ -1250,7 +1250,13 @@ function emptyForm(discipline, subType) {
   return Object.fromEntries(fields.map(f => [f.key, ""]));
 }
 function formatDate(iso) {
-  return new Date(iso).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
+  const d = parseLocalISO(iso);
+  const weekday = d.toLocaleDateString("en-AU", { weekday: "short" });
+  const day = d.getDate();
+  const suffix = [11,12,13].includes(day) ? "th"
+    : day % 10 === 1 ? "st" : day % 10 === 2 ? "nd" : day % 10 === 3 ? "rd" : "th";
+  const monthYear = d.toLocaleDateString("en-AU", { month: "short", year: "numeric" });
+  return `${weekday}, ${day}${suffix} ${monthYear}`;
 }
 function escapeHtml(s) {
   return String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[c]));
@@ -1681,11 +1687,8 @@ function renderLog() {
         <button class="date-nav" type="button" data-date-step="-1" aria-label="Previous day">‹</button>
         <div class="date-input-wrap ${state.date === todayISO() ? 'is-today' : ''}">
           <input id="dateInput" class="input" type="date" value="${state.date}">
-          <span class="date-day-badge ${state.date === todayISO() ? 'is-today' : ''}">${
-            state.date === todayISO()
-              ? 'TODAY'
-              : parseLocalISO(state.date).toLocaleDateString("en-AU", { weekday: 'short' }).toUpperCase()
-          }</span>
+          <span class="date-day-badge">${parseLocalISO(state.date).toLocaleDateString("en-AU", { weekday: 'short' }).toUpperCase()}</span>
+          ${state.date === todayISO() ? `<span class="date-day-badge is-today" style="left:auto;right:10px;">TODAY</span>` : ""}
         </div>
         <button class="date-nav" type="button" data-date-step="1" aria-label="Next day">›</button>
       </div>
@@ -1723,6 +1726,7 @@ function renderLog() {
         ${selectedSessions.map(s => {
           const c = DISCIPLINE_CONFIG[s.discipline];
           if (!c) return "";
+          if (s.id === state.editingId) return renderHistoryEdit(s, c);
           const stCfg = s.subType ? getSubTypeCfg(s.discipline, s.subType) : null;
           const bits = [];
           if (s.data.distance) bits.push(`${s.data.distance}km`);
@@ -1732,7 +1736,7 @@ function renderLog() {
             ? `${s.discipline} · ${s.subType === "Other" && s.data.type ? s.data.type : s.subType}`
             : s.discipline;
           return `
-            <div class="today-item" style="border-left-color:${c.color};">
+            <div class="today-item" data-edit="${s.id}" style="border-left-color:${c.color}; cursor:pointer;">
               <span class="icon">${stCfg ? stCfg.icon : c.icon}</span>
               <div>
                 <div class="name">${nameLabel}</div>
@@ -1851,8 +1855,142 @@ function renderHistory() {
   `;
 }
 
+function renderMonthByDiscipline(period) {
+  const metric = state.historyMetric || "minutes";
+  const isMin  = metric === "minutes";
+  const unitLabel = isMin ? "" : " kcal";
+
+  function fmtMin(m) {
+    m = Math.round(m);
+    if (m === 0) return "0";
+    if (m < 60) return m + "m";
+    const h = Math.floor(m / 60), rem = m % 60;
+    return rem === 0 ? h + "h" : h + "h " + rem + "m";
+  }
+  function fmtCal(c) {
+    c = Math.round(c);
+    return c >= 1000 ? (c / 1000).toFixed(1) + "k" : String(c);
+  }
+  const fmtVal = isMin ? fmtMin : fmtCal;
+  // bar label: hours (1dp, strip trailing .0) for minutes; k-format for cals
+  const fmtBarLabel = isMin
+    ? (v => (v / 60).toFixed(1).replace(/\.0$/, ""))
+    : fmtCal;
+  // y-axis: same hours format but with "h" suffix
+  const fmtYAxis = isMin
+    ? (v => v === 0 ? "0" : (v / 60).toFixed(1).replace(/\.0$/, "") + "h")
+    : fmtCal;
+
+  const startKey = period && period.start ? localISO(new Date(period.start)) : null;
+  const endKey   = period && period.end   ? localISO(new Date(period.end))   : null;
+
+  // Group sessions by discipline
+  const discSessions = {};
+  DISCIPLINES.forEach(d => discSessions[d] = []);
+  state.sessions.forEach(s => {
+    if (startKey && s.date < startKey) return;
+    if (endKey   && s.date > endKey)   return;
+    const val = parseFloat(isMin ? s.data?.duration : s.data?.calories);
+    if (!val || val <= 0) return;
+    discSessions[s.discipline].push({ val, distance: parseFloat(s.data?.distance) || 0 });
+  });
+
+  const activeDiscs = DISCIPLINES.filter(d => discSessions[d].length > 0);
+  const discTotals  = {};
+  activeDiscs.forEach(d => discTotals[d] = discSessions[d].reduce((s, x) => s + x.val, 0));
+
+  const rawMax = activeDiscs.length > 0 ? Math.max(...activeDiscs.map(d => discTotals[d])) : 0;
+
+  function pickStepMin(v) {
+    if (v <= 180) return 30; if (v <= 360) return 60; if (v <= 720) return 120;
+    if (v <= 1440) return 240; return Math.ceil(v / 6 / 60) * 60;
+  }
+  function pickStepCal(v) {
+    if (v <= 500) return 100; if (v <= 1000) return 200; if (v <= 2500) return 500;
+    if (v <= 5000) return 1000; return Math.ceil(v / 5 / 1000) * 1000;
+  }
+  let step = isMin ? pickStepMin(rawMax) : pickStepCal(rawMax);
+  let yMax = Math.max(step * 2, Math.ceil(rawMax / step) * step);
+  if (yMax === 0) yMax = step * 2;
+  const chartHeight = 160;
+
+  const ticks = [];
+  for (let v = 0; v <= yMax; v += step) ticks.push(v);
+  const yAxisHTML = ticks.map(v => {
+    const pct = ((yMax - v) / yMax) * 100;
+    return `<span class="${v === 0 ? "y-zero" : ""}" style="top:${pct}%;">${fmtYAxis(v)}</span>`;
+  }).join("");
+  const gridHTML = ticks.map(v => {
+    const pct = ((yMax - v) / yMax) * 100;
+    return `<div class="${v === 0 ? "zero" : ""}" style="top:${pct}%;"></div>`;
+  }).join("");
+
+  // Swim + Run show total km; everything else shows session count
+  const DIST_DISCS = ["Swim", "Run"];
+
+  const barsHTML = activeDiscs.length === 0
+    ? `<div style="color:#888;padding:20px;text-align:center;">No sessions this month</div>`
+    : activeDiscs.map(d => {
+        const cfg = DISCIPLINE_CONFIG[d];
+        const sessions = discSessions[d];
+        const total = discTotals[d];
+        const stackHeight = (total / yMax) * chartHeight;
+
+        // Inner label: km + session count for Swim/Run, session count for others
+        let innerLabelHTML = "";
+        if (DIST_DISCS.includes(d)) {
+          const km = sessions.reduce((s, x) => s + x.distance, 0);
+          const kmStr = km > 0 ? (km % 1 === 0 ? km.toFixed(0) : km.toFixed(1)) + "km" : "";
+          const countStr = sessions.length + "×";
+          if (stackHeight >= 40 && kmStr) {
+            innerLabelHTML = `<span class="daily-bar-seg-label" style="display:flex;flex-direction:column;gap:1px;line-height:1.2;">${kmStr}<span style="opacity:0.8;">${countStr}</span></span>`;
+          } else if (stackHeight >= 28 && kmStr) {
+            innerLabelHTML = `<span class="daily-bar-seg-label">${kmStr}</span>`;
+          }
+        } else {
+          innerLabelHTML = stackHeight >= 28
+            ? `<span class="daily-bar-seg-label">${sessions.length}×</span>` : "";
+        }
+
+        const colTotal = total > 0
+          ? `<div class="daily-bar-total" style="bottom:${stackHeight + 3}px;">${fmtBarLabel(total)}</div>` : "";
+        return `
+          <div class="daily-bar-col">
+            ${colTotal}
+            <div class="daily-bar-stack" style="height:${stackHeight}px;">
+              <div class="daily-bar-seg" style="height:100%;background:${cfg.color};">${innerLabelHTML}</div>
+            </div>
+            <div class="daily-bar-label" style="bottom:-36px;">
+              <span class="dow">${cfg.icon}</span>
+              <span class="dom">${d}</span>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+  return `
+    <div>
+      <div class="chart-header">
+        <div class="weekly-chart-label">BY DISCIPLINE</div>
+        <div class="chart-header-toggles">
+          <div class="metric-toggle">
+            <button class="metric-btn ${isMin ? "active" : ""}" data-metric="minutes">MIN</button>
+            <button class="metric-btn ${!isMin ? "active" : ""}" data-metric="calories">CAL</button>
+          </div>
+        </div>
+      </div>
+      <div class="daily-chart" style="padding-bottom:46px;">
+        <div class="daily-y-axis">${yAxisHTML}</div>
+        <div class="daily-grid">${gridHTML}</div>
+        <div class="daily-bars">${barsHTML}</div>
+      </div>
+    </div>
+  `;
+}
+
 function renderDailyVolume(period) {
   const range = state.historyRange || "week";
+  if (range === "month") return renderMonthByDiscipline(period);
   const offset = state.historyOffset || 0;
   const metric = state.historyMetric || "minutes";
   const isMin = metric === "minutes";
