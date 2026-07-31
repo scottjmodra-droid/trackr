@@ -620,12 +620,12 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
 .workout-overlay .workout-top { display: flex; justify-content: center; }
 .workout-overlay .workout-section-name {
   font-family: 'Bebas Neue', sans-serif; letter-spacing: 3px;
-  color: #c8a8e8; font-size: 14px;
+  color: #c8a8e8; font-size: clamp(18px, 5vw, 24px);
 }
 .workout-overlay .workout-move-name {
-  font-family: 'Bebas Neue', sans-serif; font-size: 38px; color: #fff;
-  letter-spacing: 1px; line-height: 1.1;
-  text-align: center; padding: 6px 0;
+  font-family: 'Bebas Neue', sans-serif; font-size: clamp(72px, 20vw, 96px); color: #fff;
+  letter-spacing: 1px; line-height: 1.05;
+  text-align: center; padding: 4px 0;
 }
 .workout-overlay .workout-move-name.is-rest-move { color: #38bdf8; }
 .workout-overlay .workout-countdown {
@@ -669,11 +669,11 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
 /* UP NEXT block shown at the top during the 10s inter-exercise rest */
 .workout-overlay .workout-up-next-label {
   font-family: 'Bebas Neue', sans-serif; letter-spacing: 4px;
-  font-size: 16px; color: #9684b8; text-align: center; margin-top: 4px;
+  font-size: clamp(22px, 6vw, 30px); color: #9684b8; text-align: center; margin-top: 4px;
 }
 .workout-overlay .workout-up-next-name {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: clamp(64px, 18vw, 88px); letter-spacing: 1px; line-height: 1.05;
+  font-size: clamp(72px, 20vw, 96px); letter-spacing: 1px; line-height: 1.05;
   color: #fff; text-align: center;
 }
 /* View workout button */
@@ -908,7 +908,6 @@ const DISCIPLINE_CONFIG = {
     fields: [
       { key: "duration", label: "Duration (min)", type: "number" },
       { key: "type", label: "Type (optional)", type: "text", placeholder: "e.g. Upper Push, Pull, Full Body" },
-      { key: "details", label: "Details (optional)", type: "text", placeholder: "Exercises, sets, top lift…" },
       { key: "calories", label: "Calories", type: "number" },
     ],
   },
@@ -1005,7 +1004,7 @@ function getActiveFields() {
 const RPE_LABEL = ["", "Very Easy", "Easy", "Moderate", "Moderate", "Hard", "Hard", "Very Hard", "Very Hard", "Max", "Max"];
 const STORAGE_KEY = "training-log:sessions";
 const SETTINGS_KEY = "training-log:settings";
-const APP_VERSION = "0.62";  // bump this on every deploy so you can verify the right file is live
+const APP_VERSION = "0.63";  // bump this on every deploy so you can verify the right file is live
 
 // Structured workouts — rendered first in the Strength Exercises sheet.
 // To update: edit this constant and redeploy.
@@ -2299,7 +2298,7 @@ async function startWorkout(workoutIdx = 0) {
   // Set state BEFORE the await — guard blocks re-entry for the duration.
   state.workoutTimer = {
     workoutIdx, totalMoves,
-    startedAt: Date.now() + 2000,
+    startedAt: Date.now() + 5000,
     totalPausedMs: 0, pausedAt: null,
   };
   workoutLastVibKey = "PENDING";
