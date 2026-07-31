@@ -105,6 +105,21 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
   font-family: 'Bebas Neue', sans-serif;
 }
 
+/* Sub-type selector row (Active / Chilled) */
+.subtype-row {
+  display: flex; gap: 8px; margin-bottom: 18px;
+}
+.subtype-btn {
+  flex: 1; padding: 9px 6px; border: 2px solid transparent; border-radius: 10px;
+  font-family: 'Bebas Neue', sans-serif; letter-spacing: 1.5px; font-size: 14px;
+  transition: all 0.15s; display: flex; flex-direction: column; align-items: center; gap: 3px;
+}
+.subtype-btn .st-icon { font-size: 20px; line-height: 1; }
+.subtype-btn.active {
+  box-shadow: 0 4px 14px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.12) inset;
+  transform: translateY(-1px);
+}
+
 .field { margin-bottom: 14px; }
 .date-row {
   display: grid;
@@ -646,7 +661,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
 .workout-overlay .workout-next-last {
   font-size: 16px; color: #c8a8e8; font-style: italic;
 }
-/* UP NEXT block shown at the top during the 15s inter-exercise rest */
+/* UP NEXT block shown at the top during the 10s inter-exercise rest */
 .workout-overlay .workout-up-next-label {
   font-family: 'Bebas Neue', sans-serif; letter-spacing: 4px;
   font-size: 16px; color: #9684b8; text-align: center; margin-top: 4px;
@@ -861,22 +876,16 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
 <div class="toast" id="toast"></div>
 
 <script>
-const DISCIPLINES = ["Swim", "Run", "Strength", "Row", "Walk", "Other"];
+const DISCIPLINES = ["Swim", "Run", "Strength", "Active", "Chilled", "Stretch"];
+
+// For Active/Chilled each discipline has subTypes instead of direct fields.
+// Selecting one reveals sub-type-specific fields.
 const DISCIPLINE_CONFIG = {
   Swim: {
     color: "#38bdf8", icon: "🏊",
     fields: [
       { key: "duration", label: "Duration (min)", type: "number" },
       { key: "distance", label: "Distance (km)", type: "number", step: "0.1" },
-      { key: "calories", label: "Calories", type: "number" },
-    ],
-  },
-  Row: {
-    color: "#f97316", icon: "🚣",
-    fields: [
-      { key: "duration", label: "Duration (min)", type: "number" },
-      { key: "distance", label: "Distance (km)", type: "number", step: "0.1" },
-      { key: "avgSplit", label: "Avg Split (/500m)", type: "text", placeholder: "auto-calculated, or e.g. 1:52" },
       { key: "calories", label: "Calories", type: "number" },
     ],
   },
@@ -898,91 +907,159 @@ const DISCIPLINE_CONFIG = {
       { key: "calories", label: "Calories", type: "number" },
     ],
   },
-  Walk: {
-    color: "#94a3b8", icon: "🚶",
-    fields: [
-      { key: "duration", label: "Duration (min)", type: "number" },
-      { key: "distance", label: "Distance (km)", type: "number", step: "0.1" },
-      { key: "avgSpeed", label: "Avg Speed (km/h)", type: "text", placeholder: "auto-calculated, or e.g. 5.5" },
-      { key: "calories", label: "Calories", type: "number" },
-    ],
+  // --- Intensity tiers — each has subTypes ---
+  Active: {
+    color: "#f97316", icon: "⚡", met: 8,
+    subTypes: {
+      Row: {
+        icon: "🚣",
+        fields: [
+          { key: "duration", label: "Duration (min)", type: "number" },
+          { key: "distance", label: "Distance (km)", type: "number", step: "0.1" },
+          { key: "avgSplit", label: "Avg Split (/500m)", type: "text", placeholder: "auto-calculated, or e.g. 1:52" },
+          { key: "calories", label: "Calories", type: "number" },
+        ],
+      },
+      Waterpolo: {
+        icon: "🤽", met: 10,
+        fields: [
+          { key: "duration", label: "Duration (min)", type: "number" },
+          { key: "calories", label: "Calories", type: "number" },
+        ],
+      },
+      Cycling: {
+        icon: "🚴", met: 7,
+        fields: [
+          { key: "duration", label: "Duration (min)", type: "number" },
+          { key: "distance", label: "Distance (km)", type: "number", step: "0.1" },
+          { key: "calories", label: "Calories", type: "number" },
+        ],
+      },
+      Other: {
+        icon: "✦", met: 8,
+        fields: [
+          { key: "type", label: "Activity Type", type: "text", placeholder: "e.g. Boxing, Hiking, Tennis" },
+          { key: "duration", label: "Duration (min)", type: "number" },
+          { key: "distance", label: "Distance (km)", type: "number", step: "0.1" },
+          { key: "calories", label: "Calories", type: "number" },
+        ],
+      },
+    },
   },
-  Other: {
-    color: "#f472b6", icon: "✦",
+  Chilled: {
+    color: "#94a3b8", icon: "🌿", met: 3,
+    subTypes: {
+      Walk: {
+        icon: "🚶", met: 5,
+        fields: [
+          { key: "duration", label: "Duration (min)", type: "number" },
+          { key: "distance", label: "Distance (km)", type: "number", step: "0.1" },
+          { key: "calories", label: "Calories", type: "number" },
+        ],
+      },
+      Other: {
+        icon: "✦", met: 4,
+        fields: [
+          { key: "type", label: "Activity Type", type: "text", placeholder: "e.g. Golf, Gardening" },
+          { key: "duration", label: "Duration (min)", type: "number" },
+          { key: "distance", label: "Distance (km)", type: "number", step: "0.1" },
+          { key: "calories", label: "Calories", type: "number" },
+        ],
+      },
+    },
+  },
+  Stretch: {
+    color: "#8b5cf6", icon: "🧘", met: 3,
     fields: [
-      { key: "type", label: "Activity Type", type: "text", placeholder: "e.g. Hike, Yoga, Football" },
       { key: "duration", label: "Duration (min)", type: "number" },
-      { key: "distance", label: "Distance (km)", type: "number", step: "0.1" },
       { key: "calories", label: "Calories", type: "number" },
     ],
   },
 };
-// MET values (Metabolic Equivalent of Task) — used for calorie auto-calc.
-// Calories = MET × weight(kg) × hours. Run/Cycle refine based on pace/speed.
-const MET_DEFAULTS = { Swim: 8, Row: 7, Run: 10, Strength: 5, Walk: 3.5, Other: 5 };
+
+// MET values for flat disciplines; intensity tiers use cfg.met.
+const MET_DEFAULTS = { Swim: 10, Run: 10, Strength: 6, Active: 8, Chilled: 3, Stretch: 3 };
+
+// Returns the subType config object for a given discipline + subType name.
+// Falls back to the first subType if subType is unrecognised.
+function getSubTypeCfg(discipline, subType) {
+  const cfg = DISCIPLINE_CONFIG[discipline];
+  if (!cfg || !cfg.subTypes) return null;
+  return cfg.subTypes[subType] || Object.values(cfg.subTypes)[0];
+}
+// Returns the active field list for the current log form.
+function getActiveFields() {
+  const cfg = DISCIPLINE_CONFIG[state.activeDiscipline];
+  if (!cfg) return [];
+  if (cfg.subTypes) {
+    const st = getSubTypeCfg(state.activeDiscipline, state.activeSubType);
+    return st ? st.fields : [];
+  }
+  return cfg.fields;
+}
 const RPE_LABEL = ["", "Very Easy", "Easy", "Moderate", "Moderate", "Hard", "Hard", "Very Hard", "Very Hard", "Max", "Max"];
 const STORAGE_KEY = "training-log:sessions";
 const SETTINGS_KEY = "training-log:settings";
-const APP_VERSION = "0.53";  // bump this on every deploy so you can verify the right file is live
+const APP_VERSION = "0.60";  // bump this on every deploy so you can verify the right file is live
 
 // Structured workouts — rendered first in the Strength Exercises sheet.
 // To update: edit this constant and redeploy.
 const WORKOUTS = [
   {
     icon: "⏱️",
-    title: "Full Body (40mins)",
-    note: "45s on · 15s off · 40 moves",
-    met: 6.65,
+    title: "Full Body (50mins)",
+    note: "50s on · 10s off · 50 moves",
+    met: 8,
     sections: [
-      { title: "Cardio", moves: ["Boxing", "Jumping jacks", "Lateral Shuffle", "Mountain Climbers", "High Knees", "Boxing", "Burpees", "Rest"] },
-      { title: "Legs",   moves: ["Wall sit", "Squat", "Step ups", "Squat pulse", "Walking Lunges", "Calf raises", "Squat", "Rest"] },
-      { title: "Upper",  moves: ["Boxing", "Push-ups", "Dips", "Plank shoulder taps", "Pushup", "Mountain Climbers", "Boxing", "Rest"] },
-      { title: "Glutes", moves: ["RS knee-ankle taps", "RS Leg Raises", "RS Circles", "LS knee-ankle taps", "LS Leg Raises", "LS Circles", "Glute Bridge", "Rest"] },
-      { title: "Abs",    moves: ["Flutterkicks", "Bicycle", "Russian Twists", "Ankle taps", "Side plank R", "Side Plank L", "High plank", "Crunches"] },
+      { title: "Cardio", moves: ["Boxing", "Jumping jacks", "Lateral Shuffle", "Mountain Climbers", "High Knees", "Boxing", "Burpees", "YOU CHOOSE (or plank)", "YOU CHOOSE (or plank)", "Rest"] },
+      { title: "Legs",   moves: ["Wall sit", "Squat", "Step ups", "Squat pulse", "Walking Lunges", "Calf raises", "Squat", "YOU CHOOSE (or plank)", "YOU CHOOSE (or plank)", "Rest"] },
+      { title: "Upper",  moves: ["Boxing", "Push-ups", "Dips", "Plank shoulder taps", "Pushup", "Mountain Climbers", "Boxing", "YOU CHOOSE (or plank)", "YOU CHOOSE (or plank)", "Rest"] },
+      { title: "Glutes", moves: ["RS knee-ankle taps", "RS Leg Raises", "RS Circles", "LS knee-ankle taps", "LS Leg Raises", "LS Circles", "Glute Bridge", "YOU CHOOSE (or plank)", "YOU CHOOSE (or plank)", "Rest"] },
+      { title: "Abs",    moves: ["Flutterkicks", "Bicycle", "Russian Twists", "Ankle taps", "Side plank R", "Side Plank L", "High plank", "Crunches", "YOU CHOOSE (or plank)", "YOU CHOOSE (or plank)"] },
     ],
   },
   {
     icon: "❤️",
-    title: "Cardio (24mins)",
-    note: "45s on · 15s off · 24 moves",
-    met: 6.65,
+    title: "Cardio (30mins)",
+    note: "50s on · 10s off · 30 moves",
+    met: 8,
     sections: [
-      { title: "Set 1", moves: ["Burpees", "Boxing", "Mountain Climbers", "Jumping Jacks", "Lateral Shuffle", "Burpees", "High Knees", "Rest"] },
-      { title: "Set 2", moves: ["Star Jumps", "Squat Jumps", "Lateral Shuffle", "Mountain Climbers", "Boxing", "Burpees", "High Knees", "Rest"] },
-      { title: "Set 3", moves: ["Flutter Kicks", "Bicycle Crunch", "Russian Twists", "Heel Taps", "Mountain Climbers", "Side Plank R", "Side Plank L", "Plank"] },
+      { title: "Set 1", moves: ["Burpees", "Boxing", "Mountain Climbers", "Jumping Jacks", "Lateral Shuffle", "Burpees", "High Knees", "YOU CHOOSE (or plank)", "YOU CHOOSE (or plank)", "Rest"] },
+      { title: "Set 2", moves: ["Star Jumps", "Squat Jumps", "Lateral Shuffle", "Mountain Climbers", "Boxing", "Burpees", "High Knees", "YOU CHOOSE (or plank)", "YOU CHOOSE (or plank)", "Rest"] },
+      { title: "Set 3", moves: ["Flutter Kicks", "Bicycle Crunch", "Russian Twists", "Heel Taps", "Mountain Climbers", "Side Plank R", "Side Plank L", "Plank", "YOU CHOOSE (or plank)", "YOU CHOOSE (or plank)"] },
     ],
   },
   {
     icon: "🦵",
-    title: "Lower (24mins)",
-    note: "45s on · 15s off · 24 moves",
-    met: 6.65,
+    title: "Lower (30mins)",
+    note: "50s on · 10s off · 30 moves",
+    met: 8,
     sections: [
-      { title: "Set 1", moves: ["Squat", "Walking Lunges", "Squat Pulse", "Step Ups", "Reverse Lunge", "Calf Raises", "Wall Sit", "Rest"] },
-      { title: "Set 2", moves: ["RS Heel Knee Tap", "RS Leg Raises", "RS Leg Circles", "LS Heel Knee Tap", "LS Leg Raises", "LS Leg Circles", "Glute Bridge", "Rest"] },
-      { title: "Set 3", moves: ["RS Heel Knee Tap", "RS Leg Raises", "RS Leg Circles", "LS Heel Knee Tap", "LS Leg Raises", "LS Leg Circles", "Walking Lunges", "Wall Sit"] },
+      { title: "Set 1", moves: ["Squat", "Walking Lunges", "Squat Pulse", "Step Ups", "Reverse Lunge", "Calf Raises", "Wall Sit", "YOU CHOOSE (or plank)", "YOU CHOOSE (or plank)", "Rest"] },
+      { title: "Set 2", moves: ["RS Heel Knee Tap", "RS Leg Raises", "RS Leg Circles", "LS Heel Knee Tap", "LS Leg Raises", "LS Leg Circles", "Glute Bridge", "YOU CHOOSE (or plank)", "YOU CHOOSE (or plank)", "Rest"] },
+      { title: "Set 3", moves: ["RS Heel Knee Tap", "RS Leg Raises", "RS Leg Circles", "LS Heel Knee Tap", "LS Leg Raises", "LS Leg Circles", "Walking Lunges", "Wall Sit", "YOU CHOOSE (or plank)", "YOU CHOOSE (or plank)"] },
     ],
   },
   {
     icon: "🔥",
-    title: "Core (24mins)",
-    note: "45s on · 15s off · 24 moves",
-    met: 6.65,
+    title: "Core (30mins)",
+    note: "50s on · 10s off · 30 moves",
+    met: 8,
     sections: [
-      { title: "Set 1", moves: ["Plank", "Bicycle Crunch", "Russian Twists", "Flutter Kicks", "Heel Taps", "Crunches", "Plank", "Rest"] },
-      { title: "Set 2", moves: ["Side Plank R", "Side Plank L", "Dead Bug", "V-Sit Hold", "Mountain Climbers", "Low Plank", "Heel Taps", "Rest"] },
-      { title: "Set 3", moves: ["Push-Ups", "Plank Shoulder Taps", "Dips", "Mountain Climbers", "Boxing", "Push-Ups", "Superman Hold", "Plank"] },
+      { title: "Set 1", moves: ["Plank", "Bicycle Crunch", "Russian Twists", "Flutter Kicks", "Heel Taps", "Crunches", "Plank", "YOU CHOOSE (or plank)", "YOU CHOOSE (or plank)", "Rest"] },
+      { title: "Set 2", moves: ["Side Plank R", "Side Plank L", "Dead Bug", "V-Sit Hold", "Mountain Climbers", "Low Plank", "Heel Taps", "YOU CHOOSE (or plank)", "YOU CHOOSE (or plank)", "Rest"] },
+      { title: "Set 3", moves: ["Push-Ups", "Plank Shoulder Taps", "Dips", "Mountain Climbers", "Boxing", "Push-Ups", "Superman Hold", "Plank", "YOU CHOOSE (or plank)", "YOU CHOOSE (or plank)"] },
     ],
   },
   {
     icon: "💪",
-    title: "Upper (24mins)",
-    note: "45s on · 15s off · 24 moves",
-    met: 6.65,
+    title: "Upper (30mins)",
+    note: "50s on · 10s off · 30 moves",
+    met: 8,
     sections: [
-      { title: "Set 1", moves: ["Push-Ups", "Boxing", "Dips", "Burpees", "Supermans", "YTW", "Boxing", "Rest"] },
-      { title: "Set 2", moves: ["Superman Hold", "Bear Crawl Hold", "Plank Shoulder Taps", "Inchworm", "Push-Ups", "Boxing", "Dips", "Rest"] },
-      { title: "Set 3", moves: ["Plank", "Bicycle Crunch", "Russian Twists", "Flutter Kicks", "Heel Taps", "Side Plank R", "Side Plank L", "Plank"] },
+      { title: "Set 1", moves: ["Push-Ups", "Boxing", "Dips", "Burpees", "Supermans", "YTW", "Boxing", "YOU CHOOSE (or plank)", "YOU CHOOSE (or plank)", "Rest"] },
+      { title: "Set 2", moves: ["Superman Hold", "Bear Crawl Hold", "Plank Shoulder Taps", "Inchworm", "Push-Ups", "Boxing", "Dips", "YOU CHOOSE (or plank)", "YOU CHOOSE (or plank)", "Rest"] },
+      { title: "Set 3", moves: ["Plank", "Bicycle Crunch", "Russian Twists", "Flutter Kicks", "Heel Taps", "Side Plank R", "Side Plank L", "Plank", "YOU CHOOSE (or plank)", "YOU CHOOSE (or plank)"] },
     ],
   },
 ];
@@ -1055,7 +1132,9 @@ const state = {
   sessions: [],
   view: "log",
   activeDiscipline: "Swim",
+  activeSubType: null,   // set when activeDiscipline has subTypes
   historyTab: "Swim",
+  historySubTab: null,  // subType filter within a discipline, or null for all
   historyRange: "week",  // "week" | "month" | "all"
   historyOffset: 0,  // 0 = current period, -1 = last week/month, etc.
   historyMetric: "minutes",  // "minutes" | "calories"
@@ -1154,8 +1233,17 @@ function relativeDayLabel(iso) {
   if (diff === 1) return "TOMORROW";
   return d.toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" }).toUpperCase();
 }
-function emptyForm(discipline) {
-  return Object.fromEntries(DISCIPLINE_CONFIG[discipline].fields.map(f => [f.key, ""]));
+function emptyForm(discipline, subType) {
+  const cfg = DISCIPLINE_CONFIG[discipline];
+  if (!cfg) return {};
+  let fields;
+  if (cfg.subTypes) {
+    const st = cfg.subTypes[subType] || Object.values(cfg.subTypes)[0];
+    fields = st ? st.fields : [];
+  } else {
+    fields = cfg.fields;
+  }
+  return Object.fromEntries(fields.map(f => [f.key, ""]));
 }
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
@@ -1186,12 +1274,14 @@ function disciplineBtnStyle(color, active) {
 // listed falls back to "Other" with a prettified type label so the entry is
 // still identifiable in TRACKR.
 const APPLE_ACTIVITY_MAP = {
-  HKWorkoutActivityTypeRunning: { discipline: "Run" },
-  HKWorkoutActivityTypeSwimming: { discipline: "Swim" },
-  HKWorkoutActivityTypeRowing: { discipline: "Row" },
+  HKWorkoutActivityTypeRunning:                   { discipline: "Run" },
+  HKWorkoutActivityTypeSwimming:                  { discipline: "Swim" },
+  HKWorkoutActivityTypeRowing:                    { discipline: "Active",  subType: "Row" },
   HKWorkoutActivityTypeTraditionalStrengthTraining: { discipline: "Strength" },
-  HKWorkoutActivityTypeFunctionalStrengthTraining: { discipline: "Strength" },
-  HKWorkoutActivityTypeWalking: { discipline: "Walk" },
+  HKWorkoutActivityTypeFunctionalStrengthTraining:  { discipline: "Strength" },
+  HKWorkoutActivityTypeWalking:                   { discipline: "Chilled", subType: "Walk" },
+  HKWorkoutActivityTypeCycling:                   { discipline: "Active",  subType: "Cycling" },
+  HKWorkoutActivityTypeWaterPolo:                 { discipline: "Active",  subType: "Waterpolo" },
 };
 function mapAppleActivity(type) {
   if (APPLE_ACTIVITY_MAP[type]) return APPLE_ACTIVITY_MAP[type];
@@ -1200,7 +1290,7 @@ function mapAppleActivity(type) {
     .replace(/^HKWorkoutActivityType/, "")
     .replace(/([A-Z])/g, " $1")
     .trim();
-  return { discipline: "Other", type: name };
+  return { discipline: "Active", subType: "Other", type: name };
 }
 // Parse an Apple Health export.xml. Handles both the older format (workout
 // stats as attributes on <Workout>) and the iOS 18+ format (stats in nested
@@ -1261,6 +1351,7 @@ function parseAppleHealthXML(xmlText) {
       id: uid(),
       date,
       discipline: mapped.discipline,
+      subType: mapped.subType || null,
       data,
     });
   });
@@ -1275,9 +1366,18 @@ function loadSessions() {
       state.sessions = JSON.parse(raw);
       // v0.10: Cycle -> Walk.  v0.19: Weights -> Strength.
       // v0.26: Strength's totalSets + topLift collapse into a single "details" field.
+      // v0.54: Row → Hard/Row, Walk → Low/Walk, Other → Moderate/Other (legacy migration).
+      // v0.56: Hard/Moderate → Active, Low/Stretch → Stretch, Low → Chilled.
       state.sessions.forEach(s => {
         if (s.discipline === "Cycle") s.discipline = "Walk";
         if (s.discipline === "Weights") s.discipline = "Strength";
+        if (s.discipline === "Row"   && !s.subType) { s.discipline = "Hard";     s.subType = "Row"; }
+        if (s.discipline === "Walk"  && !s.subType) { s.discipline = "Low";      s.subType = "Walk"; }
+        if (s.discipline === "Other" && !s.subType) { s.discipline = "Moderate"; s.subType = "Other"; }
+        if (s.discipline === "Low" && s.subType === "Stretch") { s.discipline = "Stretch"; s.subType = null; }
+        if (s.discipline === "Low")      { s.discipline = "Chilled"; }
+        if (s.discipline === "Hard")     { s.discipline = "Active"; }
+        if (s.discipline === "Moderate") { s.discipline = "Active"; }
         if (s.discipline === "Strength" && s.data) {
           const sets = (s.data.totalSets || "").toString().trim();
           const lift = (s.data.topLift || "").toString().trim();
@@ -1453,8 +1553,11 @@ function rowingMetFromPower(watts) {
   const slope = (y2 - y1) / (x2 - x1);
   return y2 + slope * (watts - x2);
 }
-function metFor(discipline, duration, distance, splitStr) {
-  const baseMET = MET_DEFAULTS[discipline] || 5;
+function metFor(discipline, subType, duration, distance, splitStr) {
+  // Priority: subType.met → tier cfg.met → MET_DEFAULTS → 5
+  const tierCfg = DISCIPLINE_CONFIG[discipline];
+  const stCfg = (tierCfg?.subTypes && subType) ? tierCfg.subTypes[subType] : null;
+  const baseMET = stCfg?.met ?? tierCfg?.met ?? MET_DEFAULTS[discipline] ?? 5;
   const dur = parseFloat(duration), dist = parseFloat(distance);
   if (!dur || dur <= 0) return baseMET;
   // Run: refine by pace (min/km)
@@ -1466,28 +1569,9 @@ function metFor(discipline, duration, distance, splitStr) {
     if (pace < 7) return 8.3;
     return 6.8;
   }
-  // Walk: refine by avg speed (km/h) — values from 2024 Compendium of
-  // Physical Activities (walking section), thresholds in km/h:
-  //   2 mph (3.2 km/h)  -> 2.8 MET (slow)
-  //   2.5 mph (4.0 km/h) -> 3.0 MET
-  //   3 mph (4.8 km/h)  -> 3.5 MET (moderate)
-  //   3.5 mph (5.6 km/h) -> 4.3 MET (brisk)
-  //   4 mph (6.4 km/h)  -> 5.0 MET (very brisk)
-  //   4.5 mph (7.2 km/h) -> 7.0 MET (essentially light jogging)
-  if (discipline === "Walk" && dist > 0) {
-    const speed = (dist / dur) * 60;
-    if (speed > 7.2) return 7.0;
-    if (speed > 6.4) return 5.5;
-    if (speed > 5.6) return 5.0;
-    if (speed > 4.8) return 4.3;
-    if (speed > 4.0) return 3.5;
-    if (speed > 3.2) return 3.0;
-    return 2.8;
-  }
-  // Row: runbundle / 2024 Compendium method via Concept2 split->power.
-  // Prefer an explicit avgSplit if the user typed one (most accurate, matches
-  // what the rower's display reports); otherwise derive from distance + dur.
-  if (discipline === "Row") {
+  // Hard/Row: Concept2 split→power→MET formula (most accurate).
+  // Prefer explicit avgSplit; derive from distance + duration if absent.
+  if (discipline === "Active" && subType === "Row") {
     let splitSec = parseSplitToSeconds(splitStr);
     if (!splitSec && dist > 0) {
       splitSec = (dur * 60) / (dist * 2);  // sec per 500m
@@ -1497,13 +1581,14 @@ function metFor(discipline, duration, distance, splitStr) {
       return rowingMetFromPower(watts);
     }
   }
+  // All other intensity-tier sub-types use the tier's flat MET.
   return baseMET;
 }
-function calcCalories(discipline, duration, distance, splitStr) {
+function calcCalories(discipline, subType, duration, distance, splitStr) {
   const dur = parseFloat(duration);
   if (!dur || dur <= 0) return "";
   const weight = state.weight || 94;
-  const met = metFor(discipline, duration, distance, splitStr);
+  const met = metFor(discipline, subType, duration, distance, splitStr);
   return String(Math.round(met * weight * (dur / 60)));
 }
 
@@ -1547,8 +1632,25 @@ function renderBackupBanner() {
 
 function renderLog() {
   const cfg = DISCIPLINE_CONFIG[state.activeDiscipline];
+  const activeFields = getActiveFields();
   const selectedSessions = state.sessions.filter(s => s.date === state.date);
   const dateLabel = relativeDayLabel(state.date);
+
+  // Subtype row — shown when the selected discipline has subTypes
+  const subTypeRow = cfg.subTypes ? `
+    <div class="subtype-row">
+      ${Object.entries(cfg.subTypes).map(([name, st]) => {
+        const active = state.activeSubType === name;
+        return `
+          <button class="subtype-btn${active ? ' active' : ''}" data-subtype="${name}"
+            style="${disciplineBtnStyle(cfg.color, active)}">
+            <span class="st-icon">${st.icon}</span>
+            ${name}
+          </button>
+        `;
+      }).join("")}
+    </div>
+  ` : "";
 
   return `
     <div class="discipline-grid" role="tablist" aria-label="Discipline">
@@ -1564,6 +1666,8 @@ function renderLog() {
         `;
       }).join("")}
     </div>
+
+    ${subTypeRow}
 
     <div class="field">
       <label class="field-label" for="dateInput">DATE</label>
@@ -1581,7 +1685,7 @@ function renderLog() {
       </div>
     </div>
 
-    ${cfg.fields.map(f => {
+    ${activeFields.map(f => {
       const isNumber = f.type === "number";
       const allowsDecimal = isNumber && !!f.step;
       const actualType = isNumber ? "text" : f.type;
@@ -1595,7 +1699,7 @@ function renderLog() {
           ${pattern}
           autocomplete="off" autocorrect="off" spellcheck="false"
           placeholder="${escapeHtml(f.placeholder || "")}"
-          value="${escapeHtml(state.form[f.key])}"
+          value="${escapeHtml(state.form[f.key] ?? "")}"
           data-field="${f.key}">
         ${renderComputedHint(f.key)}
       </div>
@@ -1612,15 +1716,20 @@ function renderLog() {
         <div class="today-label">SESSIONS · ${dateLabel}</div>
         ${selectedSessions.map(s => {
           const c = DISCIPLINE_CONFIG[s.discipline];
+          if (!c) return "";
+          const stCfg = s.subType ? getSubTypeCfg(s.discipline, s.subType) : null;
           const bits = [];
           if (s.data.distance) bits.push(`${s.data.distance}km`);
           if (s.data.duration) bits.push(fmtDuration(s.data.duration));
           if (s.data.calories) bits.push(`${s.data.calories} kcal`);
+          const nameLabel = s.subType
+            ? `${s.discipline} · ${s.subType === "Other" && s.data.type ? s.data.type : s.subType}`
+            : s.discipline;
           return `
             <div class="today-item" style="border-left-color:${c.color};">
-              <span class="icon">${c.icon}</span>
+              <span class="icon">${stCfg ? stCfg.icon : c.icon}</span>
               <div>
-                <div class="name">${s.discipline}</div>
+                <div class="name">${nameLabel}</div>
                 <div class="meta">${bits.join(" · ")}</div>
               </div>
             </div>
@@ -1646,7 +1755,7 @@ function renderComputedHint(fieldKey) {
     return s ? `<div class="computed-hint">auto: ${s} km/h — tap to use</div>` : "";
   }
   if (fieldKey === "calories" && m && !state.form.calories) {
-    const c = calcCalories(state.activeDiscipline, m, d, state.form.avgSplit);
+    const c = calcCalories(state.activeDiscipline, state.activeSubType, m, d, state.form.avgSplit);
     return c ? `<div class="computed-hint">auto: ~${c} kcal — tap to use</div>` : "";
   }
   return "";
@@ -1711,6 +1820,26 @@ function renderHistory() {
           `;
         }).join("")}
       </div>
+      ${(() => {
+        const cfg = DISCIPLINE_CONFIG[state.historyTab];
+        if (!cfg || !cfg.subTypes) return "";
+        const subTypes = Object.keys(cfg.subTypes);
+        return `
+          <div class="subtype-selector" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:16px;">
+            <button class="subtype-btn${!state.historySubTab ? ' active' : ''}" data-history-subtab=""
+              style="padding:6px 14px;border-radius:20px;border:1.5px solid ${!state.historySubTab ? cfg.color : 'rgba(255,255,255,0.15)'};background:${!state.historySubTab ? cfg.color + '22' : 'transparent'};color:${!state.historySubTab ? cfg.color : '#aaa'};font-size:13px;font-weight:600;cursor:pointer;">
+              All
+            </button>
+            ${subTypes.map(st => {
+              const active = state.historySubTab === st;
+              return `<button class="subtype-btn${active ? ' active' : ''}" data-history-subtab="${st}"
+                style="padding:6px 14px;border-radius:20px;border:1.5px solid ${active ? cfg.color : 'rgba(255,255,255,0.15)'};background:${active ? cfg.color + '22' : 'transparent'};color:${active ? cfg.color : '#aaa'};font-size:13px;font-weight:600;cursor:pointer;">
+                ${st}
+              </button>`;
+            }).join("")}
+          </div>
+        `;
+      })()}
       ${renderDisciplineStats(state.historyTab, period)}
     </div>
   `;
@@ -2064,32 +2193,60 @@ function flattenWorkout(workout) {
   workout.sections.forEach(sec => sec.moves.forEach(move => flat.push({ section: sec.title, move })));
   return flat;
 }
-// Each move slot is 60s: 45s "work" then 15s "rest". 40 slots = 40 minutes total.
+// Move slot durations:
+//   Normal move: 60s (50s work + 10s rest)
+//   Move immediately before a "Rest" slot: 50s (work only — avoids double rest)
+//   Dedicated "Rest" slot: 60s (shown as one combined countdown)
+function moveDuration(flat, idx) {
+  if (flat[idx].move.toLowerCase() === "rest") return 60;
+  if (flat[idx + 1]?.move?.toLowerCase() === "rest") return 50;
+  return 60;
+}
 function computeWorkoutState() {
   const t = state.workoutTimer;
   if (!t) return null;
-  const totalMoves = t.totalMoves || 40;
+  const workout = WORKOUTS[t.workoutIdx] || WORKOUTS[0];
+  const flat = flattenWorkout(workout);
   const now = t.pausedAt || Date.now();
   const elapsedMs = now - t.startedAt - t.totalPausedMs;
   const elapsedSec = elapsedMs / 1000;
   if (elapsedSec < 0) {
-    // Pre-workout "get ready" countdown
     return { pending: true, countdown: Math.max(1, Math.ceil(-elapsedSec)), elapsedSec };
   }
-  const moveIdx = Math.floor(elapsedSec / 60);
-  if (moveIdx >= totalMoves) return { done: true, moveIdx: totalMoves, elapsedSec };
-  const intoMove = elapsedSec % 60;
-  const phase = intoMove < 45 ? "work" : "rest";
-  const phaseDur = phase === "work" ? 45 : 15;
-  const phaseElapsed = phase === "work" ? intoMove : intoMove - 45;
-  return {
-    done: false,
-    moveIdx,
-    phase,
-    phaseRemaining: Math.max(0, Math.ceil(phaseDur - phaseElapsed)),
-    phasePct: (phaseElapsed / phaseDur) * 100,
-    elapsedSec,
-  };
+  // Walk through moves using variable durations to find current position.
+  let cumTime = 0;
+  for (let i = 0; i < flat.length; i++) {
+    const dur = moveDuration(flat, i);
+    if (cumTime + dur > elapsedSec) {
+      const intoMove = elapsedSec - cumTime;
+      const isRestSlotMove = flat[i].move.toLowerCase() === "rest";
+      let phase, phaseDur, phaseElapsed;
+      if (isRestSlotMove) {
+        // Dedicated Rest slot — single 60s combined countdown.
+        phase = "work"; phaseDur = 60; phaseElapsed = intoMove;
+      } else if (dur === 50) {
+        // Work-only move (immediately before Rest slot) — no rest phase.
+        phase = "work"; phaseDur = 50; phaseElapsed = intoMove;
+      } else {
+        // Normal move: 50s work + 10s rest.
+        phase = intoMove < 50 ? "work" : "rest";
+        phaseDur = phase === "work" ? 50 : 10;
+        phaseElapsed = phase === "work" ? intoMove : intoMove - 50;
+      }
+      return {
+        done: false,
+        moveIdx: i,
+        phase,
+        phaseRemaining: Math.max(0, Math.ceil(phaseDur - phaseElapsed)),
+        phasePct: (phaseElapsed / phaseDur) * 100,
+        elapsedSec,
+        intoMove,
+        moveDur: dur,
+      };
+    }
+    cumTime += dur;
+  }
+  return { done: true, moveIdx: flat.length, elapsedSec };
 }
 async function acquireWorkoutWakeLock() {
   if (!("wakeLock" in navigator)) return;
@@ -2205,7 +2362,7 @@ function logWorkoutSession(elapsedMin, completed) {
       duration: String(finalMin),
       type: workout.title,
       details: completed
-        ? `Completed all ${totalMoves} moves · 45s on / 15s off`
+        ? `Completed all ${totalMoves} moves · 50s on / 10s off`
         : `Ended at move ${Math.min(totalMoves, elapsedMin)} of ${totalMoves}`,
       calories,
     },
@@ -2261,7 +2418,7 @@ function scheduleWorkoutTick() {
 
     // Phase change → haptic + a distinctive beep for each kind of transition.
     //   PENDING → work (very first move starts after countdown): long GO beep
-    //   work → rest  (mid-move, t=45s): long 900Hz "beeeeep" — work bit is done
+    //   work → rest  (mid-move, t=50s): long 900Hz "beeeeep" — work bit is done
     //   rest → work  (new move starting, t=0s of next): long 1200Hz "beeeeep"
     // Exception: dedicated "Rest" slots are shown as one 60s block, so the
     // work→rest mid-slot transition is suppressed (no beep, no vibration).
@@ -2278,13 +2435,13 @@ function scheduleWorkoutTick() {
       workoutLastVibKey = vibKey;
     }
 
-    // Two short "bip" cues at the last 2 seconds of each 60-second move slot.
-    const intoMove = c.elapsedSec - c.moveIdx * 60;
-    if (intoMove >= 58 && intoMove < 59) {
+    // Two short "bip" cues at the last 2 seconds of each move slot.
+    const _moveDur = c.moveDur || 60;
+    if (c.intoMove >= _moveDur - 2 && c.intoMove < _moveDur - 1) {
       const k = `bip1-${c.moveIdx}`;
       if (!workoutFiredBeeps.has(k)) { workoutFiredBeeps.add(k); playBeep(800, 110); }
     }
-    if (intoMove >= 59 && intoMove < 60) {
+    if (c.intoMove >= _moveDur - 1 && c.intoMove < _moveDur) {
       const k = `bip2-${c.moveIdx}`;
       if (!workoutFiredBeeps.has(k)) { workoutFiredBeeps.add(k); playBeep(800, 110); }
     }
@@ -2319,12 +2476,11 @@ function renderWorkoutOverlay() {
   const next = flat[c.moveIdx + 1];
   const isPaused = !!state.workoutTimer.pausedAt;
   const isRestSlot = current.move.toLowerCase() === "rest";
-  // True during the 15s rest between regular exercises (not a dedicated Rest slot)
+  // True during the 10s rest between regular exercises (not a dedicated Rest slot)
   const isRestPhase = c.phase === "rest" && !isRestSlot;
-  // Dedicated Rest slots show a combined 60s countdown (45s work + 15s rest merged)
-  const intoMove = c.elapsedSec - c.moveIdx * 60;
-  const restSlotRemaining = Math.max(0, Math.ceil(60 - intoMove));
-  const restSlotPct = Math.min(100, (intoMove / 60) * 100);
+  // Dedicated Rest slots show a combined 60s countdown.
+  const restSlotRemaining = Math.max(0, Math.ceil(60 - c.intoMove));
+  const restSlotPct = Math.min(100, (c.intoMove / 60) * 100);
   const phaseClass = (c.phase === "work" && !isRestSlot) ? "work" : "rest";
   const countdown = isRestSlot ? restSlotRemaining : c.phaseRemaining;
   const progressPct = isRestSlot ? restSlotPct : c.phasePct;
@@ -2354,7 +2510,7 @@ function renderWorkoutOverlay() {
     `;
   }
 
-  // 15s inter-exercise rest: UP NEXT at top, no previous exercise name
+  // 10s inter-exercise rest: UP NEXT at top, no previous exercise name
   if (isRestPhase) {
     return `
       <div class="workout-overlay ${isPaused ? "is-paused" : ""}">
@@ -2444,9 +2600,13 @@ function computePRs(discipline, sessions) {
     min(ds, s => paceToSeconds(s.data.pace), "fastestPace",
         s => (parseFloat(s.data.distance) || 0) >= 3);
   }
-  if (discipline === "Row") {
-    min(ds, s => parseSplitToSeconds(s.data.avgSplit) || Infinity, "bestSplit",
-        s => (parseFloat(s.data.distance) || 0) >= 2);
+  if (discipline === "Active") {
+    // Best rowing split — only for Active/Row sessions of ≥2 km
+    const rowSessions = ds.filter(s => s.subType === "Row");
+    if (rowSessions.length > 0) {
+      min(rowSessions, s => parseSplitToSeconds(s.data.avgSplit) || Infinity, "bestSplit",
+          s => (parseFloat(s.data.distance) || 0) >= 2);
+    }
   }
   return records;
 }
@@ -2554,9 +2714,14 @@ function renderDisciplineStats(discipline, period) {
     const endKey = localISO(period.end);
     ds = ds.filter(s => s.date >= startKey && s.date <= endKey);
   }
+  // Sub-type filter
+  if (state.historySubTab) {
+    ds = ds.filter(s => s.subType === state.historySubTab);
+  }
   if (ds.length === 0) {
     const where = period && period.start ? ` in ${period.label.toLowerCase()}` : "";
-    return `<div class="empty-state">No ${discipline.toLowerCase()} sessions${where}.</div>`;
+    const subLabel = state.historySubTab ? ` · ${state.historySubTab}` : "";
+    return `<div class="empty-state">No ${discipline.toLowerCase()}${subLabel} sessions${where}.</div>`;
   }
 
   const cfg = DISCIPLINE_CONFIG[discipline];
@@ -2583,15 +2748,18 @@ function renderDisciplineStats(discipline, period) {
     <div class="history-list">
       ${ds.slice().reverse().slice(0, 50).map(s => {
         if (s.id === state.editingId) return renderHistoryEdit(s, cfg);
-        const prBadge = "";
-        const fieldHtml = cfg.fields.filter(f => s.data[f.key]).map(f => {
-          // duration gets the smart formatter so 90 -> "1h 30m"; others use a static unit.
+        // Use the session's subType config for field display (subType-aware disciplines)
+        const stCfg = s.subType ? getSubTypeCfg(s.discipline, s.subType) : null;
+        const displayFields = stCfg ? stCfg.fields : (cfg.fields || []);
+        const subTypeLabel = s.subType
+          ? (s.subType === "Other" && s.data.type ? s.data.type : s.subType)
+          : "";
+        const fieldHtml = displayFields.filter(f => s.data[f.key]).map(f => {
           let displayVal;
           if (f.key === "duration") {
             displayVal = fmtDuration(s.data[f.key]);
           } else {
             const unit = f.key === "distance" ? "km"
-              : f.key === "totalSets" ? " sets"
               : f.key === "calories" ? " kcal"
               : f.key === "avgSpeed" ? " km/h"
               : "";
@@ -2604,7 +2772,7 @@ function renderDisciplineStats(discipline, period) {
           <div class="history-item" data-edit="${s.id}" style="border-left-color:${cfg.color};">
             <button class="history-delete" data-delete="${s.id}" aria-label="Delete session">×</button>
             <div class="history-item-top">
-              <div class="history-date">${formatDate(s.date)}${prBadge}</div>
+              <div class="history-date">${formatDate(s.date)}${subTypeLabel ? ` · <span style="color:${cfg.color};">${escapeHtml(subTypeLabel)}</span>` : ""}</div>
             </div>
             <div class="history-data">${fieldHtml}</div>
           </div>
@@ -2615,17 +2783,20 @@ function renderDisciplineStats(discipline, period) {
 }
 
 function renderHistoryEdit(s, cfg) {
+  const stCfg = s.subType ? getSubTypeCfg(s.discipline, s.subType) : null;
+  const editFields = stCfg ? stCfg.fields : (cfg.fields || []);
+  const editLabel = s.subType ? `${s.discipline} · ${s.subType}` : s.discipline;
   return `
     <div class="history-item editing" style="border-left-color:${cfg.color};">
       <div class="history-item-top">
-        <div class="history-date" style="color:#fff; font-weight:500;">EDITING · ${cfg.icon} ${s.discipline}</div>
+        <div class="history-date" style="color:#fff; font-weight:500;">EDITING · ${cfg.icon} ${editLabel}</div>
       </div>
       <div class="history-edit">
         <div class="history-edit-field">
           <label class="history-edit-field-label">Date</label>
           <input class="input" type="date" data-edit-field="__date" value="${escapeHtml(s.date)}">
         </div>
-        ${cfg.fields.map(f => {
+        ${editFields.map(f => {
           const isNumber = f.type === "number";
           const allowsDecimal = isNumber && !!f.step;
           const actualType = isNumber ? "text" : f.type;
@@ -2659,12 +2830,25 @@ function attachHandlers() {
   document.querySelectorAll("[data-discipline]").forEach(b => {
     b.addEventListener("click", () => {
       state.activeDiscipline = b.dataset.discipline;
-      state.form = emptyForm(state.activeDiscipline);
+      const cfg = DISCIPLINE_CONFIG[state.activeDiscipline];
+      // Init subType to the first option whenever switching discipline
+      state.activeSubType = cfg.subTypes ? Object.keys(cfg.subTypes)[0] : null;
+      state.form = emptyForm(state.activeDiscipline, state.activeSubType);
+      render();
+    });
+  });
+  document.querySelectorAll("[data-subtype]").forEach(b => {
+    b.addEventListener("click", () => {
+      state.activeSubType = b.dataset.subtype;
+      state.form = emptyForm(state.activeDiscipline, state.activeSubType);
       render();
     });
   });
   document.querySelectorAll("[data-history-tab]").forEach(b => {
-    b.addEventListener("click", () => { state.historyTab = b.dataset.historyTab; render(); });
+    b.addEventListener("click", () => { state.historyTab = b.dataset.historyTab; state.historySubTab = null; render(); });
+  });
+  document.querySelectorAll("[data-history-subtab]").forEach(b => {
+    b.addEventListener("click", () => { state.historySubTab = b.dataset.historySubtab || null; render(); });
   });
   document.querySelectorAll("[data-range]").forEach(b => {
     b.addEventListener("click", () => {
@@ -2732,18 +2916,18 @@ function attachHandlers() {
   // Auto-fill computed hints when tapped
   document.querySelectorAll(".computed-hint").forEach(hint => {
     hint.addEventListener("click", () => {
-      const cfg = DISCIPLINE_CONFIG[state.activeDiscipline];
-      if (cfg.fields.find(f => f.key === "pace") && !state.form.pace) {
+      const activeFields = getActiveFields();
+      if (activeFields.find(f => f.key === "pace") && !state.form.pace) {
         state.form.pace = autoPace(state.form.distance, state.form.duration);
       }
-      if (cfg.fields.find(f => f.key === "avgSplit") && !state.form.avgSplit) {
+      if (activeFields.find(f => f.key === "avgSplit") && !state.form.avgSplit) {
         state.form.avgSplit = autoSplit(state.form.distance, state.form.duration);
       }
-      if (cfg.fields.find(f => f.key === "avgSpeed") && !state.form.avgSpeed) {
+      if (activeFields.find(f => f.key === "avgSpeed") && !state.form.avgSpeed) {
         state.form.avgSpeed = autoSpeed(state.form.distance, state.form.duration);
       }
-      if (cfg.fields.find(f => f.key === "calories") && !state.form.calories) {
-        state.form.calories = calcCalories(state.activeDiscipline, state.form.duration, state.form.distance, state.form.avgSplit);
+      if (activeFields.find(f => f.key === "calories") && !state.form.calories) {
+        state.form.calories = calcCalories(state.activeDiscipline, state.activeSubType, state.form.duration, state.form.distance, state.form.avgSplit);
       }
       render();
     });
@@ -2836,27 +3020,33 @@ function handleSave() {
     return;
   }
   // Auto-fill computed fields if blank but inputs present
-  const cfg = DISCIPLINE_CONFIG[state.activeDiscipline];
-  if (cfg.fields.find(f => f.key === "pace") && !state.form.pace) {
+  const activeFields = getActiveFields();
+  if (activeFields.find(f => f.key === "pace") && !state.form.pace) {
     const p = autoPace(state.form.distance, state.form.duration);
     if (p) state.form.pace = p;
   }
-  if (cfg.fields.find(f => f.key === "avgSplit") && !state.form.avgSplit) {
+  if (activeFields.find(f => f.key === "avgSplit") && !state.form.avgSplit) {
     const p = autoSplit(state.form.distance, state.form.duration);
     if (p) state.form.avgSplit = p;
   }
-  if (cfg.fields.find(f => f.key === "avgSpeed") && !state.form.avgSpeed) {
+  if (activeFields.find(f => f.key === "avgSpeed") && !state.form.avgSpeed) {
     const s = autoSpeed(state.form.distance, state.form.duration);
     if (s) state.form.avgSpeed = s;
   }
-  if (cfg.fields.find(f => f.key === "calories") && !state.form.calories) {
-    const c = calcCalories(state.activeDiscipline, state.form.duration, state.form.distance, state.form.avgSplit);
+  if (activeFields.find(f => f.key === "calories") && !state.form.calories) {
+    const c = calcCalories(state.activeDiscipline, state.activeSubType, state.form.duration, state.form.distance, state.form.avgSplit);
     if (c) state.form.calories = c;
   }
-  const session = { id: uid(), date: state.date, discipline: state.activeDiscipline, data: { ...state.form } };
+  const session = {
+    id: uid(),
+    date: state.date,
+    discipline: state.activeDiscipline,
+    subType: state.activeSubType || null,
+    data: { ...state.form },
+  };
   state.sessions.push(session);
   saveSessions();
-  state.form = emptyForm(state.activeDiscipline);
+  state.form = emptyForm(state.activeDiscipline, state.activeSubType);
   state.saved = true;
   render();
   setTimeout(() => { state.saved = false; render(); }, 2000);
