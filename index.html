@@ -50,19 +50,24 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
 }
 
 .header {
-  padding: calc(20px + env(safe-area-inset-top)) 20px 0;
+  padding: calc(12px + env(safe-area-inset-top)) 20px 0;
   border-bottom: 1px solid rgba(255,255,255,0.08);
 }
 .title {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 36px;
-  letter-spacing: 2px;
-  color: #fff;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  margin-bottom: 10px;
 }
-.title-meta { font-size: 14px; color: #d4baeb; margin-bottom: 16px; font-family: 'DM Sans', sans-serif; letter-spacing: 0; font-weight: 400; }
+.title-left { display: flex; flex-direction: column; gap: 1px; }
+.title-name {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 28px;
+  letter-spacing: 2px;
+  color: #fff;
+  line-height: 1;
+}
+.title-meta { font-size: 11px; color: #d4baeb; font-family: 'DM Sans', sans-serif; letter-spacing: 0; font-weight: 400; }
 .menu-btn {
   background: transparent; border: none; color: #c8a8e8; font-size: 22px;
   padding: 4px 8px; line-height: 1; border-radius: 6px;
@@ -1000,7 +1005,7 @@ function getActiveFields() {
 const RPE_LABEL = ["", "Very Easy", "Easy", "Moderate", "Moderate", "Hard", "Hard", "Very Hard", "Very Hard", "Max", "Max"];
 const STORAGE_KEY = "training-log:sessions";
 const SETTINGS_KEY = "training-log:settings";
-const APP_VERSION = "0.61";  // bump this on every deploy so you can verify the right file is live
+const APP_VERSION = "0.62";  // bump this on every deploy so you can verify the right file is live
 
 // Structured workouts — rendered first in the Strength Exercises sheet.
 // To update: edit this constant and redeploy.
@@ -1600,13 +1605,15 @@ function render() {
   app.innerHTML = workoutOverlay + `
     <div class="header">
       <div class="title">
-        <span>TRACKR</span>
+        <div class="title-left">
+          <span class="title-name">TRACKR</span>
+          <span class="title-meta">${state.sessions.length} session${state.sessions.length === 1 ? "" : "s"} &nbsp;<span style="opacity:0.5;">v${APP_VERSION}</span></span>
+        </div>
         <div class="title-actions">
           <button class="menu-btn" id="openWorkouts" aria-label="Workouts">⏱</button>
           <button class="menu-btn" id="openMenu" aria-label="Menu">⋯</button>
         </div>
       </div>
-      <div class="title-meta">${state.sessions.length} session${state.sessions.length === 1 ? "" : "s"} tracked <span style="opacity:0.5; margin-left:6px;">v${APP_VERSION}</span></div>
       <div class="tabs" role="tablist">
         <button class="tab ${state.view === "log" ? "active" : ""}" data-view="log" role="tab">LOG SESSION</button>
         <button class="tab ${state.view === "history" ? "active" : ""}" data-view="history" role="tab">HISTORY</button>
