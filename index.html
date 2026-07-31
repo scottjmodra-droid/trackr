@@ -1004,7 +1004,7 @@ function getActiveFields() {
 const RPE_LABEL = ["", "Very Easy", "Easy", "Moderate", "Moderate", "Hard", "Hard", "Very Hard", "Very Hard", "Max", "Max"];
 const STORAGE_KEY = "training-log:sessions";
 const SETTINGS_KEY = "training-log:settings";
-const APP_VERSION = "0.74";  // bump this on every deploy so you can verify the right file is live
+const APP_VERSION = "0.75";  // bump this on every deploy so you can verify the right file is live
 
 // Structured workouts — rendered first in the Strength Exercises sheet.
 // To update: edit this constant and redeploy.
@@ -1876,10 +1876,10 @@ function renderMonthByDiscipline(period) {
   const fmtBarLabel = isMin
     ? (v => (v / 60).toFixed(1).replace(/\.0$/, ""))
     : fmtCal;
-  // y-axis: same hours format but with "h" suffix
+  // y-axis: hours for minutes, no-decimal k for calories
   const fmtYAxis = isMin
     ? (v => v === 0 ? "0" : (v / 60).toFixed(1).replace(/\.0$/, "") + "h")
-    : fmtCal;
+    : (v => v === 0 ? "0" : v >= 1000 ? Math.round(v / 1000) + "k" : String(Math.round(v)));
 
   const startKey = period && period.start ? localISO(new Date(period.start)) : null;
   const endKey   = period && period.end   ? localISO(new Date(period.end))   : null;
@@ -1898,6 +1898,7 @@ function renderMonthByDiscipline(period) {
   const activeDiscs = DISCIPLINES.filter(d => discSessions[d].length > 0);
   const discTotals  = {};
   activeDiscs.forEach(d => discTotals[d] = discSessions[d].reduce((s, x) => s + x.val, 0));
+  const grandTotal  = activeDiscs.reduce((s, d) => s + discTotals[d], 0);
 
   const rawMax = activeDiscs.length > 0 ? Math.max(...activeDiscs.map(d => discTotals[d])) : 0;
 
@@ -1973,6 +1974,7 @@ function renderMonthByDiscipline(period) {
       <div class="chart-header">
         <div class="weekly-chart-label">BY DISCIPLINE</div>
         <div class="chart-header-toggles">
+          ${grandTotal > 0 ? `<span style="font-size:13px;color:#e8f84a;font-family:'Bebas Neue',sans-serif;letter-spacing:1px;">${isMin ? (grandTotal/60).toFixed(1).replace(/\.0$/,"") + "h" : fmtCal(grandTotal)}</span>` : ""}
           <div class="metric-toggle">
             <button class="metric-btn ${isMin ? "active" : ""}" data-metric="minutes">MIN</button>
             <button class="metric-btn ${!isMin ? "active" : ""}" data-metric="calories">CAL</button>
@@ -2162,7 +2164,8 @@ function renderDailyVolume(period) {
   // Y-axis: plain integer minutes in Week view, otherwise the normal h/m mix.
   const fmtYAxis = (range === "week" && isMin)
     ? (v => v === 0 ? "0" : String(v))
-    : fmtVal;
+    : isMin ? fmtVal
+    : (v => v === 0 ? "0" : v >= 1000 ? Math.round(v / 1000) + "k" : String(Math.round(v)));
   // Bar labels on All Time + minutes: convert to hours with one decimal.
   // Otherwise (Week minutes, any mode calories) just an integer of the unit.
   const fmtBarLabel = (range === "all" && isMin)
