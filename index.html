@@ -399,11 +399,11 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
   overflow: hidden;
 }
 .stat-value {
-  font-size: 26px; font-family: 'Bebas Neue', sans-serif; letter-spacing: 1px;
+  font-size: 34px; font-family: 'Bebas Neue', sans-serif; letter-spacing: 1px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   line-height: 1.1;
 }
-.stat-label { font-size: 12px; color: #d4baeb; margin-top: 3px; }
+.stat-label { font-size: 13px; color: #d4baeb; margin-top: 3px; }
 
 .history-list { display: flex; flex-direction: column; gap: 8px; }
 .history-item {
@@ -1004,7 +1004,7 @@ function getActiveFields() {
 const RPE_LABEL = ["", "Very Easy", "Easy", "Moderate", "Moderate", "Hard", "Hard", "Very Hard", "Very Hard", "Max", "Max"];
 const STORAGE_KEY = "training-log:sessions";
 const SETTINGS_KEY = "training-log:settings";
-const APP_VERSION = "0.63";  // bump this on every deploy so you can verify the right file is live
+const APP_VERSION = "0.64";  // bump this on every deploy so you can verify the right file is live
 
 // Structured workouts — rendered first in the Strength Exercises sheet.
 // To update: edit this constant and redeploy.
