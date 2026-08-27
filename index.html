@@ -2058,11 +2058,13 @@ function renderDailyVolume(period) {
       const day = new Date(d);
       buckets.push({
         key: localISO(day), date: day,
-        label: { top: day.toLocaleDateString("en-AU", { weekday: "narrow" }), bot: String(day.getDate()) },
+        label: { top: day.toLocaleDateString("en-AU", { weekday: "short" }), bot: String(day.getDate()) },
         isToday: localISO(day) === todayKey,
         isWeekend: day.getDay() === 0 || day.getDay() === 6,
       });
     }
+    // Show only the 1st and every Monday
+    buckets.forEach(b => { if (b.date.getDate() !== 1 && b.date.getDay() !== 1) b.hideLabel = true; });
   } else if (range === "annual") {
     chartTitle = `MONTHLY ${metricNoun}`;
     granularity = "month";
