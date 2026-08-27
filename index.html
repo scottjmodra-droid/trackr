@@ -300,6 +300,23 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
   background: rgba(232, 248, 74, 0.18);
   color: #e8f84a;
 }
+.chart-mode-toggle {
+  display: flex; gap: 0; margin-bottom: 8px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 8px; padding: 3px;
+}
+.chart-mode-btn {
+  flex: 1; background: transparent; border: none;
+  color: #9684b8; font-family: 'Bebas Neue', sans-serif;
+  letter-spacing: 1.5px; font-size: 11px;
+  padding: 5px 10px; border-radius: 5px;
+  cursor: pointer; transition: all 0.15s;
+}
+.chart-mode-btn.active {
+  background: rgba(232, 248, 74, 0.18);
+  color: #e8f84a;
+}
 
 .daily-avg-line {
   position: absolute; left: 0; right: 0;
@@ -1144,7 +1161,8 @@ const state = {
   activeSubType: null,   // set when activeDiscipline has subTypes
   historyTab: "Swim",
   historySubTab: null,  // subType filter within a discipline, or null for all
-  historyRange: "week",  // "week" | "month" | "all"
+  historyRange: "week",  // "week" | "month" | "annual"
+  historyChartMode: "time",  // "time" | "discipline"
   historyOffset: 0,  // 0 = current period, -1 = last week/month, etc.
   historyMetric: "minutes",  // "minutes" | "calories"
   allTimeGranularity: "month",  // "month" | "week" — only used in All Time mode
@@ -1214,6 +1232,12 @@ function periodBounds(range, offset) {
     const last = new Date(today.getFullYear(), today.getMonth() + offset + 1, 0);
     const label = first.toLocaleDateString("en-AU", { month: "long", year: "numeric" }).toUpperCase();
     return { start: first, end: last, label, isCurrent: offset === 0 };
+  }
+  if (range === "annual") {
+    const year = new Date().getFullYear() + (offset || 0);
+    const first = new Date(year, 0, 1);
+    const last  = new Date(year, 11, 31);
+    return { start: first, end: last, label: String(year), isCurrent: offset === 0 };
   }
   return { start: null, end: null, label: "ALL TIME", isCurrent: true };
 }
@@ -1792,13 +1816,13 @@ function renderRpePreview(cfg) {
 function renderHistory() {
   const r = state.historyRange;
   const period = periodBounds(r, state.historyOffset);
-  const showNav = r === "week" || r === "month";
-  const badgeText = r === "week" ? "THIS WEEK" : r === "month" ? "THIS MONTH" : "NOW";
+  const showNav = r === "week" || r === "month" || r === "annual";
+  const badgeText = r === "week" ? "THIS WEEK" : r === "month" ? "THIS MONTH" : "THIS YEAR";
   return `
     <div class="range-toggle" role="tablist">
       <button class="range-btn ${r === "week" ? "active" : ""}" data-range="week">WEEK</button>
       <button class="range-btn ${r === "month" ? "active" : ""}" data-range="month">MONTH</button>
-      <button class="range-btn ${r === "all" ? "active" : ""}" data-range="all">ALL TIME</button>
+      <button class="range-btn ${r === "annual" ? "active" : ""}" data-range="annual">ANNUAL</button>
     </div>
     ${showNav ? `
       <div class="period-nav ${period.isCurrent ? "is-current" : ""}">
@@ -1860,7 +1884,7 @@ function renderHistory() {
   `;
 }
 
-function renderMonthByDiscipline(period) {
+function renderByDiscipline(period) {
   const metric = state.historyMetric || "minutes";
   const isMin  = metric === "minutes";
   const unitLabel = isMin ? "" : " kcal";
@@ -1995,20 +2019,27 @@ function renderMonthByDiscipline(period) {
 
 function renderDailyVolume(period) {
   const range = state.historyRange || "week";
-  if (range === "month") return renderMonthByDiscipline(period);
-  const offset = state.historyOffset || 0;
+  const mode  = state.historyChartMode || (range === "month" ? "discipline" : "time");
+
+  const toggleHTML = `
+    <div class="chart-mode-toggle">
+      <button class="chart-mode-btn ${mode === "time" ? "active" : ""}" data-chart-mode="time">TIME</button>
+      <button class="chart-mode-btn ${mode === "discipline" ? "active" : ""}" data-chart-mode="discipline">DISCIPLINE</button>
+    </div>`;
+
+  if (mode === "discipline") return toggleHTML + renderByDiscipline(period);
+
   const metric = state.historyMetric || "minutes";
-  const isMin = metric === "minutes";
-  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const isMin  = metric === "minutes";
+  const today  = new Date(); today.setHours(0, 0, 0, 0);
   const todayKey = localISO(today);
-  const buckets = [];   // [{ key, date, label: {top, bot}, isToday, isWeekend, totals, total }]
-  let granularity = "day";  // or "week" for all-time
-  let chartTitle = "";
+  const buckets = [];
+  let granularity = "day";
+  let chartTitle  = "";
   const metricNoun = isMin ? "TRAINING TIME" : "CALORIES";
 
   if (range === "week") {
     chartTitle = `DAILY ${metricNoun}`;
-    // Walk the selected week (Monday → Sunday); period.start is that Monday.
     const monday = period && period.start ? new Date(period.start) : mondayOf(today);
     for (let i = 0; i < 7; i++) {
       const d = new Date(monday); d.setDate(monday.getDate() + i);
@@ -2022,7 +2053,7 @@ function renderDailyVolume(period) {
   } else if (range === "month") {
     chartTitle = `DAILY ${metricNoun}`;
     const first = period && period.start ? new Date(period.start) : new Date(today.getFullYear(), today.getMonth(), 1);
-    const last = period && period.end ? new Date(period.end) : new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    const last  = period && period.end   ? new Date(period.end)   : new Date(today.getFullYear(), today.getMonth() + 1, 0);
     for (let d = new Date(first); d <= last; d.setDate(d.getDate() + 1)) {
       const day = new Date(d);
       buckets.push({
@@ -2032,123 +2063,57 @@ function renderDailyVolume(period) {
         isWeekend: day.getDay() === 0 || day.getDay() === 6,
       });
     }
-  } else {
-    // All time: aggregate by calendar month or Mon-Sun week, user toggleable.
-    const allGran = state.allTimeGranularity || "month";
-    granularity = allGran;
-    chartTitle = `${allGran === "week" ? "WEEKLY" : "MONTHLY"} ${metricNoun}`;
-    if (state.sessions.length === 0) {
-      if (allGran === "week") {
-        const monday = mondayOf(today);
-        buckets.push({
-          key: localISO(monday), date: monday,
-          label: { top: monday.toLocaleDateString("en-AU", { month: "short" }).toUpperCase(), bot: String(monday.getDate()) },
-          isToday: true, isWeekend: false,
-        });
-      } else {
-        const first = firstOfMonth(today);
-        buckets.push({
-          key: monthKey(first), date: first,
-          label: { top: first.toLocaleDateString("en-AU", { month: "short" }).toUpperCase(), bot: "'" + String(first.getFullYear()).slice(-2) },
-          isToday: true, isWeekend: false,
-        });
-      }
-    } else {
-      let earliest = state.sessions[0].date;
-      state.sessions.forEach(s => { if (s.date < earliest) earliest = s.date; });
-      if (allGran === "week") {
-        const startMonday = mondayOf(parseLocalISO(earliest));
-        const currentMonday = mondayOf(today);
-        const thisMondayKey = localISO(currentMonday);
-        for (let m = new Date(startMonday); m <= currentMonday; m.setDate(m.getDate() + 7)) {
-          const wk = new Date(m);
-          buckets.push({
-            key: localISO(wk), date: wk,
-            label: { top: wk.toLocaleDateString("en-AU", { month: "short" }).toUpperCase(), bot: String(wk.getDate()) },
-            isToday: localISO(wk) === thisMondayKey,
-            isWeekend: false,
-          });
-        }
-      } else {
-        const startMonth = firstOfMonth(parseLocalISO(earliest));
-        const currentMonth = firstOfMonth(today);
-        const thisMonthKey = monthKey(currentMonth);
-        const cursor = new Date(startMonth);
-        while (cursor <= currentMonth) {
-          const m = new Date(cursor);
-          const monthLabel = m.toLocaleDateString("en-AU", { month: "short" }).toUpperCase();
-          const showYear = m.getMonth() === 0 || (buckets.length === 0);
-          buckets.push({
-            key: monthKey(m), date: m,
-            label: { top: monthLabel, bot: showYear ? "'" + String(m.getFullYear()).slice(-2) : "" },
-            isToday: monthKey(m) === thisMonthKey,
-            isWeekend: false,
-          });
-          cursor.setMonth(cursor.getMonth() + 1);
-        }
-      }
+  } else if (range === "annual") {
+    chartTitle = `MONTHLY ${metricNoun}`;
+    granularity = "month";
+    const year = period && period.start ? period.start.getFullYear() : today.getFullYear();
+    for (let m = 0; m < 12; m++) {
+      const first = new Date(year, m, 1);
+      buckets.push({
+        key: monthKey(first), date: first,
+        label: { top: first.toLocaleDateString("en-AU", { month: "short" }).toUpperCase(), bot: "" },
+        isToday: monthKey(first) === monthKey(today),
+        isWeekend: false,
+      });
     }
   }
 
-  // zero out totals
   buckets.forEach(b => { b.totals = {}; DISCIPLINES.forEach(d => b.totals[d] = 0); b.total = 0; });
 
-  // Weekly All Time view crams a lot of columns in. Thin the x-axis labels
-  // to every 4th bucket (counting back from the most recent) so today's
-  // column always anchors the chart.
-  if (range === "all" && granularity === "week") {
-    const lastIdx = buckets.length - 1;
-    buckets.forEach((b, i) => {
-      if ((lastIdx - i) % 4 !== 0) b.hideLabel = true;
-    });
-  }
-
-  // aggregate session values (duration in minutes OR calories) per bucket
+  // aggregate — for annual, filter to selected year via period bounds
+  const startKey = period && period.start ? localISO(period.start) : null;
+  const endKey   = period && period.end   ? localISO(period.end)   : null;
   state.sessions.forEach(s => {
+    if (startKey && s.date < startKey) return;
+    if (endKey   && s.date > endKey)   return;
     const val = parseFloat(isMin ? s.data?.duration : s.data?.calories);
     if (!val || val <= 0) return;
-    let bucketKey;
-    if (granularity === "day") {
-      bucketKey = s.date;
-    } else if (granularity === "month") {
-      bucketKey = monthKey(parseLocalISO(s.date));
-    } else {
-      bucketKey = localISO(mondayOf(parseLocalISO(s.date)));
-    }
+    const bucketKey = granularity === "month"
+      ? monthKey(parseLocalISO(s.date))
+      : s.date;
     const b = buckets.find(x => x.key === bucketKey);
     if (!b) return;
     b.totals[s.discipline] = (b.totals[s.discipline] || 0) + val;
     b.total += val;
   });
 
-  // pick a nice yMax that's a multiple of the gridStep — different scales per metric
   const rawMax = Math.max(...buckets.map(b => b.total), 0);
   function pickStepMin(v) {
-    if (v <= 180) return 30;
-    if (v <= 360) return 60;
-    if (v <= 720) return 120;
-    if (v <= 1440) return 240;
-    return Math.ceil(v / 6 / 60) * 60;
+    if (v <= 180) return 30; if (v <= 360) return 60; if (v <= 720) return 120;
+    if (v <= 1440) return 240; return Math.ceil(v / 6 / 60) * 60;
   }
   function pickStepCal(v) {
-    if (v <= 500) return 100;
-    if (v <= 1000) return 200;
-    if (v <= 2500) return 500;
-    if (v <= 5000) return 1000;
-    return Math.ceil(v / 5 / 1000) * 1000;
+    if (v <= 500) return 100; if (v <= 1000) return 200; if (v <= 2500) return 500;
+    if (v <= 5000) return 1000; return Math.ceil(v / 5 / 1000) * 1000;
   }
   let step = isMin ? pickStepMin(rawMax) : pickStepCal(rawMax);
   let yMax = Math.max(step * 2, Math.ceil(rawMax / step) * step);
   if (yMax === 0) yMax = step * 2;
   const chartHeight = 160;
 
-  // Average over ELAPSED buckets only (rest days included, future days excluded).
-  // So on Wednesday in "this week" view, divide by 3 (Mon/Tue/Wed) — not 7.
-  // For all-time weekly view: count weeks whose Monday is on or before today.
   const elapsedBuckets = buckets.filter(b => b.date <= today);
   const avgVal = elapsedBuckets.length > 0
-    ? elapsedBuckets.reduce((sum, b) => sum + b.total, 0) / elapsedBuckets.length
-    : 0;
+    ? elapsedBuckets.reduce((sum, b) => sum + b.total, 0) / elapsedBuckets.length : 0;
 
   function fmtMin(m) {
     m = Math.round(m);
@@ -2159,56 +2124,41 @@ function renderDailyVolume(period) {
   }
   function fmtCal(c) {
     c = Math.round(c);
-    if (c >= 1000) return (c / 1000).toFixed(1) + "k";
-    return String(c);
+    return c >= 1000 ? (c / 1000).toFixed(1) + "k" : String(c);
   }
-  const fmtVal = isMin ? fmtMin : fmtCal;
+  const fmtVal    = isMin ? fmtMin : fmtCal;
   const unitLabel = isMin ? "" : " kcal";
-  // Y-axis: plain integer minutes in Week view, otherwise the normal h/m mix.
-  const fmtYAxis = (range === "week" && isMin)
+  const fmtYAxis  = (range === "week" && isMin)
     ? (v => v === 0 ? "0" : String(v))
+    : (range === "annual" && isMin)
+    ? (v => v === 0 ? "0" : (v / 60).toFixed(1).replace(/\.0$/, "") + "h")
     : isMin ? fmtVal
     : (v => v === 0 ? "0" : v >= 1000 ? Math.round(v / 1000) + "k" : String(Math.round(v)));
-  // Bar labels on All Time + minutes: convert to hours with one decimal.
-  // Otherwise (Week minutes, any mode calories) just an integer of the unit.
-  const fmtBarLabel = (range === "all" && isMin)
-    ? (v => (v / 60).toFixed(1))           // hours w/ 1dp for All Time minutes
-    : isMin
-    ? (v => String(Math.round(v)))         // plain integer minutes
-    : fmtCal;                              // calories share fmtCal's k-format
+  const fmtBarLabel = (range === "annual" && isMin)
+    ? (v => (v / 60).toFixed(1))
+    : isMin ? (v => String(Math.round(v))) : fmtCal;
 
-  // Build y-axis ticks (every step from 0 to yMax inclusive)
   const ticks = [];
   for (let v = 0; v <= yMax; v += step) ticks.push(v);
 
   const dense = buckets.length > 14;
   const yAxisHTML = ticks.map(v => {
     const pctFromTop = ((yMax - v) / yMax) * 100;
-    const zero = v === 0 ? "y-zero" : "";
-    return `<span class="${zero}" style="top:${pctFromTop}%;">${fmtYAxis(v)}</span>`;
+    return `<span class="${v === 0 ? "y-zero" : ""}" style="top:${pctFromTop}%;">${fmtYAxis(v)}</span>`;
   }).join("");
   const gridHTML = ticks.map(v => {
     const pctFromTop = ((yMax - v) / yMax) * 100;
-    const zero = v === 0 ? "zero" : "";
-    return `<div class="${zero}" style="top:${pctFromTop}%;"></div>`;
+    return `<div class="${v === 0 ? "zero" : ""}" style="top:${pctFromTop}%;"></div>`;
   }).join("");
 
-  // Average line position (from bottom). Only show if avg > 0 and chart has data.
-  // The line itself communicates the average — no label, since the chart area is tight.
   const avgPctFromBottom = avgVal > 0 ? (avgVal / yMax) * 100 : 0;
   const avgLineHTML = avgVal > 0 ? `<div class="daily-avg-line" style="bottom:${avgPctFromBottom}%;"></div>` : "";
 
-  return `
+  return toggleHTML + `
     <div>
       <div class="chart-header">
         <div class="weekly-chart-label">${chartTitle}</div>
         <div class="chart-header-toggles">
-          ${range === "all" ? `
-            <div class="metric-toggle">
-              <button class="metric-btn ${(state.allTimeGranularity || "month") === "week" ? "active" : ""}" data-all-gran="week">WK</button>
-              <button class="metric-btn ${(state.allTimeGranularity || "month") === "month" ? "active" : ""}" data-all-gran="month">MTH</button>
-            </div>
-          ` : ""}
           <div class="metric-toggle">
             <button class="metric-btn ${isMin ? "active" : ""}" data-metric="minutes">MIN</button>
             <button class="metric-btn ${!isMin ? "active" : ""}" data-metric="calories">CAL</button>
@@ -2220,17 +2170,16 @@ function renderDailyVolume(period) {
         <div class="daily-grid">${gridHTML}${avgLineHTML}</div>
         <div class="daily-bars">
           ${(() => {
-            // Show numeric totals only on the views where columns are wide enough.
-            const showLabels = range === "week" || (range === "all" && granularity === "month");
-            const SEG_MIN_PX = 16;  // hide segment label if segment shorter than this
+            const showLabels = range === "week" || range === "annual";
+            const SEG_MIN_PX = 16;
             return buckets.map(b => {
               const stackHeight = b.total > 0 ? (b.total / yMax) * chartHeight : 0;
               const segments = DISCIPLINES.filter(d => b.totals[d] > 0).map(d => {
-                const segPct = (b.totals[d] / b.total) * 100;
+                const segPct    = (b.totals[d] / b.total) * 100;
                 const segHeightPx = (b.totals[d] / yMax) * chartHeight;
-                const segLabel = (showLabels && segHeightPx >= SEG_MIN_PX)
+                const segLabel  = (showLabels && segHeightPx >= SEG_MIN_PX)
                   ? `<span class="daily-bar-seg-label">${fmtBarLabel(b.totals[d])}</span>` : "";
-                return `<div class="daily-bar-seg" title="${d}: ${fmtVal(b.totals[d])}${unitLabel}" style="height:${segPct}%; background:${DISCIPLINE_CONFIG[d].color};">${segLabel}</div>`;
+                return `<div class="daily-bar-seg" title="${d}: ${fmtVal(b.totals[d])}${unitLabel}" style="height:${segPct}%;background:${DISCIPLINE_CONFIG[d].color};">${segLabel}</div>`;
               }).join("");
               const colTotal = (showLabels && b.total > 0)
                 ? `<div class="daily-bar-total" style="bottom:${stackHeight + 3}px;">${fmtBarLabel(b.total)}</div>` : "";
@@ -3026,9 +2975,14 @@ function attachHandlers() {
   document.querySelectorAll("[data-range]").forEach(b => {
     b.addEventListener("click", () => {
       state.historyRange = b.dataset.range;
-      state.historyOffset = 0;  // always start at the current period when switching
+      state.historyOffset = 0;
+      // default mode per tab: month → discipline (its primary view); others → time
+      state.historyChartMode = b.dataset.range === "month" ? "discipline" : "time";
       render();
     });
+  });
+  document.querySelectorAll("[data-chart-mode]").forEach(b => {
+    b.addEventListener("click", () => { state.historyChartMode = b.dataset.chartMode; render(); });
   });
   document.querySelectorAll("[data-period-step]").forEach(b => {
     b.addEventListener("click", () => {
