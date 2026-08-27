@@ -684,17 +684,22 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
   font-family: 'Bebas Neue', sans-serif; letter-spacing: 2px; font-size: 13px;
 }
 /* Full workout peek overlay */
-.workout-overlay.workout-peek { overflow-y: auto; padding-top: calc(16px + env(safe-area-inset-top)); gap: 10px; }
+.workout-overlay.workout-peek { overflow: hidden; padding-top: calc(16px + env(safe-area-inset-top)); gap: 10px; }
 .workout-peek-header {
   display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 6px;
+  margin-bottom: 6px; flex-shrink: 0;
 }
 .workout-peek-close {
   background: transparent; border: none; color: #d4baeb;
   font-family: 'Bebas Neue', sans-serif; letter-spacing: 1.5px; font-size: 13px;
   padding: 4px 0;
 }
-.workout-peek-list { display: flex; flex-direction: column; gap: 2px; }
+.workout-peek-list {
+  display: flex; flex-direction: column; gap: 2px;
+  flex: 1; min-height: 0; overflow-y: auto;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  -webkit-overflow-scrolling: touch;
+}
 .workout-peek-row {
   display: flex; align-items: center; gap: 10px;
   padding: 9px 12px; border-radius: 8px;
@@ -1004,7 +1009,7 @@ function getActiveFields() {
 const RPE_LABEL = ["", "Very Easy", "Easy", "Moderate", "Moderate", "Hard", "Hard", "Very Hard", "Very Hard", "Max", "Max"];
 const STORAGE_KEY = "training-log:sessions";
 const SETTINGS_KEY = "training-log:settings";
-const APP_VERSION = "0.77";  // bump this on every deploy so you can verify the right file is live
+const APP_VERSION = "0.78";  // bump this on every deploy so you can verify the right file is live
 
 // Structured workouts — rendered first in the Strength Exercises sheet.
 // To update: edit this constant and redeploy.
@@ -2421,20 +2426,42 @@ document.addEventListener("visibilitychange", () => {
     }).catch(() => {});
   }
 });
+// iOS doesn't treat visibilitychange as a user gesture, so ctx.resume() above
+// can silently fail. Any touchstart IS a gesture — use it to re-activate audio
+// whenever the context was suspended (e.g. after returning from Spotify).
+document.addEventListener("touchstart", () => {
+  if (!workoutAudioCtx) return;
+  if (workoutAudioCtx.state !== "running") {
+    workoutAudioCtx.resume().then(() => {
+      if (!workoutSilentNode) startSilentKeepAlive(workoutAudioCtx);
+    }).catch(() => {});
+  }
+}, { passive: true });
 async function startWorkout(workoutIdx = 0) {
-  // Guard: block re-entry if a workout is already running OR if this function
-  // is mid-flight (state.workoutTimer is set immediately below so a second tap
-  // will hit this check before the await resumes).
   if (state.workoutTimer) return;
   const workout = WORKOUTS[workoutIdx];
   if (!workout) return;
   const totalMoves = workout.sections.reduce((a, s) => a + s.moves.length, 0);
   acquireWorkoutWakeLock();
-  // Set up the timer and show the GET READY screen IMMEDIATELY so the user
-  // gets instant visual feedback and any concurrent tap is blocked by the
-  // guard above. Audio unlock runs in the background — the 2-second countdown
-  // gives it time to complete before real beeps need to fire.
-  // Set state BEFORE the await — guard blocks re-entry for the duration.
+
+  // ── Synchronous audio unlock (BEFORE any await) ───────────────────────────
+  // On iOS, it is the synchronous *call* to unmute.play() — not the resolved
+  // promise — that flips AVAudioSession from "Ambient" (silenced by the mute
+  // switch) to "Playback" (ignores the switch). Any await before this call
+  // breaks the gesture chain and the session switch never happens.
+  // Similarly, AudioContext created synchronously inside a gesture handler is
+  // granted "running" state immediately by iOS.
+  const unmute = document.getElementById("iosUnmuteHack");
+  if (unmute && unmute.paused) { unmute.volume = 0.001; unmute.play().catch(() => {}); }
+  if (!workoutAudioCtx) {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (Ctx) try { workoutAudioCtx = new Ctx(); } catch (e) {}
+  }
+  if (workoutAudioCtx && workoutAudioCtx.state !== "running") {
+    workoutAudioCtx.resume().catch(() => {});  // fire-and-forget, still in gesture
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   state.workoutTimer = {
     workoutIdx, totalMoves,
     startedAt: Date.now() + 5000,
@@ -2442,25 +2469,18 @@ async function startWorkout(workoutIdx = 0) {
   };
   workoutLastVibKey = "PENDING";
   workoutFiredBeeps = new Set();
-  // Close the sheet immediately — gives instant visual feedback (slides away)
-  // before any async work, so the button never feels dead.
   document.getElementById("workoutSheet").classList.remove("open");
-  // Start the tick synchronously (setInterval doesn't break the gesture context).
-  // During the 2-second "get ready" window the tick only calls render() — no
-  // beeps — so audio doesn't need to be ready yet.
   scheduleWorkoutTick();
-  // Now unlock audio within the user gesture. Only a synchronous setInterval
-  // and a classList change have happened above, so iOS still considers this
-  // within the original tap gesture.
-  const ctx = await ensureAudioCtx();
-  if (ctx) startSilentKeepAlive(ctx);
+
+  // Safe to await now — the session switch is already triggered above.
+  if (workoutAudioCtx) {
+    if (workoutAudioCtx.state !== "running") await workoutAudioCtx.resume().catch(() => {});
+    startSilentKeepAlive(workoutAudioCtx);
+  }
   render();
-  // Two warning beeps spaced 1 s apart while the user braces.
   playBeep(800, 200);
   navigator.vibrate?.(60);
   setTimeout(() => { playBeep(800, 200); navigator.vibrate?.(60); }, 1000);
-  // GO beep + the first-move vibration are fired by the tick when the
-  // pending phase ends — see scheduleWorkoutTick below.
 }
 function pauseWorkout() {
   if (!state.workoutTimer || state.workoutTimer.pausedAt) return;
