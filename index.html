@@ -1325,6 +1325,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
     z-index:90;
     display:none;
     flex-direction:column;
+    padding-top:env(safe-area-inset-top);
   }
   .reach-overlay .preview-overlay.open {display:flex;}
   .reach-overlay .preview-top {
@@ -1472,6 +1473,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
     display:none;
     flex-direction:column;
     overflow:hidden;
+    padding-top:env(safe-area-inset-top);
   }
   .reach-overlay .play-overlay.open {display:flex;}
   .reach-overlay .play-bg {
