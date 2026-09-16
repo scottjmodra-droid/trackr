@@ -3456,8 +3456,12 @@ async function resumeWorkout() {
 function skipWorkoutMove() {
   const t = state.workoutTimer; if (!t) return;
   const c = computeWorkoutState(); if (!c || c.done) return;
-  // Move startedAt back so elapsedSec becomes (moveIdx+1) * 60
-  const newElapsedMs = (c.moveIdx + 1) * 60 * 1000;
+  // Sum actual move durations (some moves are 50s, not 60s) so the skip
+  // lands exactly at the start of the next move, not 10s into it.
+  const workout = WORKOUTS[t.workoutIdx] || WORKOUTS[0];
+  const flat = flattenWorkout(workout);
+  let newElapsedMs = 0;
+  for (let i = 0; i <= c.moveIdx; i++) newElapsedMs += moveDuration(flat, i) * 1000;
   const ref = t.pausedAt || Date.now();
   t.startedAt = ref - t.totalPausedMs - newElapsedMs;
   navigator.vibrate?.(60);
