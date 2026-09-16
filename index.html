@@ -5603,10 +5603,22 @@ function reach_renderSegmentUI(seg){
   if(seg.ready){
     document.getElementById('reach-progressText').textContent = 'Get ready';
     restTag.style.display='none';
-    nameEl.textContent = 'Get ready';
-    sideEl.textContent = 'Starting shortly';
     infoBtn.style.display='none';
-    playBg.classList.remove('visible');
+    if(upcoming){
+      nameEl.textContent = upcoming.stretch.name;
+      sideEl.textContent = upcoming.side ? `First up · ${upcoming.side}` : 'First up';
+      const img = STRETCH_IMAGES[upcoming.stretch.id];
+      if(img && img.playbg){
+        playBg.style.backgroundImage = `url('${img.playbg}')`;
+        playBg.classList.add('visible');
+      } else {
+        playBg.classList.remove('visible');
+      }
+    } else {
+      nameEl.textContent = 'Get ready';
+      sideEl.textContent = 'Starting shortly';
+      playBg.classList.remove('visible');
+    }
   } else if(seg.rest){
     document.getElementById('reach-progressText').textContent = 'REST';
     restTag.style.display='block';
@@ -5646,7 +5658,7 @@ function reach_renderSegmentUI(seg){
   // During rest the main display already shows the upcoming stretch, so hide
   // the upNext bar to avoid repetition. During a stretch, show what's after.
   const upNext = document.getElementById('reach-upNext');
-  if(seg.rest && upcoming){
+  if((seg.rest || seg.ready) && upcoming){
     const steps = (upcoming.stretch.how || []).map((s,i)=>`
       <div class="rest-how-step">
         <div class="rest-how-step-num">${i+1}</div>
