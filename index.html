@@ -569,6 +569,31 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
   padding: 1px 0;
   flex-shrink: 0;
 }
+.prog-exercise {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+.prog-exercise:last-child { border-bottom: none; }
+.prog-ex-num {
+  min-width: 28px; height: 28px;
+  background: #e8f84a; color: #1a0a2e;
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-family: 'Bebas Neue', sans-serif; font-size: 14px; letter-spacing: 1px;
+  flex-shrink: 0; margin-top: 1px;
+}
+.prog-ex-body { flex: 1; }
+.prog-ex-name { font-size: 14px; font-weight: 600; color: #f0e6ff; margin-bottom: 2px; }
+.prog-ex-sets { font-size: 13px; color: #e8f84a; font-family: 'Bebas Neue', sans-serif; letter-spacing: 1px; margin-bottom: 2px; }
+.prog-ex-cue { font-size: 12px; color: #9684b8; }
+.prog-footer {
+  margin-top: 12px; padding-top: 10px;
+  border-top: 1px dashed rgba(255,255,255,0.10);
+  font-size: 12px; color: #9684b8; line-height: 1.5;
+}
+.prog-priority { color: #e8f84a; margin-top: 3px; }
+.workout-card.is-program { border-left-color: #e8f84a; }
+
 .workout-row {
   display: flex; align-items: center;
   gap: 10px; padding: 7px 0;
@@ -1480,7 +1505,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
     position:absolute;inset:0;
     z-index:-1;
     background-color:var(--moss-deep);
-    background-size:contain;
+    background-size:cover;
     background-repeat:no-repeat;
     background-position:center;
     opacity:0;
@@ -1490,7 +1515,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
   .reach-overlay .play-bg::after {
     content:'';
     position:absolute;inset:0;
-    background:linear-gradient(165deg, rgba(26,6,51,0.86), rgba(13,3,31,0.92));
+    background:linear-gradient(165deg, rgba(26,6,51,0.38), rgba(13,3,31,0.52));
   }
   .reach-overlay .play-top {
     display:flex;
@@ -1553,6 +1578,35 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
     font-size:13.5px;
     color:#A9B79E;
     margin-top:2px;
+  }
+  .reach-overlay .rest-how {
+    text-align:left;
+    width:100%;
+    max-width:320px;
+    margin-top:10px;
+  }
+  .reach-overlay .rest-how-step {
+    display:flex;
+    gap:10px;
+    align-items:flex-start;
+    font-size:12.5px;
+    color:rgba(255,255,255,0.72);
+    margin-bottom:6px;
+    line-height:1.4;
+  }
+  .reach-overlay .rest-how-step-num {
+    min-width:18px;
+    height:18px;
+    background:rgba(139,92,246,0.30);
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:11px;
+    font-weight:700;
+    color:var(--moss);
+    flex-shrink:0;
+    margin-top:1px;
   }
   .reach-overlay .play-controls {
     display:flex;
@@ -2090,6 +2144,26 @@ const WORKOUTS = [
       { title: "Set 2", moves: ["Superman Hold", "Bear Crawl Hold", "Plank Shoulder Taps", "Inchworm", "Push-Ups", "Boxing", "Dips", "YOU CHOOSE (or plank)", "YOU CHOOSE (or plank)", "Rest"] },
       { title: "Set 3", moves: ["Plank", "Bicycle Crunch", "Russian Twists", "Flutter Kicks", "Heel Taps", "Side Plank R", "Side Plank L", "Plank", "YOU CHOOSE (or plank)", "YOU CHOOSE (or plank)"] },
     ],
+  },
+];
+
+// Structured (reps-based) workout programs — shown in the workout list with
+// their own detail view, separate from the HIIT timer workouts above.
+const WORKOUT_PROGRAMS = [
+  {
+    icon: "🏋️",
+    title: "Shoulders, Back & Traps",
+    note: "2x / week · Band + 3kg Ball",
+    exercises: [
+      { name: "Band Rows",              sets: "3 × 12–15",       cue: "Anchor band, squeeze shoulder blades together" },
+      { name: "Band Face Pulls",        sets: "3 × 12–15",       cue: "Pull to face, elbows high — top priority for posture" },
+      { name: "Push-ups",               sets: "3 × 8–12",        cue: "Knees down if needed, keep core tight" },
+      { name: "Med Ball Overhead Press",sets: "3 × 10–12",       cue: "Light & controlled, 3kg ball" },
+      { name: "Superman Holds",         sets: "3 × 20–30 sec",   cue: "Face down, lift arms + legs together" },
+      { name: "Band External Rotation", sets: "3 × 12 each arm", cue: "Elbow pinned to side, rotate outward" },
+    ],
+    footer: "Rest ~60s between exercises, ~90s between rounds",
+    priority: "Priority if short on time: Face Pulls + Superman Holds",
   },
 ];
 
@@ -4256,6 +4330,16 @@ function renderWorkoutPlan(mode) {
         <div class="workout-list-item-chev">›</div>
       </button>
     `).join("");
+    // Structured (reps-based) programs.
+    content += WORKOUT_PROGRAMS.map((p, idx) => `
+      <button class="workout-list-item" data-workout-detail="prog-${idx}">
+        <div class="workout-list-item-main">
+          <div class="workout-list-item-title">${p.icon} ${escapeHtml(p.title)}</div>
+          ${p.note ? `<div class="workout-list-item-note">${escapeHtml(p.note)}</div>` : ""}
+        </div>
+        <div class="workout-list-item-chev">›</div>
+      </button>
+    `).join("");
     // Strength Exercises row at the bottom — same look, different destination.
     content += `
       <button class="workout-list-item" data-workout-detail="exercises">
@@ -4293,6 +4377,36 @@ function renderWorkoutPlan(mode) {
       `;
     }).join("");
     content = `<button class="workout-back-btn" data-workout-back>‹ All workouts</button>` + legend + cards;
+  } else if (typeof detailIdx === "string" && detailIdx.startsWith("prog-")) {
+    // PROGRAM DETAIL view (reps-based, no timer)
+    if (titleEl) titleEl.textContent = "Workouts";
+    const progIdx = parseInt(detailIdx.slice(5), 10);
+    const p = WORKOUT_PROGRAMS[progIdx] || WORKOUT_PROGRAMS[0];
+    const exRows = p.exercises.map((ex, i) => `
+      <div class="prog-exercise">
+        <div class="prog-ex-num">${i + 1}</div>
+        <div class="prog-ex-body">
+          <div class="prog-ex-name">${escapeHtml(ex.name)}</div>
+          <div class="prog-ex-sets">${escapeHtml(ex.sets)}</div>
+          <div class="prog-ex-cue">${escapeHtml(ex.cue)}</div>
+        </div>
+      </div>
+    `).join("");
+    content = `
+      <button class="workout-back-btn" data-workout-back>‹ All workouts</button>
+      <div class="workout-card is-program">
+        <div class="workout-card-head">
+          <div class="workout-card-name">${p.icon} ${escapeHtml(p.title)}</div>
+          ${p.note ? `<div class="workout-card-weeks">${escapeHtml(p.note)}</div>` : ""}
+        </div>
+        ${exRows}
+        ${p.footer || p.priority ? `
+          <div class="prog-footer">
+            ${p.footer ? `<div>${escapeHtml(p.footer)}</div>` : ""}
+            ${p.priority ? `<div class="prog-priority">${escapeHtml(p.priority)}</div>` : ""}
+          </div>` : ""}
+      </div>
+    `;
   } else {
     // WORKOUT DETAIL view
     if (titleEl) titleEl.textContent = "Workouts";
@@ -5156,7 +5270,7 @@ function reach_ensureAudioGraph(ctx){
 // that made the drum louder/punchier in the first place — 100% keeps the
 // old fixed loudness exactly, 0% is a full mute.
 function reach_applyBeepVolume(){
-  if(reachMasterGain) reachMasterGain.gain.value = 1.8 * (reachSettings.beepVolume/100);
+  if(reachMasterGain) reachMasterGain.gain.value = 5.0 * (reachSettings.beepVolume/100);
 }
 function reach_drumOutput(ctx){
   reach_ensureAudioGraph(ctx);
@@ -5477,27 +5591,44 @@ function reach_stretchCountLabel(){
 }
 
 function reach_renderSegmentUI(seg){
-  document.getElementById('reach-progressText').textContent = seg.ready ? 'Get ready' : reach_stretchCountLabel();
   reach_setPauseIcon(false);
   const nameEl = document.getElementById('reach-playStretchName');
   const sideEl = document.getElementById('reach-playSideTag');
   const restTag = document.getElementById('reach-restTag');
   const infoBtn = document.getElementById('reach-playInfoBtn');
   const playBg = document.getElementById('reach-playBg');
+  // Find the next real stretch in the sequence from current position onward.
+  const upcoming = reach_sequence.slice(reach_seqIndex+1).find(x=>!x.rest && !x.ready);
 
   if(seg.ready){
+    document.getElementById('reach-progressText').textContent = 'Get ready';
     restTag.style.display='none';
     nameEl.textContent = 'Get ready';
     sideEl.textContent = 'Starting shortly';
     infoBtn.style.display='none';
     playBg.classList.remove('visible');
   } else if(seg.rest){
+    document.getElementById('reach-progressText').textContent = 'REST';
     restTag.style.display='block';
-    nameEl.textContent = 'Transition';
-    sideEl.textContent = 'Next up in a moment';
     infoBtn.style.display='none';
-    playBg.classList.remove('visible');
+    // Show the upcoming stretch's name, side and photo on the transition screen.
+    if(upcoming){
+      nameEl.textContent = upcoming.stretch.name;
+      sideEl.textContent = upcoming.side ? `Up next · ${upcoming.side}` : 'Up next';
+      const img = STRETCH_IMAGES[upcoming.stretch.id];
+      if(img && img.playbg){
+        playBg.style.backgroundImage = `url('${img.playbg}')`;
+        playBg.classList.add('visible');
+      } else {
+        playBg.classList.remove('visible');
+      }
+    } else {
+      nameEl.textContent = 'All done';
+      sideEl.textContent = 'Last transition';
+      playBg.classList.remove('visible');
+    }
   } else {
+    document.getElementById('reach-progressText').textContent = reach_stretchCountLabel();
     restTag.style.display='none';
     nameEl.textContent = seg.stretch.name;
     sideEl.textContent = seg.side || '';
@@ -5512,13 +5643,21 @@ function reach_renderSegmentUI(seg){
     }
   }
 
-  // Look past any transition segment to the next real stretch — mentioning
-  // the transition itself is redundant since the UI already shows it.
-  const upcoming = reach_sequence.slice(reach_seqIndex+1).find(x=>!x.rest && !x.ready);
+  // During rest the main display already shows the upcoming stretch, so hide
+  // the upNext bar to avoid repetition. During a stretch, show what's after.
   const upNext = document.getElementById('reach-upNext');
-  upNext.textContent = upcoming
-    ? `Next: ${upcoming.stretch.name}${upcoming.side ? ' — '+upcoming.side : ''}`
-    : 'Last one';
+  if(seg.rest && upcoming){
+    const steps = (upcoming.stretch.how || []).map((s,i)=>`
+      <div class="rest-how-step">
+        <div class="rest-how-step-num">${i+1}</div>
+        <div>${s}</div>
+      </div>`).join('');
+    upNext.innerHTML = steps ? `<div class="rest-how">${steps}</div>` : '';
+  } else {
+    upNext.textContent = upcoming
+      ? `Next: ${upcoming.stretch.name}${upcoming.side ? ' — '+upcoming.side : ''}`
+      : 'Last one';
+  }
 }
 
 function reach_startTicking(){
