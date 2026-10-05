@@ -764,10 +764,19 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
   font-family: 'Bebas Neue', sans-serif; letter-spacing: 2px; font-size: 13px;
 }
 /* Full workout peek overlay */
-.workout-overlay.workout-peek { overflow: hidden; padding-top: calc(16px + env(safe-area-inset-top)); padding-bottom: 0; gap: 10px; }
+.workout-overlay.workout-peek { padding: 0; gap: 0; }
+.workout-peek-scroll {
+  position: absolute; inset: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
 .workout-peek-header {
+  position: sticky; top: 0; z-index: 1;
+  background: #1a0633;
   display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 6px; flex-shrink: 0;
+  padding: calc(env(safe-area-inset-top) + 14px) 24px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
 }
 .workout-peek-close {
   background: transparent; border: none; color: #d4baeb;
@@ -776,9 +785,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
 }
 .workout-peek-list {
   display: flex; flex-direction: column; gap: 2px;
-  flex: 1; min-height: 0; overflow-y: auto;
-  padding-bottom: calc(12px + env(safe-area-inset-bottom));
-  -webkit-overflow-scrolling: touch;
+  padding: 10px 24px calc(32px + env(safe-area-inset-bottom));
 }
 .workout-peek-row {
   display: flex; align-items: center; gap: 10px;
@@ -955,7 +962,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
     --line:rgba(139,92,246,0.25);
     --amber:#e8f84a;
     --white:#ffffff;
-    --radius:14px;
+    --radius:10px;
     --shadow:0 1px 2px rgba(0,0,0,0.25), 0 4px 14px rgba(0,0,0,0.25);
   }
   
@@ -968,80 +975,67 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
     -webkit-font-smoothing:antialiased;
     padding-bottom:110px;
   }
-  .reach-overlay h1, .reach-overlay h2, .reach-overlay h3, .reach-overlay .serif {font-family:'Fraunces',serif;}
+  .reach-overlay h2, .reach-overlay h3 {font-family:'Bebas Neue',sans-serif; letter-spacing:1.5px;}
+  .reach-overlay .serif {font-family:'Fraunces',serif;}
   .reach-overlay a {color:inherit;}
   .reach-overlay button {font-family:inherit;cursor:pointer;}
 
   /* ---------- Header ---------- */
   .reach-overlay header.top {
-    padding:16px 20px 8px;
+    padding:14px 16px 6px;
     max-width:920px;
     margin:0 auto;
     display:flex;
     align-items:center;
-    justify-content:space-between;
-    gap:12px;
+    gap:10px;
   }
-  .reach-overlay .brand {
+  .reach-overlay .reach-header-title {
+    font-family:'Bebas Neue',sans-serif;
+    font-size:22px;
+    letter-spacing:3px;
+    color:var(--ink);
+    margin:0;
+    flex:1;
+  }
+  .reach-overlay .reach-header-actions {
     display:flex;
-    align-items:baseline;
-    gap:12px;
+    gap:8px;
+    align-items:center;
   }
   .reach-overlay .header-icon-btn {
-    background:var(--bg-alt);
-    border:1px solid var(--line);
+    background:rgba(255,255,255,0.08);
+    border:1px solid rgba(255,255,255,0.14);
     color:var(--ink);
-    width:38px;height:38px;
-    border-radius:50%;
-    display:flex;align-items:center;justify-content:center;
-    flex-shrink:0;
-  }
-  .reach-overlay .header-icon-btn svg {width:19px;height:19px;}
-  .reach-overlay .brand .mark {
     width:34px;height:34px;
-    border-radius:9px;
-    background:linear-gradient(155deg,var(--moss),var(--moss-dark));
+    border-radius:8px;
     display:flex;align-items:center;justify-content:center;
     flex-shrink:0;
+    font-size:14px;
   }
-  .reach-overlay .brand .mark svg {width:18px;height:18px;}
-  .reach-overlay .brand h1 {
-    font-size:26px;
-    font-weight:600;
-    margin:0;
-    color:var(--ink);
-    letter-spacing:-0.01em;
-  }
-  .reach-overlay .version-tag {
-    font-size:11.5px;
-    font-weight:600;
-    color:var(--moss-dark);
-    background:var(--sage-pale);
-    border:1px solid var(--line);
-    padding:3px 9px;
-    border-radius:20px;
-    align-self:center;
-  }
+  .reach-overlay .header-icon-btn svg {width:17px;height:17px;}
 
   .reach-overlay nav.tabs {
     display:flex;
     gap:6px;
     max-width:920px;
-    margin:8px auto 0;
-    padding:0 20px;
+    margin:10px auto 0;
+    padding:0 16px;
   }
   .reach-overlay nav.tabs button {
-    background:none;border:none;
-    font-size:14.5px;
-    font-weight:600;
+    background:rgba(255,255,255,0.07);
+    border:1px solid rgba(255,255,255,0.1);
+    font-family:'Bebas Neue',sans-serif;
+    font-size:14px;
+    letter-spacing:1.5px;
     color:var(--ink-faint);
-    padding:10px 4px;
-    border-bottom:2px solid transparent;
-    margin-right:18px;
+    padding:7px 16px;
+    border-radius:20px;
+    transition:all 0.15s;
   }
   .reach-overlay nav.tabs button.active {
-    color:var(--ink);
-    border-bottom-color:var(--moss);
+    background:var(--moss);
+    border-color:var(--moss);
+    color:#fff;
   }
 
   .reach-overlay main {
@@ -1263,9 +1257,9 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
     min-width:0;
   }
   .reach-overlay .session-bar .totals .n {
-    font-family:'Fraunces',serif;
-    font-size:20px;
-    font-weight:600;
+    font-family:'Bebas Neue',sans-serif;
+    font-size:22px;
+    letter-spacing:1.5px;
   }
   .reach-overlay .session-bar .totals .sub {
     font-size:12px;
@@ -1273,24 +1267,26 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
     margin-top:1px;
   }
   .reach-overlay .session-bar button.ghost {
-    background:none;
-    border:1px solid rgba(255,255,255,0.3);
+    background:rgba(255,255,255,0.08);
+    border:1px solid rgba(255,255,255,0.2);
     color:var(--white);
-    padding:9px 14px;
-    border-radius:24px;
-    font-size:13px;
-    font-weight:600;
+    padding:9px 16px;
+    border-radius:10px;
+    font-family:'Bebas Neue',sans-serif;
+    font-size:14px;
+    letter-spacing:1.5px;
     white-space:nowrap;
   }
-  .reach-overlay .session-bar button.ghost:hover {border-color:rgba(255,255,255,0.6);}
+  .reach-overlay .session-bar button.ghost:hover {border-color:rgba(255,255,255,0.45);}
   .reach-overlay .session-bar button.play {
     background:var(--amber);
     border:none;
     color:var(--moss-deep);
-    padding:11px 20px;
-    border-radius:24px;
-    font-size:14px;
-    font-weight:700;
+    padding:11px 22px;
+    border-radius:10px;
+    font-family:'Bebas Neue',sans-serif;
+    font-size:16px;
+    letter-spacing:2px;
     white-space:nowrap;
   }
   .reach-overlay .session-bar button.play:disabled {opacity:.35;pointer-events:none;}
@@ -1520,6 +1516,88 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
     color:var(--ink-faint);
     font-size:14px;
   }
+
+  /* ---------- Free Stretch card ---------- */
+  .reach-overlay .free-stretch-card {
+    background:var(--paper);
+    border:2px dashed var(--line);
+    border-radius:var(--radius);
+    padding:14px 16px 16px;
+    margin-bottom:20px;
+  }
+  .reach-overlay .free-stretch-card h3 {
+    font-size:14px;
+    letter-spacing:2.5px;
+    margin:0 0 12px;
+    color:var(--ink-soft);
+  }
+  .reach-overlay .free-stretch-row {margin-bottom:10px;}
+  .reach-overlay .free-stretch-row:last-of-type {margin-bottom:0;}
+  .reach-overlay .fs-label {
+    font-size:10px;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color:var(--ink-faint);
+    font-weight:700;
+    margin-bottom:6px;
+  }
+  .reach-overlay .fs-pills {display:flex;gap:6px;flex-wrap:wrap;}
+  .reach-overlay .fs-pill {
+    background:rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.12);
+    color:var(--ink-faint);
+    padding:6px 13px;
+    border-radius:20px;
+    font-family:'Bebas Neue',sans-serif;
+    font-size:13px;
+    letter-spacing:1.5px;
+    cursor:pointer;
+    transition:all 0.15s;
+  }
+  .reach-overlay .fs-pill.active {
+    background:var(--moss);
+    border-color:var(--moss);
+    color:#fff;
+  }
+  .reach-overlay .fs-add-btn {
+    width:100%;
+    margin-top:12px;
+    padding:10px;
+    background:rgba(139,92,246,0.15);
+    border:1px solid var(--sage);
+    border-radius:var(--radius);
+    color:var(--ink);
+    font-family:'Bebas Neue',sans-serif;
+    font-size:14px;
+    letter-spacing:2px;
+    cursor:pointer;
+    transition:background 0.15s;
+  }
+  .reach-overlay .fs-add-btn:disabled {opacity:0.3;pointer-events:none;}
+  .reach-overlay .fs-add-btn:not(:disabled):active {background:rgba(139,92,246,0.32);}
+
+  /* Free stretch in preview list */
+  .reach-overlay .pi-free-tag {
+    font-size:10px;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color:var(--moss);
+    font-weight:700;
+    margin-bottom:2px;
+  }
+  .reach-overlay .pi-label-input {
+    width:100%;
+    background:rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.1);
+    border-radius:6px;
+    color:var(--ink);
+    font-family:inherit;
+    font-size:13px;
+    padding:5px 8px;
+    margin-top:4px;
+    box-sizing:border-box;
+  }
+  .reach-overlay .pi-label-input:focus {outline:none;border-color:var(--moss);}
   .reach-overlay .preview-actions {
     position:fixed;left:0;right:0;bottom:0;
     background:var(--moss-deep);
@@ -1618,9 +1696,9 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
   .reach-overlay .timer-ring .time-label {
     position:absolute;inset:0;
     display:flex;align-items:center;justify-content:center;
-    font-family:'Fraunces',serif;
-    font-size:44px;
-    font-weight:600;
+    font-family:'Bebas Neue',sans-serif;
+    font-size:52px;
+    letter-spacing:2px;
   }
   .reach-overlay .play-body .up-next {
     font-size:17px;
@@ -1637,9 +1715,12 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
     font-size:13px;
     letter-spacing:2.5px;
     color:var(--moss);
-    background:rgba(139,174,80,0.15);
+    background:rgba(20,14,30,0.75);
+    border:1px solid rgba(139,174,80,0.4);
     border-radius:20px;
-    padding:2px 12px;
+    padding:3px 12px;
+    display:inline-block;
+    margin-top:10px;
   }
   .reach-overlay .rest-how {
     text-align:left;
@@ -1825,7 +1906,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
   @media (max-width:520px) {
     .reach-overlay .card-grid {grid-template-columns:1fr;}
     .reach-overlay .timer-ring {width:190px;height:190px;}
-    .reach-overlay .timer-ring .time-label {font-size:36px;}
+    .reach-overlay .timer-ring .time-label {font-size:44px;}
   }
 
 /* ===== END REACH ===== */
@@ -1875,32 +1956,26 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
 <audio id="reach-iosUnmuteHack" preload="auto" loop playsinline src="data:audio/mpeg;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaWdTb3VuZEJhbmsuY29tIC8gTGFTb25vdGhlcXVlLm9yZwBURU5DAAAAHQAAA1N3aXRjaCBQbHVzIMKpIE5DSCBTb2Z0d2FyZQBUSVQyAAAABgAAAzIyMzUAVFNTRQAAAA8AAANMYXZmNTcuODMuMTAwAAAAAAAAAAAAAAD/80DEAAAAA0gAAAAATEFNRTMuMTAwVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV/zQsQbAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV"></audio>
 
 <header class="top">
-  <div class="brand">
-    <div class="mark">
+  <button class="header-icon-btn" id="reach-closeReachBtn" aria-label="Back to TRACKR" title="Back to TRACKR">✕</button>
+  <h1 class="reach-header-title">STRETCH</h1>
+  <div class="reach-header-actions">
+    <button class="header-icon-btn" id="reach-settingsGearBtn" aria-label="Settings" title="Settings">
       <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M4 20C4 14 8 6 20 4C18 10 14 18 4 20Z" stroke="#EEF2E2" stroke-width="1.6" stroke-linejoin="round"/>
+        <circle cx="12" cy="12" r="6.5" stroke="currentColor" stroke-width="1.8"/>
+        <circle cx="12" cy="12" r="2.3" fill="currentColor"/>
+        <g fill="currentColor">
+          <rect x="10.8" y="1.3" width="2.4" height="3.2" rx="0.6"/>
+          <rect x="10.8" y="19.5" width="2.4" height="3.2" rx="0.6"/>
+          <rect x="1.3" y="10.8" width="3.2" height="2.4" rx="0.6"/>
+          <rect x="19.5" y="10.8" width="3.2" height="2.4" rx="0.6"/>
+          <rect x="4.4" y="4.4" width="2.4" height="3.2" rx="0.6" transform="rotate(45 5.6 6)"/>
+          <rect x="17.2" y="16.4" width="2.4" height="3.2" rx="0.6" transform="rotate(45 18.4 18)"/>
+          <rect x="4.4" y="16.4" width="2.4" height="3.2" rx="0.6" transform="rotate(-45 5.6 18)"/>
+          <rect x="17.2" y="4.4" width="2.4" height="3.2" rx="0.6" transform="rotate(-45 18.4 6)"/>
+        </g>
       </svg>
-    </div>
-    <h1>Stretch</h1>
-    <span class="version-tag" id="reach-versionTag">v2.14</span>
+    </button>
   </div>
-  <button class="header-icon-btn" id="reach-closeReachBtn" aria-label="Back to TRACKR" title="Back to TRACKR" style="margin-right:auto;">✕</button>
-  <button class="header-icon-btn" id="reach-settingsGearBtn" aria-label="Settings" title="Settings">
-    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="12" cy="12" r="6.5" stroke="currentColor" stroke-width="1.8"/>
-      <circle cx="12" cy="12" r="2.3" fill="currentColor"/>
-      <g fill="currentColor">
-        <rect x="10.8" y="1.3" width="2.4" height="3.2" rx="0.6"/>
-        <rect x="10.8" y="19.5" width="2.4" height="3.2" rx="0.6"/>
-        <rect x="1.3" y="10.8" width="3.2" height="2.4" rx="0.6"/>
-        <rect x="19.5" y="10.8" width="3.2" height="2.4" rx="0.6"/>
-        <rect x="4.4" y="4.4" width="2.4" height="3.2" rx="0.6" transform="rotate(45 5.6 6)"/>
-        <rect x="17.2" y="16.4" width="2.4" height="3.2" rx="0.6" transform="rotate(45 18.4 18)"/>
-        <rect x="4.4" y="16.4" width="2.4" height="3.2" rx="0.6" transform="rotate(-45 5.6 18)"/>
-        <rect x="17.2" y="4.4" width="2.4" height="3.2" rx="0.6" transform="rotate(-45 18.4 6)"/>
-      </g>
-    </svg>
-  </button>
 </header>
 
 <nav class="tabs">
@@ -3645,6 +3720,8 @@ function flattenWorkout(workout) {
 function moveDuration(flat, idx) {
   if (flat[idx].move.toLowerCase() === "rest") return 60;
   if (flat[idx + 1]?.move?.toLowerCase() === "rest") return 50;
+  // Last non-rest move: work only (no trailing rest)
+  if (idx === flat.length - 1) return 50;
   return 60;
 }
 function computeWorkoutState() {
@@ -3964,28 +4041,33 @@ function renderWorkoutOverlay() {
   if (state.workoutPeekOpen) {
     return `
       <div class="workout-overlay workout-peek">
-        <div class="workout-peek-header">
-          <button class="workout-peek-close" data-workout-action="peek-close">✕ CLOSE</button>
-          <div class="workout-section-name">${escapeHtml(workout.title)}</div>
-          <div style="width:60px;"></div>
-        </div>
-        <div class="workout-peek-list">
-          ${flat.map((m, i) => {
-            const done = i < c.moveIdx;
-            const active = i === c.moveIdx;
-            const isRest = m.move.toLowerCase() === "rest";
-            return `<div class="workout-peek-row${done ? " done" : ""}${active ? " active" : ""}${isRest ? " is-rest" : ""}">
-              <span class="workout-peek-num">${i + 1}</span>
-              <span>${escapeHtml(m.move)}</span>
-              ${active ? `<span class="workout-peek-now">NOW</span>` : ""}
-            </div>`;
-          }).join("")}
+        <div class="workout-peek-scroll">
+          <div class="workout-peek-header">
+            <button class="workout-peek-close" data-workout-action="peek-close">✕ CLOSE</button>
+            <div class="workout-section-name">${escapeHtml(workout.title)}</div>
+            <div style="width:60px;"></div>
+          </div>
+          <div class="workout-peek-list">
+            ${flat.map((m, i) => {
+              const done = i < c.moveIdx;
+              const active = i === c.moveIdx;
+              const isRest = m.move.toLowerCase() === "rest";
+              return `<div class="workout-peek-row${done ? " done" : ""}${active ? " active" : ""}${isRest ? " is-rest" : ""}">
+                <span class="workout-peek-num">${i + 1}</span>
+                <span>${escapeHtml(m.move)}</span>
+                ${active ? `<span class="workout-peek-now">NOW</span>` : ""}
+              </div>`;
+            }).join("")}
+          </div>
         </div>
       </div>
     `;
   }
 
   // 10s inter-exercise rest: UP NEXT at top, no previous exercise name
+  const isLastExercise = c.moveIdx === flat.length - 1 && !isRestSlot;
+  const nextIsLast = next && (c.moveIdx + 1 === flat.length - 1) && next.move.toLowerCase() !== "rest";
+
   if (isRestPhase) {
     return `
       <div class="workout-overlay ${isPaused ? "is-paused" : ""}">
@@ -3993,8 +4075,11 @@ function renderWorkoutOverlay() {
           <div class="workout-section-name">${current.section} · ${c.moveIdx + 1} / ${flat.length}</div>
         </div>
         ${next
-          ? `<div class="workout-up-next-label">UP NEXT</div>
-             <div class="workout-up-next-name">${escapeHtml(next.move)}</div>`
+          ? (nextIsLast
+            ? `<div class="workout-up-next-label">LAST ONE!</div>
+               <div class="workout-up-next-name" style="color:#c8a8e8;">${escapeHtml(next.move)}</div>`
+            : `<div class="workout-up-next-label">UP NEXT</div>
+               <div class="workout-up-next-name">${escapeHtml(next.move)}</div>`)
           : `<div class="workout-up-next-name" style="color:#c8a8e8;">LAST ONE!</div>`}
         <div class="workout-countdown rest" style="flex:1;">
           <div class="workout-sec">${c.phaseRemaining}</div>
@@ -4028,9 +4113,11 @@ function renderWorkoutOverlay() {
         <div class="workout-progress-bar" style="width:${progressPct}%;"></div>
       </div>
       <div class="workout-next">
-        ${next
-          ? `<span class="workout-next-label">NEXT</span><span class="workout-next-name">${escapeHtml(next.move)}</span>`
-          : `<span class="workout-next-last">Last one — finish strong!</span>`}
+        ${isLastExercise
+          ? `<span class="workout-next-last">Last one — finish strong!</span>`
+          : next
+            ? `<span class="workout-next-label">NEXT</span><span class="workout-next-name">${escapeHtml(next.move)}</span>`
+            : `<span class="workout-next-last">Last one — finish strong!</span>`}
       </div>
       <div class="workout-controls">
         <button data-workout-action="${isPaused ? "resume" : "pause"}">${isPaused ? "RESUME" : "PAUSE"}</button>
@@ -5210,6 +5297,7 @@ const DURATIONS = [1,2,3];
 /* ============ STATE ============ */
 // reach_selections: { [stretchId]: durationMinutes }
 let reach_selections = {};
+let reach_freeConfig = {side: null, minutes: null};
 
 /* ============ RENDER: BUILD TAB ============ */
 function reach_renderBuildTab(){
@@ -5239,6 +5327,7 @@ function reach_renderBuildTab(){
     });
   }
   root.appendChild(toolbar);
+  reach_renderFreeStretchCard(root);
   AREA_ORDER.forEach(area=>{
     const items = STRETCHES.filter(s=>s.area===area);
     if(!items.length) return;
@@ -5306,11 +5395,58 @@ function reach_renderCard(s){
   return card;
 }
 
+function reach_renderFreeStretchCard(container){
+  const SIDE_OPTIONS = [
+    {key:'left',label:'Left side'},
+    {key:'right',label:'Right side'},
+    {key:'single',label:'Single'}
+  ];
+  const canAdd = reach_freeConfig.side!==null && reach_freeConfig.minutes!==null;
+  const div = document.createElement('div');
+  div.className = 'free-stretch-card';
+  div.innerHTML = `
+    <h3>FREE STRETCH</h3>
+    <div class="free-stretch-row">
+      <div class="fs-label">Side</div>
+      <div class="fs-pills">
+        ${SIDE_OPTIONS.map(s=>`<button class="fs-pill${reach_freeConfig.side===s.key?' active':''}" data-fs-side="${s.key}">${s.label}</button>`).join('')}
+      </div>
+    </div>
+    <div class="free-stretch-row">
+      <div class="fs-label">Duration</div>
+      <div class="fs-pills">
+        ${DURATIONS.map(d=>`<button class="fs-pill${reach_freeConfig.minutes===d?' active':''}" data-fs-dur="${d}">${d} min</button>`).join('')}
+      </div>
+    </div>
+    <button class="fs-add-btn"${canAdd?'':' disabled'}>ADD TO SESSION</button>
+  `;
+  div.querySelectorAll('[data-fs-side]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ reach_freeConfig.side=btn.dataset.fsSide; reach_renderBuildTab(); });
+  });
+  div.querySelectorAll('[data-fs-dur]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ reach_freeConfig.minutes=parseInt(btn.dataset.fsDur,10); reach_renderBuildTab(); });
+  });
+  const addBtn = div.querySelector('.fs-add-btn');
+  if(!addBtn.disabled){
+    addBtn.addEventListener('click', ()=>{
+      const uid = '__free_'+Date.now();
+      reach_selections[uid] = {minutes:reach_freeConfig.minutes, side:reach_freeConfig.side, label:'Free Stretch'};
+      reach_renderBuildTab();
+      reach_renderSessionBar();
+    });
+  }
+  container.appendChild(div);
+}
+
 /* ============ SESSION BAR ============ */
 function reach_sessionMinutesFor(items){
-  return Object.entries(items).reduce((sum,[id,min])=>{
+  return Object.entries(items).reduce((sum,[id,val])=>{
+    if(id.startsWith('__free_')){
+      return sum + (typeof val==='object' ? val.minutes||0 : 0);
+    }
     const s = STRETCHES.find(x=>x.id==id);
-    return sum + min * (s.sides ? 2 : 1);
+    const min = typeof val==='number' ? val : (val&&val.minutes||0);
+    return sum + min * (s&&s.sides ? 2 : 1);
   },0);
 }
 function reach_sessionMinutes(){
@@ -5453,9 +5589,11 @@ function reach_renderPlaylistsTab(){
     return;
   }
   root.innerHTML = list.slice().reverse().map(p=>{
-    const mins = Object.entries(p.items).reduce((sum,[id,min])=>{
+    const mins = Object.entries(p.items).reduce((sum,[id,val])=>{
+      if(id.startsWith('__free_')) return sum + (typeof val==='object' ? val.minutes||0 : 0);
       const s = STRETCHES.find(x=>x.id==id);
-      return sum + min*(s.sides?2:1);
+      const min = typeof val==='number' ? val : (val&&val.minutes||0);
+      return sum + min*(s&&s.sides?2:1);
     },0);
     return `<div class="playlist-card" data-id="${p.id}">
       <div class="title-area">
@@ -5704,16 +5842,26 @@ function reach_buildSequence(items, order){
   const seq = [];
   const ids = order || Object.keys(items);
   ids.forEach(id=>{
-    const s = STRETCHES.find(x=>x.id==id);
-    const min = items[id];
-    if(s.sides){
-      seq.push({stretch:s, side:'Right side', seconds:min*60});
-      seq.push({rest:true, seconds:reachSettings.transitionSeconds});
-      seq.push({stretch:s, side:'Left side', seconds:min*60});
+    const val = items[id];
+    if(id.startsWith('__free_')){
+      const f = typeof val==='object' ? val : {minutes:val||1, side:'single', label:'Free Stretch'};
+      const fakeStretch = {name:f.label||'Free Stretch', sides:false, id, isFree:true};
+      const sideName = f.side==='left' ? 'Left side' : f.side==='right' ? 'Right side' : null;
+      seq.push({stretch:fakeStretch, side:sideName, seconds:(f.minutes||1)*60});
       seq.push({rest:true, seconds:reachSettings.transitionSeconds});
     } else {
-      seq.push({stretch:s, side:null, seconds:min*60});
-      seq.push({rest:true, seconds:reachSettings.transitionSeconds});
+      const s = STRETCHES.find(x=>x.id==id);
+      if(!s) return;
+      const min = typeof val==='number' ? val : (val&&val.minutes||1);
+      if(s.sides){
+        seq.push({stretch:s, side:'Right side', seconds:min*60});
+        seq.push({rest:true, seconds:reachSettings.transitionSeconds});
+        seq.push({stretch:s, side:'Left side', seconds:min*60});
+        seq.push({rest:true, seconds:reachSettings.transitionSeconds});
+      } else {
+        seq.push({stretch:s, side:null, seconds:min*60});
+        seq.push({rest:true, seconds:reachSettings.transitionSeconds});
+      }
     }
   });
   // remove trailing rest
@@ -5770,15 +5918,42 @@ function reach_renderPreviewList(){
     itemsList.innerHTML = `<div class="preview-empty">Add a stretch below to build this session.</div>`;
   } else {
     itemsList.innerHTML = ids.map((id, idx)=>{
+      const val = reach_previewItems[id];
+      const isFirst = idx === 0;
+      const isLast  = idx === ids.length - 1;
+      const orderBtns = `<div class="pi-order">
+        <button data-move-up="${id}" ${isFirst ? 'disabled' : ''} title="Move up">▲</button>
+        <button data-move-down="${id}" ${isLast  ? 'disabled' : ''} title="Move down">▼</button>
+      </div>
+      <button class="pi-remove" data-id="${id}">✕</button>`;
+
+      if(id.startsWith('__free_')){
+        const f = typeof val==='object' ? val : {minutes:1, side:'single', label:'Free Stretch'};
+        const sideName = f.side==='left'?'Left side':f.side==='right'?'Right side':'Single';
+        const chips = DURATIONS.map(d=>{
+          const active = f.minutes===d ? 'active' : '';
+          return `<button class="dur-chip ${active}" data-id="${id}" data-min="${d}">${d} min</button>`;
+        }).join('');
+        return `<div class="preview-item">
+          <div class="pi-main" style="flex:1;min-width:0;">
+            <div class="pi-free-tag">FREE STRETCH</div>
+            <input class="pi-label-input" type="text" placeholder="Free Stretch" value="${(f.label||'Free Stretch').replace(/"/g,'&quot;')}" data-free-label="${id}">
+            <div class="pi-dur-row" style="margin-top:6px;">
+              ${chips}
+              <span class="pi-sides-tag">${sideName}</span>
+            </div>
+          </div>
+          ${orderBtns}
+        </div>`;
+      }
+
       const s = STRETCHES.find(x=>x.id==id);
-      const min = reach_previewItems[id];
+      const min = typeof val==='number' ? val : (val&&val.minutes||1);
       const chips = DURATIONS.map(d=>{
         const active = min===d ? 'active' : '';
         return `<button class="dur-chip ${active}" data-id="${id}" data-min="${d}">${d} min${s.sides?'/side':''}</button>`;
       }).join('');
       const img = STRETCH_IMAGES[s.id];
-      const isFirst = idx === 0;
-      const isLast  = idx === ids.length - 1;
       return `<div class="preview-item">
         ${img ? `<img class="pi-thumb" src="${img.thumb}" alt="">` : ''}
         <div class="pi-main">
@@ -5788,17 +5963,28 @@ function reach_renderPreviewList(){
             ${s.sides ? '' : '<span class="pi-sides-tag">single hold</span>'}
           </div>
         </div>
-        <div class="pi-order">
-          <button data-move-up="${id}" ${isFirst ? 'disabled' : ''} title="Move up">▲</button>
-          <button data-move-down="${id}" ${isLast  ? 'disabled' : ''} title="Move down">▼</button>
-        </div>
-        <button class="pi-remove" data-id="${id}">✕</button>
+        ${orderBtns}
       </div>`;
     }).join('');
     itemsList.querySelectorAll('.dur-chip').forEach(btn=>{
       btn.addEventListener('click', ()=>{
-        reach_previewItems[btn.dataset.id] = parseInt(btn.dataset.min, 10);
+        const id = btn.dataset.id;
+        const min = parseInt(btn.dataset.min, 10);
+        if(id.startsWith('__free_') && typeof reach_previewItems[id]==='object'){
+          reach_previewItems[id] = {...reach_previewItems[id], minutes:min};
+        } else {
+          reach_previewItems[id] = min;
+        }
         reach_syncPreviewChange();
+      });
+    });
+    itemsList.querySelectorAll('[data-free-label]').forEach(input=>{
+      input.addEventListener('input', ()=>{
+        const id = input.dataset.freeLabel;
+        if(id && typeof reach_previewItems[id]==='object'){
+          reach_previewItems[id] = {...reach_previewItems[id], label:input.value};
+          if(reach_previewSyncBuildTab) reach_selections[id] = {...reach_previewItems[id]};
+        }
       });
     });
     itemsList.querySelectorAll('.pi-remove').forEach(btn=>{
@@ -5839,21 +6025,57 @@ function reach_renderPreviewList(){
 
 function reach_renderPreviewAddPanel(){
   const panel = document.getElementById('reach-previewAddPanel');
+  const freeCount = Object.keys(reach_previewItems).filter(id=>id.startsWith('__free_')).length;
   const remaining = STRETCHES.filter(s=>!(s.id in reach_previewItems));
+
+  // Build panel HTML: free stretch configurator at top, then regular stretches
+  const SIDE_OPTIONS = [{key:'left',label:'Left side'},{key:'right',label:'Right side'},{key:'single',label:'Single'}];
+  const canAdd = reach_freeConfig.side!==null && reach_freeConfig.minutes!==null;
+  const freeSection = `
+    <div class="preview-add-area">FREE STRETCH</div>
+    <div style="padding:10px 0 12px; border-top:1px solid var(--line);">
+      <div class="fs-label" style="margin-bottom:6px;">Side</div>
+      <div class="fs-pills" style="margin-bottom:8px;">
+        ${SIDE_OPTIONS.map(s=>`<button class="fs-pill${reach_freeConfig.side===s.key?' active':''}" data-pfs-side="${s.key}">${s.label}</button>`).join('')}
+      </div>
+      <div class="fs-label" style="margin-bottom:6px;">Duration</div>
+      <div class="fs-pills">
+        ${DURATIONS.map(d=>`<button class="fs-pill${reach_freeConfig.minutes===d?' active':''}" data-pfs-dur="${d}">${d} min</button>`).join('')}
+      </div>
+      <button class="fs-add-btn" style="margin-top:10px;" id="reach-pfsAddBtn"${canAdd?'':' disabled'}>ADD FREE STRETCH</button>
+    </div>`;
+
   if(remaining.length===0){
-    panel.innerHTML = `<div class="preview-empty">Every stretch is already in this session.</div>`;
-    return;
+    panel.innerHTML = freeSection;
+  } else {
+    panel.innerHTML = freeSection + AREA_ORDER.map(area=>{
+      const items = remaining.filter(s=>s.area===area);
+      if(!items.length) return '';
+      return `<div class="preview-add-area">${area}</div>` + items.map(s=>
+        `<div class="preview-add-item">
+          <span>${s.name}</span>
+          <button class="add" data-id="${s.id}" aria-label="Add">+</button>
+        </div>`
+      ).join('');
+    }).join('');
   }
-  panel.innerHTML = AREA_ORDER.map(area=>{
-    const items = remaining.filter(s=>s.area===area);
-    if(!items.length) return '';
-    return `<div class="preview-add-area">${area}</div>` + items.map(s=>
-      `<div class="preview-add-item">
-        <span>${s.name}</span>
-        <button class="add" data-id="${s.id}" aria-label="Add">+</button>
-      </div>`
-    ).join('');
-  }).join('');
+
+  panel.querySelectorAll('[data-pfs-side]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ reach_freeConfig.side=btn.dataset.pfsSide; reach_renderPreviewAddPanel(); });
+  });
+  panel.querySelectorAll('[data-pfs-dur]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ reach_freeConfig.minutes=parseInt(btn.dataset.pfsDur,10); reach_renderPreviewAddPanel(); });
+  });
+  const pfsAddBtn = panel.querySelector('#reach-pfsAddBtn');
+  if(pfsAddBtn && !pfsAddBtn.disabled){
+    pfsAddBtn.addEventListener('click', ()=>{
+      const uid = '__free_'+Date.now();
+      reach_previewItems[uid] = {minutes:reach_freeConfig.minutes, side:reach_freeConfig.side, label:'Free Stretch'};
+      reach_previewOrder.push(uid);
+      reach_syncPreviewChange();
+    });
+  }
+
   panel.querySelectorAll('button.add').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const id = String(btn.dataset.id);
@@ -6002,8 +6224,8 @@ function reach_renderSegmentUI(seg){
     restTag.style.display='none';
     nameEl.textContent = seg.stretch.name;
     sideEl.textContent = seg.side || '';
-    infoBtn.style.display='inline-block';
-    infoBtn.onclick = ()=>reach_openDetailsSheet(seg.stretch);
+    infoBtn.style.display = seg.stretch.isFree ? 'none' : 'inline-block';
+    if(!seg.stretch.isFree) infoBtn.onclick = ()=>reach_openDetailsSheet(seg.stretch);
     const img = STRETCH_IMAGES[seg.stretch.id];
     if(img && img.playbg){
       playBg.style.backgroundImage = `url('${img.playbg}')`;
@@ -6119,12 +6341,9 @@ function reach_openDetailsSheet(s){
   sheet.innerHTML = `
     ${img ? `<img class="details-img" src="${img.thumb}" alt="${s.name}">` : ''}
     <h3>${s.name}</h3>
-    <h4>How to do it</h4>
-    <ul>${s.how.map(x=>`<li>${x}</li>`).join('')}</ul>
-    <h4>Muscles targeted</h4>
-    <ul>${s.muscles.map(x=>`<li>${x}</li>`).join('')}</ul>
-    <h4>Key benefits</h4>
-    <ul><li>${s.benefits}</li></ul>
+    ${s.how ? `<h4>How to do it</h4><ul>${s.how.map(x=>`<li>${x}</li>`).join('')}</ul>` : ''}
+    ${s.muscles ? `<h4>Muscles targeted</h4><ul>${s.muscles.map(x=>`<li>${x}</li>`).join('')}</ul>` : ''}
+    ${s.benefits ? `<h4>Key benefits</h4><ul><li>${s.benefits}</li></ul>` : ''}
     <button class="sheet-close">Close</button>
   `;
   sheet.classList.add('open');
