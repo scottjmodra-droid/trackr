@@ -764,7 +764,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
   font-family: 'Bebas Neue', sans-serif; letter-spacing: 2px; font-size: 13px;
 }
 /* Full workout peek overlay */
-.workout-overlay.workout-peek { overflow: hidden; padding-top: calc(16px + env(safe-area-inset-top)); gap: 10px; }
+.workout-overlay.workout-peek { overflow: hidden; padding-top: calc(16px + env(safe-area-inset-top)); padding-bottom: 0; gap: 10px; }
 .workout-peek-header {
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 6px; flex-shrink: 0;
@@ -1553,7 +1553,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
     position:absolute;inset:0;
     z-index:-1;
     background-color:var(--moss-deep);
-    background-size:cover;
+    background-size:contain;
     background-repeat:no-repeat;
     background-position:center;
     opacity:0;
@@ -1623,9 +1623,23 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
     font-weight:600;
   }
   .reach-overlay .play-body .up-next {
-    font-size:13.5px;
+    font-size:17px;
     color:#A9B79E;
-    margin-top:2px;
+    margin-top:6px;
+    text-align:center;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:5px;
+  }
+  .reach-overlay .reach-count-badge {
+    font-family:'Bebas Neue',sans-serif;
+    font-size:13px;
+    letter-spacing:2.5px;
+    color:var(--moss);
+    background:rgba(139,174,80,0.15);
+    border-radius:20px;
+    padding:2px 12px;
   }
   .reach-overlay .rest-how {
     text-align:left;
@@ -1777,7 +1791,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
     accent-color:var(--moss);
     flex-shrink:0;
   }
-  .reach-overlay .theme-seg {display:flex;gap:6px;}
+  .reach-overlay .theme-seg {display:none;}
   .reach-overlay .theme-seg-btn {
     border:1px solid var(--line);
     background:var(--bg-alt);
@@ -1976,14 +1990,6 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
 <div class="play-details-sheet" id="reach-detailsSheet"></div>
 <div class="play-details-sheet settings-sheet" id="reach-settingsSheet">
   <h3>Settings</h3>
-
-  <div class="settings-row">
-    <div class="settings-label">Appearance</div>
-    <div class="theme-seg">
-      <button class="theme-seg-btn" id="reach-themeLightBtn">Light</button>
-      <button class="theme-seg-btn" id="reach-themeDarkBtn">Dark</button>
-    </div>
-  </div>
 
   <div class="settings-row">
     <div class="settings-label">Beep volume</div>
@@ -2773,7 +2779,7 @@ function render() {
           <span class="title-meta">${state.sessions.length} session${state.sessions.length === 1 ? "" : "s"} &nbsp;<span style="opacity:0.5;">v${APP_VERSION}</span></span>
         </div>
         <div class="title-actions">
-          <button class="menu-btn" id="openWorkouts" aria-label="Workouts"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" style="display:block"><rect x="1" y="9.5" width="4" height="5" rx="1.2"/><rect x="5" y="11" width="14" height="2" rx="1"/><rect x="19" y="9.5" width="4" height="5" rx="1.2"/></svg></button>
+          <button class="menu-btn" id="openWorkouts" aria-label="Workouts">🏋️</button>
           <button class="menu-btn" id="openStretch" aria-label="Stretch">🧘</button>
           <button class="menu-btn" id="openMenu" aria-label="Menu">⋯</button>
         </div>
@@ -3461,6 +3467,9 @@ async function startCustomTimer() {
   render();
   playBeep(800, 200); navigator.vibrate?.(60);
   setTimeout(() => { playBeep(800, 200); navigator.vibrate?.(60); }, 1000);
+  setTimeout(() => { playBeep(800, 200); navigator.vibrate?.(60); }, 2000);
+  setTimeout(() => { playBeep(800, 200); navigator.vibrate?.(60); }, 3000);
+  setTimeout(() => { playBeep(800, 200); navigator.vibrate?.(60); }, 4000);
 }
 function pauseCustomTimer() {
   if (!state.customTimer || state.customTimer.pausedAt) return;
@@ -3477,7 +3486,14 @@ function skipCustomTimerSeg() {
   const c = computeCustomTimerState(); if (!c || c.done) return;
   const seq = buildCustomTimerSequence(t.settings);
   let newElapsedMs = 0;
-  for (let i = 0; i <= c.segIdx; i++) newElapsedMs += seq[i].dur * 1000;
+  // If in warmup countdown, jump to start of first segment.
+  // Otherwise sum durations up to and including current segment.
+  if (!c.pending) {
+    for (let i = 0; i <= c.segIdx; i++) newElapsedMs += seq[i].dur * 1000;
+  }
+  // Add 50ms grace so we land clearly inside the next segment,
+  // not on the exact boundary where floating-point can cause us to miss it.
+  newElapsedMs += 50;
   const ref = t.pausedAt || Date.now();
   t.startedAt = ref - t.totalPausedMs - newElapsedMs;
   navigator.vibrate?.(60); render();
@@ -3757,9 +3773,11 @@ async function startWorkout(workoutIdx = 0) {
     startSilentKeepAlive(workoutAudioCtx);
   }
   render();
-  playBeep(800, 200);
-  navigator.vibrate?.(60);
+  playBeep(800, 200); navigator.vibrate?.(60);
   setTimeout(() => { playBeep(800, 200); navigator.vibrate?.(60); }, 1000);
+  setTimeout(() => { playBeep(800, 200); navigator.vibrate?.(60); }, 2000);
+  setTimeout(() => { playBeep(800, 200); navigator.vibrate?.(60); }, 3000);
+  setTimeout(() => { playBeep(800, 200); navigator.vibrate?.(60); }, 4000);
 }
 function pauseWorkout() {
   if (!state.workoutTimer || state.workoutTimer.pausedAt) return;
@@ -4576,7 +4594,7 @@ function renderWorkoutPlan(mode) {
     content = `
       <button class="workout-list-item" data-workout-detail="custom">
         <div class="workout-list-item-main">
-          <div class="workout-list-item-title"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="display:inline;vertical-align:-2px;margin-right:4px"><rect x="1" y="9.5" width="4" height="5" rx="1.2"/><rect x="5" y="11" width="14" height="2" rx="1"/><rect x="19" y="9.5" width="4" height="5" rx="1.2"/></svg> Custom Timer</div>
+          <div class="workout-list-item-title">🏋️ Custom Timer</div>
           <div class="workout-list-item-note">Set your own work · rest · sets · rounds</div>
         </div>
         <div class="workout-list-item-chev">›</div>
@@ -4644,7 +4662,7 @@ function renderWorkoutPlan(mode) {
       <button class="workout-back-btn" data-workout-back>‹ All workouts</button>
       <div class="workout-card is-custom">
         <div class="workout-card-head">
-          <div class="workout-card-name"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" style="display:inline;vertical-align:-3px;margin-right:6px"><rect x="1" y="9.5" width="4" height="5" rx="1.2"/><rect x="5" y="11" width="14" height="2" rx="1"/><rect x="19" y="9.5" width="4" height="5" rx="1.2"/></svg> Custom Timer</div>
+          <div class="workout-card-name">🏋️ Custom Timer</div>
         </div>
         ${rows}
         <div class="ct-total-row">
@@ -5333,20 +5351,7 @@ let reachSettings = reach_loadSettings();
 
 // The <head> script sets data-theme="light" before first paint if that was
 // the stored choice, so this just keeps the segmented control in sync.
-function reach_currentTheme(){
-  return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
-}
-function reach_applyThemeChoice(theme){
-  document.documentElement.setAttribute('data-theme', theme);
-  try{ localStorage.setItem('reach_theme', theme); }catch(e){}
-  document.getElementById('reach-themeLightBtn').classList.toggle('active', theme==='light');
-  document.getElementById('reach-themeDarkBtn').classList.toggle('active', theme==='dark');
-}
-document.getElementById('reach-themeLightBtn').addEventListener('click', ()=> reach_applyThemeChoice('light'));
-document.getElementById('reach-themeDarkBtn').addEventListener('click', ()=> reach_applyThemeChoice('dark'));
-
 function reach_openSettingsSheet(){
-  reach_applyThemeChoice(reach_currentTheme());
   document.getElementById('reach-volumeSlider').value = reachSettings.beepVolume;
   document.getElementById('reach-volumeValue').textContent = reachSettings.beepVolume===0 ? 'Muted' : reachSettings.beepVolume + '%';
   document.getElementById('reach-readySecondsInput').value = reachSettings.readySeconds;
@@ -5592,7 +5597,7 @@ function reach_ensureAudioGraph(ctx){
 // that made the drum louder/punchier in the first place — 100% keeps the
 // old fixed loudness exactly, 0% is a full mute.
 function reach_applyBeepVolume(){
-  if(reachMasterGain) reachMasterGain.gain.value = 5.0 * (reachSettings.beepVolume/100);
+  if(reachMasterGain) reachMasterGain.gain.value = 10.0 * (reachSettings.beepVolume/100);
 }
 function reach_drumOutput(ctx){
   reach_ensureAudioGraph(ctx);
@@ -5651,7 +5656,7 @@ function reachPlayDrum(){
       osc.frequency.setValueAtTime(170, t0);
       osc.frequency.exponentialRampToValueAtTime(55, t0 + 0.22);
       gain.gain.setValueAtTime(0.0001, t0);
-      gain.gain.exponentialRampToValueAtTime(1.3, t0 + 0.012);
+      gain.gain.exponentialRampToValueAtTime(2.6, t0 + 0.012);
       gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.32);
       osc.connect(gain).connect(reach_drumOutput(reachAudioCtx));
       osc.start(t0);
@@ -5673,7 +5678,7 @@ function reachPlayDrumTriple(){
         osc.frequency.setValueAtTime(170, t0);
         osc.frequency.exponentialRampToValueAtTime(55, t0 + 0.14);
         gain.gain.setValueAtTime(0.0001, t0);
-        gain.gain.exponentialRampToValueAtTime(1.3, t0 + 0.01);
+        gain.gain.exponentialRampToValueAtTime(2.6, t0 + 0.01);
         gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.2);
         osc.connect(gain).connect(reach_drumOutput(reachAudioCtx));
         osc.start(t0);
@@ -6011,17 +6016,20 @@ function reach_renderSegmentUI(seg){
   // During rest the main display already shows the upcoming stretch, so hide
   // the upNext bar to avoid repetition. During a stretch, show what's after.
   const upNext = document.getElementById('reach-upNext');
+  const totalStretches = reach_sequence.filter(x => !x.rest && !x.ready).length;
+  const completedStretches = reach_sequence.slice(0, reach_seqIndex).filter(x => !x.rest && !x.ready).length;
+  const countBadge = `<span class="reach-count-badge">${completedStretches} / ${totalStretches} COMPLETE</span>`;
   if((seg.rest || seg.ready) && upcoming){
     const steps = (upcoming.stretch.how || []).map((s,i)=>`
       <div class="rest-how-step">
         <div class="rest-how-step-num">${i+1}</div>
         <div>${s}</div>
       </div>`).join('');
-    upNext.innerHTML = steps ? `<div class="rest-how">${steps}</div>` : '';
+    upNext.innerHTML = countBadge + (steps ? `<div class="rest-how">${steps}</div>` : '');
   } else {
-    upNext.textContent = upcoming
-      ? `Next: ${upcoming.stretch.name}${upcoming.side ? ' — '+upcoming.side : ''}`
-      : 'Last one';
+    upNext.innerHTML = countBadge + `<span>${upcoming
+      ? 'Next: ' + upcoming.stretch.name + (upcoming.side ? ' — ' + upcoming.side : '')
+      : 'Last one'}</span>`;
   }
 }
 
