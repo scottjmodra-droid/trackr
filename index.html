@@ -1519,62 +1519,28 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
 
   /* ---------- Free Stretch card ---------- */
   .reach-overlay .free-stretch-card {
-    background:var(--paper);
-    border:2px dashed var(--line);
-    border-radius:var(--radius);
-    padding:14px 16px 16px;
-    margin-bottom:20px;
+    border-style:dashed;
+    margin-bottom:4px;
   }
-  .reach-overlay .free-stretch-card h3 {
-    font-size:14px;
-    letter-spacing:2.5px;
-    margin:0 0 12px;
-    color:var(--ink-soft);
-  }
-  .reach-overlay .free-stretch-row {margin-bottom:10px;}
-  .reach-overlay .free-stretch-row:last-of-type {margin-bottom:0;}
-  .reach-overlay .fs-label {
-    font-size:10px;
-    text-transform:uppercase;
-    letter-spacing:0.08em;
-    color:var(--ink-faint);
+  .reach-overlay .free-stretch-card .free-tag {
+    font-size:9px;
     font-weight:700;
-    margin-bottom:6px;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    color:var(--moss);
+    background:rgba(139,174,80,0.15);
+    border:1px solid rgba(139,174,80,0.3);
+    border-radius:8px;
+    padding:1px 5px;
+    vertical-align:middle;
+    margin-left:4px;
   }
-  .reach-overlay .fs-pills {display:flex;gap:6px;flex-wrap:wrap;}
-  .reach-overlay .fs-pill {
-    background:rgba(255,255,255,0.06);
-    border:1px solid rgba(255,255,255,0.12);
-    color:var(--ink-faint);
-    padding:6px 13px;
-    border-radius:20px;
-    font-family:'Bebas Neue',sans-serif;
-    font-size:13px;
-    letter-spacing:1.5px;
-    cursor:pointer;
-    transition:all 0.15s;
+  .reach-overlay .fs-add-inline {
+    margin-left:auto;
+    background:var(--sage) !important;
+    border-color:var(--sage) !important;
+    color:#fff !important;
   }
-  .reach-overlay .fs-pill.active {
-    background:var(--moss);
-    border-color:var(--moss);
-    color:#fff;
-  }
-  .reach-overlay .fs-add-btn {
-    width:100%;
-    margin-top:12px;
-    padding:10px;
-    background:rgba(139,92,246,0.15);
-    border:1px solid var(--sage);
-    border-radius:var(--radius);
-    color:var(--ink);
-    font-family:'Bebas Neue',sans-serif;
-    font-size:14px;
-    letter-spacing:2px;
-    cursor:pointer;
-    transition:background 0.15s;
-  }
-  .reach-overlay .fs-add-btn:disabled {opacity:0.3;pointer-events:none;}
-  .reach-overlay .fs-add-btn:not(:disabled):active {background:rgba(139,92,246,0.32);}
 
   /* Free stretch in preview list */
   .reach-overlay .pi-free-tag {
@@ -5397,28 +5363,23 @@ function reach_renderCard(s){
 
 function reach_renderFreeStretchCard(container){
   const SIDE_OPTIONS = [
-    {key:'left',label:'Left side'},
-    {key:'right',label:'Right side'},
-    {key:'single',label:'Single'}
+    {key:'left',label:'Left'},{key:'right',label:'Right'},{key:'single',label:'Single'}
   ];
   const canAdd = reach_freeConfig.side!==null && reach_freeConfig.minutes!==null;
   const div = document.createElement('div');
-  div.className = 'free-stretch-card';
+  div.className = 'stretch-card free-stretch-card';
   div.innerHTML = `
-    <h3>FREE STRETCH</h3>
-    <div class="free-stretch-row">
-      <div class="fs-label">Side</div>
-      <div class="fs-pills">
-        ${SIDE_OPTIONS.map(s=>`<button class="fs-pill${reach_freeConfig.side===s.key?' active':''}" data-fs-side="${s.key}">${s.label}</button>`).join('')}
+    <div class="row-top">
+      <div class="card-left">
+        <h3>Free Stretch <span class="free-tag">FREE</span></h3>
+        <div class="dur-row">
+          ${SIDE_OPTIONS.map(s=>`<button class="dur-chip${reach_freeConfig.side===s.key?' active':''}" data-fs-side="${s.key}">${s.label}</button>`).join('')}
+          <span class="sides-tag">·</span>
+          ${DURATIONS.map(d=>`<button class="dur-chip${reach_freeConfig.minutes===d?' active':''}" data-fs-dur="${d}">${d} min</button>`).join('')}
+          ${canAdd ? `<button class="dur-chip fs-add-inline" data-fs-add>ADD +</button>` : ''}
+        </div>
       </div>
     </div>
-    <div class="free-stretch-row">
-      <div class="fs-label">Duration</div>
-      <div class="fs-pills">
-        ${DURATIONS.map(d=>`<button class="fs-pill${reach_freeConfig.minutes===d?' active':''}" data-fs-dur="${d}">${d} min</button>`).join('')}
-      </div>
-    </div>
-    <button class="fs-add-btn"${canAdd?'':' disabled'}>ADD TO SESSION</button>
   `;
   div.querySelectorAll('[data-fs-side]').forEach(btn=>{
     btn.addEventListener('click', ()=>{ reach_freeConfig.side=btn.dataset.fsSide; reach_renderBuildTab(); });
@@ -5426,11 +5387,12 @@ function reach_renderFreeStretchCard(container){
   div.querySelectorAll('[data-fs-dur]').forEach(btn=>{
     btn.addEventListener('click', ()=>{ reach_freeConfig.minutes=parseInt(btn.dataset.fsDur,10); reach_renderBuildTab(); });
   });
-  const addBtn = div.querySelector('.fs-add-btn');
-  if(!addBtn.disabled){
+  const addBtn = div.querySelector('[data-fs-add]');
+  if(addBtn){
     addBtn.addEventListener('click', ()=>{
       const uid = '__free_'+Date.now();
       reach_selections[uid] = {minutes:reach_freeConfig.minutes, side:reach_freeConfig.side, label:'Free Stretch'};
+      reach_freeConfig = {side:null, minutes:null};
       reach_renderBuildTab();
       reach_renderSessionBar();
     });
