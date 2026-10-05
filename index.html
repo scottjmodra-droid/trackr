@@ -593,6 +593,44 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
 }
 .prog-priority { color: #e8f84a; margin-top: 3px; }
 .workout-card.is-program { border-left-color: #e8f84a; }
+.workout-card.is-custom { border-left-color: #fb923c; }
+
+/* Custom timer config */
+.ct-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+.ct-row:last-of-type { border-bottom: none; }
+.ct-label { font-size: 13px; color: #c8a8e8; }
+.ct-stepper { display: flex; align-items: center; gap: 10px; }
+.ct-stepper button {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: rgba(255,255,255,0.1); border: none;
+  color: #fff; font-size: 18px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.ct-stepper button:active { background: rgba(255,255,255,0.2); }
+.ct-stepper .ct-val {
+  min-width: 52px; text-align: center;
+  font-family: 'Bebas Neue', sans-serif; letter-spacing: 1.5px;
+  font-size: 18px; color: #fff;
+}
+.ct-total-row {
+  margin-top: 14px; padding: 12px 14px;
+  background: rgba(251,146,60,0.12); border-radius: 10px;
+  border: 1px solid rgba(251,146,60,0.25);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.ct-total-label { font-size: 12px; color: #fb923c; letter-spacing: 1px; font-family: 'Bebas Neue', sans-serif; }
+.ct-total-val { font-size: 18px; color: #fff; font-family: 'Bebas Neue', sans-serif; letter-spacing: 1.5px; }
+.ct-start-btn {
+  width: 100%; margin-top: 14px; padding: 14px;
+  background: #fb923c; border: none; border-radius: 10px;
+  font-family: 'Bebas Neue', sans-serif; letter-spacing: 3px;
+  font-size: 18px; color: #1a0a2e; cursor: pointer;
+}
+.ct-start-btn:active { filter: brightness(0.9); }
 
 .workout-row {
   display: flex; align-items: center;
@@ -1412,6 +1450,16 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
     margin-top:8px;
   }
   .reach-overlay .preview-item .pi-sides-tag {font-size:10.5px;color:var(--ink-faint);margin-left:2px;white-space:nowrap;}
+  .reach-overlay .preview-item .pi-order {
+    display:flex;flex-direction:column;gap:3px;align-self:center;
+  }
+  .reach-overlay .preview-item .pi-order button {
+    background:rgba(255,255,255,0.08);border:none;color:var(--ink-soft);
+    border-radius:5px;width:26px;height:26px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:12px;cursor:pointer;line-height:1;
+  }
+  .reach-overlay .preview-item .pi-order button:disabled {opacity:0.18;pointer-events:none;}
   .reach-overlay .preview-item button.pi-remove {
     background:none;border:none;color:#A5493C;
     font-size:12.5px;font-weight:600;
@@ -2245,6 +2293,8 @@ const state = {
   allTimeGranularity: "month",  // "month" | "week" — only used in All Time mode
   editingId: null,  // id of the history session currently being edited, or null
   workoutTimer: null,  // when active: { workoutIdx, totalMoves, startedAt, totalPausedMs, pausedAt }
+  customTimer: null,   // when active: { settings, startedAt, totalPausedMs, pausedAt }
+  customTimerSettings: { workSec: 50, restSec: 10, intervals: 8, rounds: 3, roundRestSec: 60 },
   workoutDetailIdx: null,  // which workout's detail is open in the sheet; null = list view
   workoutPeekOpen: false,  // true when the in-workout full move list is visible
   form: emptyForm("Swim"),
@@ -2522,6 +2572,7 @@ function loadSettings() {
       if (s.weight) state.weight = Number(s.weight);
       if (s.height) state.height = Number(s.height);
       if (s.lastBackup) state.lastBackup = s.lastBackup;
+      if (s.customTimerSettings) state.customTimerSettings = { ...state.customTimerSettings, ...s.customTimerSettings };
     }
   } catch (e) { console.warn("Load settings failed", e); }
 }
@@ -2529,6 +2580,7 @@ function saveSettings() {
   try {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify({
       weight: state.weight, height: state.height, lastBackup: state.lastBackup,
+      customTimerSettings: state.customTimerSettings,
     }));
   } catch (e) { console.warn("Save settings failed", e); }
 }
@@ -2721,7 +2773,7 @@ function render() {
           <span class="title-meta">${state.sessions.length} session${state.sessions.length === 1 ? "" : "s"} &nbsp;<span style="opacity:0.5;">v${APP_VERSION}</span></span>
         </div>
         <div class="title-actions">
-          <button class="menu-btn" id="openWorkouts" aria-label="Workouts">⏱</button>
+          <button class="menu-btn" id="openWorkouts" aria-label="Workouts"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" style="display:block"><rect x="1" y="9.5" width="4" height="5" rx="1.2"/><rect x="5" y="11" width="14" height="2" rx="1"/><rect x="19" y="9.5" width="4" height="5" rx="1.2"/></svg></button>
           <button class="menu-btn" id="openStretch" aria-label="Stretch">🧘</button>
           <button class="menu-btn" id="openMenu" aria-label="Menu">⋯</button>
         </div>
@@ -3289,6 +3341,204 @@ function renderDailyVolume(period) {
   `;
 }
 
+// ---------- Custom Interval Timer ----------
+function buildCustomTimerSequence(s) {
+  // s = { workSec, restSec, intervals, rounds, roundRestSec }
+  const seq = [];
+  for (let r = 1; r <= s.rounds; r++) {
+    for (let i = 1; i <= s.intervals; i++) {
+      seq.push({ type: 'work', round: r, interval: i, dur: s.workSec });
+      const lastInRound = i === s.intervals;
+      const lastRound   = r === s.rounds;
+      if (!lastInRound) {
+        if (s.restSec > 0) seq.push({ type: 'rest', round: r, interval: i, dur: s.restSec });
+      } else if (!lastRound) {
+        if (s.roundRestSec > 0) seq.push({ type: 'round-rest', round: r, dur: s.roundRestSec });
+      }
+    }
+  }
+  return seq;
+}
+function computeCustomTimerState() {
+  const t = state.customTimer;
+  if (!t) return null;
+  const s = t.settings;
+  const seq = buildCustomTimerSequence(s);
+  const now = t.pausedAt || Date.now();
+  const elapsedMs = now - t.startedAt - t.totalPausedMs;
+  const elapsedSec = elapsedMs / 1000;
+  if (elapsedSec < 0) {
+    return { pending: true, countdown: Math.max(1, Math.ceil(-elapsedSec)) };
+  }
+  let cumTime = 0;
+  for (let i = 0; i < seq.length; i++) {
+    const seg = seq[i];
+    if (cumTime + seg.dur > elapsedSec) {
+      const intoSeg = elapsedSec - cumTime;
+      return {
+        done: false, segIdx: i, seg,
+        seqLen: seq.length, intoSeg,
+        segRemaining: Math.max(0, Math.ceil(seg.dur - intoSeg)),
+        segPct: (intoSeg / seg.dur) * 100,
+        elapsedSec, settings: s,
+      };
+    }
+    cumTime += seg.dur;
+  }
+  return { done: true };
+}
+function renderCustomTimerOverlay() {
+  const t = state.customTimer;
+  if (!t) return "";
+  const c = computeCustomTimerState();
+  if (!c || c.done) return "";
+  const s = c.settings || t.settings;
+  if (c.pending) {
+    return `
+      <div class="workout-overlay" style="background:radial-gradient(ellipse at 30% 25%,#7c2d12 0%,#1c0a00 55%,#0d031f 100%)">
+        <div class="workout-top"><div class="workout-section-name" style="color:#fb923c;">CUSTOM TIMER</div></div>
+        <div class="workout-move-name">GET READY</div>
+        <div class="workout-countdown work">
+          <div class="workout-sec">${c.countdown}</div>
+          <div class="workout-phase">GET SET</div>
+        </div>
+        <button class="workout-end-btn" data-workout-action="end" style="margin-top:auto;">CANCEL</button>
+      </div>
+    `;
+  }
+  const seg = c.seg;
+  const isPaused = !!t.pausedAt;
+  const isWork = seg.type === 'work';
+  const isRest = seg.type === 'rest';
+  const isRoundRest = seg.type === 'round-rest';
+  const phaseClass = isWork ? 'work' : 'rest';
+  const phaseLabel = isWork ? 'WORK' : (isRoundRest ? 'ROUND REST' : 'REST');
+  const topLabel = isWork
+    ? `ROUND ${seg.round}/${s.rounds} · INTERVAL ${seg.interval}/${s.intervals}`
+    : isRoundRest
+      ? `ROUND ${seg.round}/${s.rounds} COMPLETE`
+      : `REST · ${seg.interval}/${s.intervals}`;
+  return `
+    <div class="workout-overlay ${isPaused ? 'is-paused' : ''}" style="background:radial-gradient(ellipse at 30% 25%,#7c2d12 0%,#1c0a00 55%,#0d031f 100%)">
+      <div class="workout-top"><div class="workout-section-name" style="color:#fb923c;">${topLabel}</div></div>
+      <div class="workout-move-name ${isRest||isRoundRest ? 'is-rest-move' : ''}">${phaseLabel}</div>
+      <div class="workout-countdown ${phaseClass}">
+        <div class="workout-sec" style="${isWork ? 'color:#fb923c' : ''}">${c.segRemaining}</div>
+        <div class="workout-phase" style="${isWork ? 'color:#fb923c' : ''}">${isWork ? 'GO' : 'REST'}</div>
+      </div>
+      <div class="workout-progress ${phaseClass}" style="${isWork ? '--bar:#fb923c' : ''}">
+        <div class="workout-progress-bar" style="width:${c.segPct}%;${isWork ? 'background:#fb923c' : ''}"></div>
+      </div>
+      <div class="workout-next" style="min-height:32px;"></div>
+      <div class="workout-controls">
+        <button data-workout-action="${isPaused ? 'resume' : 'pause'}">${isPaused ? 'RESUME' : 'PAUSE'}</button>
+        <button data-workout-action="skip">SKIP ›</button>
+      </div>
+      <button class="workout-end-btn" data-workout-action="end">END TIMER</button>
+    </div>
+  `;
+}
+async function startCustomTimer() {
+  if (state.workoutTimer || state.customTimer) return;
+  const s = { ...state.customTimerSettings };
+  acquireWorkoutWakeLock();
+  const unmute = document.getElementById("iosUnmuteHack");
+  if (unmute && unmute.paused) { unmute.volume = 0.001; unmute.play().catch(() => {}); }
+  if (!workoutAudioCtx) {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (Ctx) try { workoutAudioCtx = new Ctx(); } catch (e) {}
+  }
+  if (workoutAudioCtx && workoutAudioCtx.state !== "running") workoutAudioCtx.resume().catch(() => {});
+  state.customTimer = { settings: s, startedAt: Date.now() + 5000, totalPausedMs: 0, pausedAt: null };
+  workoutLastVibKey = "CT-PENDING";
+  workoutFiredBeeps = new Set();
+  document.getElementById("workoutSheet").classList.remove("open");
+  scheduleCustomTimerTick();
+  if (workoutAudioCtx) {
+    if (workoutAudioCtx.state !== "running") await workoutAudioCtx.resume().catch(() => {});
+    startSilentKeepAlive(workoutAudioCtx);
+  }
+  render();
+  playBeep(800, 200); navigator.vibrate?.(60);
+  setTimeout(() => { playBeep(800, 200); navigator.vibrate?.(60); }, 1000);
+}
+function pauseCustomTimer() {
+  if (!state.customTimer || state.customTimer.pausedAt) return;
+  state.customTimer.pausedAt = Date.now(); render();
+}
+async function resumeCustomTimer() {
+  const t = state.customTimer; if (!t || !t.pausedAt) return;
+  const ctx = await ensureAudioCtx();
+  if (ctx && !workoutSilentNode) startSilentKeepAlive(ctx);
+  t.totalPausedMs += Date.now() - t.pausedAt; t.pausedAt = null; render();
+}
+function skipCustomTimerSeg() {
+  const t = state.customTimer; if (!t) return;
+  const c = computeCustomTimerState(); if (!c || c.done) return;
+  const seq = buildCustomTimerSequence(t.settings);
+  let newElapsedMs = 0;
+  for (let i = 0; i <= c.segIdx; i++) newElapsedMs += seq[i].dur * 1000;
+  const ref = t.pausedAt || Date.now();
+  t.startedAt = ref - t.totalPausedMs - newElapsedMs;
+  navigator.vibrate?.(60); render();
+}
+function finishCustomTimer() {
+  const t = state.customTimer; if (!t) return;
+  const elapsedMs = Date.now() - t.startedAt - t.totalPausedMs;
+  const elapsedMin = Math.round(elapsedMs / 60000);
+  state.customTimer = null;
+  workoutLastVibKey = ""; workoutFiredBeeps = new Set();
+  if (workoutTickHandle) { clearInterval(workoutTickHandle); workoutTickHandle = null; }
+  releaseWorkoutWakeLock(); stopSilentKeepAlive();
+  try { const u = document.getElementById("iosUnmuteHack"); if (u) u.pause(); } catch (e) {}
+  playBeep(1000, 300); setTimeout(() => playBeep(1200, 400), 350);
+  navigator.vibrate?.([100, 80, 100, 80, 200]);
+  if (elapsedMin >= 2) {
+    state.sessions.push({
+      id: uid(), date: todayISO(), discipline: "Strength",
+      data: { duration: String(elapsedMin), type: "Custom Timer", details: `${t.settings.rounds} rounds · ${t.settings.intervals} intervals`, calories: String(Math.round(5 * (state.weight||94) * (elapsedMin/60))) }
+    });
+    saveSessions();
+    showToast(`Custom timer logged — ${elapsedMin} min`);
+  }
+  render();
+}
+function endCustomTimer() {
+  state.customTimer = null;
+  workoutLastVibKey = ""; workoutFiredBeeps = new Set();
+  if (workoutTickHandle) { clearInterval(workoutTickHandle); workoutTickHandle = null; }
+  releaseWorkoutWakeLock(); stopSilentKeepAlive();
+  try { const u = document.getElementById("iosUnmuteHack"); if (u) u.pause(); } catch (e) {}
+  render();
+}
+function scheduleCustomTimerTick() {
+  if (workoutTickHandle) clearInterval(workoutTickHandle);
+  workoutTickHandle = setInterval(() => {
+    if (!state.customTimer) { clearInterval(workoutTickHandle); workoutTickHandle = null; return; }
+    if (state.customTimer.pausedAt) return;
+    const c = computeCustomTimerState();
+    if (c.done) { finishCustomTimer(); return; }
+    if (c.pending) { render(); return; }
+    const vibKey = `ct-${c.segIdx}`;
+    if (vibKey !== workoutLastVibKey) {
+      const isWork = c.seg.type === 'work';
+      navigator.vibrate?.(isWork ? [80, 40, 120] : 50);
+      if (isWork) playBeep(1200, 450);
+      else        playBeep(900, 600);
+      workoutLastVibKey = vibKey;
+    }
+    if (c.intoSeg >= c.seg.dur - 2 && c.intoSeg < c.seg.dur - 1) {
+      const k = `bip1-ct-${c.segIdx}`;
+      if (!workoutFiredBeeps.has(k)) { workoutFiredBeeps.add(k); playBeep(800, 110); }
+    }
+    if (c.intoSeg >= c.seg.dur - 1 && c.intoSeg < c.seg.dur) {
+      const k = `bip2-ct-${c.segIdx}`;
+      if (!workoutFiredBeeps.has(k)) { workoutFiredBeeps.add(k); playBeep(800, 110); }
+    }
+    render();
+  }, 250);
+}
+
 // ---------- Active Workout Timer ----------
 let workoutTickHandle = null;
 let workoutWakeLock = null;
@@ -3657,6 +3907,7 @@ function scheduleWorkoutTick() {
 }
 
 function renderWorkoutOverlay() {
+  if (state.customTimer) return renderCustomTimerOverlay();
   if (!state.workoutTimer) return "";
   const c = computeWorkoutState();
   if (!c || c.done) return "";
@@ -4321,7 +4572,17 @@ function renderWorkoutPlan(mode) {
   if (detailIdx === null || detailIdx === undefined) {
     // LIST view
     if (titleEl) titleEl.textContent = "Workouts";
-    content = WORKOUTS.map((w, idx) => `
+    // Custom timer card at the top
+    content = `
+      <button class="workout-list-item" data-workout-detail="custom">
+        <div class="workout-list-item-main">
+          <div class="workout-list-item-title"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="display:inline;vertical-align:-2px;margin-right:4px"><rect x="1" y="9.5" width="4" height="5" rx="1.2"/><rect x="5" y="11" width="14" height="2" rx="1"/><rect x="19" y="9.5" width="4" height="5" rx="1.2"/></svg> Custom Timer</div>
+          <div class="workout-list-item-note">Set your own work · rest · sets · rounds</div>
+        </div>
+        <div class="workout-list-item-chev">›</div>
+      </button>
+    `;
+    content += WORKOUTS.map((w, idx) => `
       <button class="workout-list-item" data-workout-detail="${idx}">
         <div class="workout-list-item-main">
           <div class="workout-list-item-title">${w.icon} ${escapeHtml(w.title)}</div>
@@ -4349,6 +4610,49 @@ function renderWorkoutPlan(mode) {
         </div>
         <div class="workout-list-item-chev">›</div>
       </button>
+    `;
+  } else if (detailIdx === "custom") {
+    // CUSTOM TIMER CONFIG view
+    if (titleEl) titleEl.textContent = "Custom Timer";
+    const cs = state.customTimerSettings;
+    function fmtSec(s) {
+      if (s < 60) return s + 's';
+      const m = Math.floor(s/60), r = s%60;
+      return r ? `${m}m ${r}s` : `${m}m`;
+    }
+    const totalSec = cs.rounds * (cs.intervals * cs.workSec + Math.max(0, cs.intervals - 1) * cs.restSec)
+      + Math.max(0, cs.rounds - 1) * cs.roundRestSec;
+    const totalMin = Math.floor(totalSec / 60), totalS = totalSec % 60;
+    const totalStr = totalMin > 0 ? (totalS ? `${totalMin}m ${totalS}s` : `${totalMin} min`) : `${totalSec}s`;
+    const rows = [
+      { key: 'workSec',     label: 'Work time',            step: 5,  min: 5,  max: 300 },
+      { key: 'restSec',     label: 'Rest between intervals',step: 5,  min: 0,  max: 120 },
+      { key: 'intervals',   label: 'Intervals per round',   step: 1,  min: 1,  max: 30  },
+      { key: 'rounds',      label: 'Rounds',                step: 1,  min: 1,  max: 10  },
+      { key: 'roundRestSec',label: 'Rest between rounds',   step: 15, min: 0,  max: 300 },
+    ].map(r => `
+      <div class="ct-row">
+        <span class="ct-label">${r.label}</span>
+        <div class="ct-stepper">
+          <button data-ct-adj="${r.key}" data-ct-dir="-1" data-ct-step="${r.step}" data-ct-min="${r.min}" data-ct-max="${r.max}">−</button>
+          <span class="ct-val">${r.key === 'intervals' || r.key === 'rounds' ? cs[r.key] : fmtSec(cs[r.key])}</span>
+          <button data-ct-adj="${r.key}" data-ct-dir="1" data-ct-step="${r.step}" data-ct-min="${r.min}" data-ct-max="${r.max}">+</button>
+        </div>
+      </div>
+    `).join('');
+    content = `
+      <button class="workout-back-btn" data-workout-back>‹ All workouts</button>
+      <div class="workout-card is-custom">
+        <div class="workout-card-head">
+          <div class="workout-card-name"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" style="display:inline;vertical-align:-3px;margin-right:6px"><rect x="1" y="9.5" width="4" height="5" rx="1.2"/><rect x="5" y="11" width="14" height="2" rx="1"/><rect x="19" y="9.5" width="4" height="5" rx="1.2"/></svg> Custom Timer</div>
+        </div>
+        ${rows}
+        <div class="ct-total-row">
+          <span class="ct-total-label">TOTAL SESSION</span>
+          <span class="ct-total-val">~${totalStr}</span>
+        </div>
+        <button class="ct-start-btn" data-workout-start-custom>▶ START TIMER</button>
+      </div>
     `;
   } else if (detailIdx === "exercises") {
     // EXERCISES view
@@ -4666,13 +4970,31 @@ document.addEventListener("click", e => {
     startWorkout(idx);
     return;
   }
+  // Custom timer start
+  if (e.target.closest("[data-workout-start-custom]")) {
+    startCustomTimer(); return;
+  }
+  // Custom timer stepper buttons
+  const adjBtn = e.target.closest("[data-ct-adj]");
+  if (adjBtn) {
+    const key  = adjBtn.dataset.ctAdj;
+    const dir  = parseInt(adjBtn.dataset.ctDir, 10);
+    const step = parseInt(adjBtn.dataset.ctStep, 10);
+    const min  = parseInt(adjBtn.dataset.ctMin, 10);
+    const max  = parseInt(adjBtn.dataset.ctMax, 10);
+    const cur  = state.customTimerSettings[key] || 0;
+    state.customTimerSettings[key] = Math.max(min, Math.min(max, cur + dir * step));
+    saveSettings();
+    renderWorkoutPlan("workout");
+    return;
+  }
   const action = e.target.closest("[data-workout-action]")?.dataset.workoutAction;
   if (!action) return;
-  if (action === "pause") pauseWorkout();
-  else if (action === "resume") resumeWorkout();
-  else if (action === "skip") skipWorkoutMove();
-  else if (action === "end") endWorkout();
-  else if (action === "peek") { state.workoutPeekOpen = true; render(); }
+  if (action === "pause")      state.customTimer ? pauseCustomTimer()    : pauseWorkout();
+  else if (action === "resume") state.customTimer ? resumeCustomTimer()  : resumeWorkout();
+  else if (action === "skip")   state.customTimer ? skipCustomTimerSeg() : skipWorkoutMove();
+  else if (action === "end")    state.customTimer ? endCustomTimer()      : endWorkout();
+  else if (action === "peek")      { state.workoutPeekOpen = true;  render(); }
   else if (action === "peek-close") { state.workoutPeekOpen = false; render(); }
 });
 
@@ -5373,9 +5695,9 @@ let reach_isPaused = false;
 let reach_lastTick = null;
 let reach_sessionComplete = false;
 
-function reach_buildSequence(items){
+function reach_buildSequence(items, order){
   const seq = [];
-  const ids = Object.keys(items);
+  const ids = order || Object.keys(items);
   ids.forEach(id=>{
     const s = STRETCHES.find(x=>x.id==id);
     const min = items[id];
@@ -5404,11 +5726,13 @@ document.getElementById('reach-playBtn').addEventListener('click', ()=>{
 // fine-tune a session: change a duration, remove a stretch, or add another,
 // all before hitting Play.
 let reach_previewItems = {};
+let reach_previewOrder = [];   // explicit ordering of IDs in the preview list
 let reach_previewSyncBuildTab = true;
 let reach_previewAddOpen = false;
 
 function reach_openPreview(items, syncBuildTab=true){
   reach_previewItems = {...items};
+  reach_previewOrder = Object.keys(items).map(String);
   reach_previewSyncBuildTab = syncBuildTab;
   reach_previewAddOpen = false;
   reach_syncPreviewChange();
@@ -5430,7 +5754,7 @@ function reach_syncPreviewChange(){
 }
 
 function reach_renderPreviewList(){
-  const ids = Object.keys(reach_previewItems);
+  const ids = reach_previewOrder;
   const mins = reach_sessionMinutesFor(reach_previewItems);
   document.getElementById('reach-previewTotal').textContent = ids.length
     ? `${mins} min · ${ids.length} stretch${ids.length===1?'':'es'}`
@@ -5440,7 +5764,7 @@ function reach_renderPreviewList(){
   if(ids.length===0){
     itemsList.innerHTML = `<div class="preview-empty">Add a stretch below to build this session.</div>`;
   } else {
-    itemsList.innerHTML = ids.map(id=>{
+    itemsList.innerHTML = ids.map((id, idx)=>{
       const s = STRETCHES.find(x=>x.id==id);
       const min = reach_previewItems[id];
       const chips = DURATIONS.map(d=>{
@@ -5448,6 +5772,8 @@ function reach_renderPreviewList(){
         return `<button class="dur-chip ${active}" data-id="${id}" data-min="${d}">${d} min${s.sides?'/side':''}</button>`;
       }).join('');
       const img = STRETCH_IMAGES[s.id];
+      const isFirst = idx === 0;
+      const isLast  = idx === ids.length - 1;
       return `<div class="preview-item">
         ${img ? `<img class="pi-thumb" src="${img.thumb}" alt="">` : ''}
         <div class="pi-main">
@@ -5457,7 +5783,11 @@ function reach_renderPreviewList(){
             ${s.sides ? '' : '<span class="pi-sides-tag">single hold</span>'}
           </div>
         </div>
-        <button class="pi-remove" data-id="${id}">Remove</button>
+        <div class="pi-order">
+          <button data-move-up="${id}" ${isFirst ? 'disabled' : ''} title="Move up">▲</button>
+          <button data-move-down="${id}" ${isLast  ? 'disabled' : ''} title="Move down">▼</button>
+        </div>
+        <button class="pi-remove" data-id="${id}">✕</button>
       </div>`;
     }).join('');
     itemsList.querySelectorAll('.dur-chip').forEach(btn=>{
@@ -5468,8 +5798,29 @@ function reach_renderPreviewList(){
     });
     itemsList.querySelectorAll('.pi-remove').forEach(btn=>{
       btn.addEventListener('click', ()=>{
+        reach_previewOrder = reach_previewOrder.filter(x => x !== btn.dataset.id);
         delete reach_previewItems[btn.dataset.id];
         reach_syncPreviewChange();
+      });
+    });
+    itemsList.querySelectorAll('[data-move-up]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const id = btn.dataset.moveUp;
+        const i = reach_previewOrder.indexOf(id);
+        if(i > 0){
+          [reach_previewOrder[i-1], reach_previewOrder[i]] = [reach_previewOrder[i], reach_previewOrder[i-1]];
+          reach_syncPreviewChange();
+        }
+      });
+    });
+    itemsList.querySelectorAll('[data-move-down]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const id = btn.dataset.moveDown;
+        const i = reach_previewOrder.indexOf(id);
+        if(i < reach_previewOrder.length - 1){
+          [reach_previewOrder[i], reach_previewOrder[i+1]] = [reach_previewOrder[i+1], reach_previewOrder[i]];
+          reach_syncPreviewChange();
+        }
       });
     });
   }
@@ -5500,7 +5851,9 @@ function reach_renderPreviewAddPanel(){
   }).join('');
   panel.querySelectorAll('button.add').forEach(btn=>{
     btn.addEventListener('click', ()=>{
-      reach_previewItems[btn.dataset.id] = 1;
+      const id = String(btn.dataset.id);
+      reach_previewItems[id] = 1;
+      if(!reach_previewOrder.includes(id)) reach_previewOrder.push(id);
       reach_syncPreviewChange();
     });
   });
@@ -5511,10 +5864,10 @@ document.getElementById('reach-previewAddToggle').addEventListener('click', ()=>
   reach_renderPreviewList();
 });
 document.getElementById('reach-closePreviewBtn').addEventListener('click', reach_closePreview);
-document.getElementById('reach-startPlayBtn').addEventListener('click', ()=> reach_startPlayback(reach_previewItems));
+document.getElementById('reach-startPlayBtn').addEventListener('click', ()=> reach_startPlayback(reach_previewItems, reach_previewOrder));
 
-async function reach_startPlayback(items){
-  const built = reach_buildSequence(items);
+async function reach_startPlayback(items, order){
+  const built = reach_buildSequence(items, order);
   if(!built.length) return;
 
   // ---- synchronous audio unlock: must happen before any await ----
