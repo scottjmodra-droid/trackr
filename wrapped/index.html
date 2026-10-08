@@ -1,0 +1,857 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1a0633">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232a0d52'/%3E%3Cpath d='M14 30h6v4h-6zm30 0h6v4h-6zm-26-6h4v16h-4zm32 0h4v16h-4zm-26 6h20v4H24z' fill='%23e8f84a'/%3E%3C/svg%3E">
+<title>Trackr Wrapped</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap">
+<style>
+[hidden]{display:none!important}
+/* Layout: one scrolling column, Trackr's purple night sky; range picker → hero number → the shift chart → breakdown → calendar → fun facts. Single dark look, matching the app. */
+:root{
+  --bg:#1a0633; --bg-2:#2a0d52; --glow-1:#4a1480; --glow-2:#6b1b9a;
+  --ink:#ffffff; --ink-soft:#f0e6ff; --ink-mute:#d4baeb; --ink-faint:#9684b8;
+  --lime:#e8f84a; --violet:#8b5cf6;
+  --card:rgba(255,255,255,0.05); --card-line:rgba(255,255,255,0.09); --grid:rgba(255,255,255,0.07);
+  --surface:#1f0a3d; --tip:#12042a; --on-lime:#1a0633; --err:#ff8fa3;
+  --f-display:'Bebas Neue',Impact,'Arial Narrow',sans-serif;
+  --f-body:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --ease:cubic-bezier(.2,.75,.2,1);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;color:var(--ink-soft);font-family:var(--f-body);font-size:15px;line-height:1.5;
+  background-color:var(--bg);
+  background-image:radial-gradient(ellipse at top,var(--glow-1) 0%,transparent 55%),radial-gradient(ellipse at bottom right,var(--glow-2) 0%,transparent 50%),linear-gradient(180deg,var(--bg) 0%,var(--bg-2) 100%);
+  background-attachment:fixed;-webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:780px;margin:0 auto;padding-inline:20px;padding-block:28px 64px;display:flex;flex-direction:column;gap:56px}
+h1,h2,h3{font-family:var(--f-display);font-weight:400;letter-spacing:2px;margin:0;color:var(--ink);text-wrap:balance}
+h2{font-size:30px;line-height:1}
+.eyebrow{font-size:11px;letter-spacing:2.5px;text-transform:uppercase;color:var(--ink-mute);font-weight:500}
+.num{font-variant-numeric:tabular-nums}
+button,input,select{font-family:inherit}
+:focus-visible{outline:2px solid var(--lime);outline-offset:2px;border-radius:4px}
+
+/* top bar + range picker */
+.top{display:flex;flex-direction:column;gap:14px}
+.brand{font-family:var(--f-display);font-size:24px;letter-spacing:3px;color:var(--ink);display:flex;align-items:center;gap:8px}
+.brand svg{width:26px;height:26px}
+.range{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;background:var(--card);border:1px solid var(--card-line);border-radius:16px;padding:10px 12px}
+.range label{font-size:12px;color:var(--ink-mute)}
+.pick{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.range select{appearance:none;-webkit-appearance:none;background:var(--surface);color:var(--ink);border:1px solid var(--card-line);border-radius:999px;padding:7px 30px 7px 12px;font-size:13px;font-weight:500;cursor:pointer;
+  background-image:linear-gradient(45deg,transparent 50%,var(--ink-mute) 50%),linear-gradient(135deg,var(--ink-mute) 50%,transparent 50%);
+  background-position:calc(100% - 15px) 52%,calc(100% - 10px) 52%;background-size:5px 5px;background-repeat:no-repeat}
+
+.seg{display:inline-flex;background:rgba(255,255,255,0.06);border:1px solid var(--card-line);border-radius:999px;padding:3px}
+.seg button{border:0;background:transparent;color:var(--ink-mute);font-size:12px;font-weight:500;padding:6px 12px;border-radius:999px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--lime);color:var(--on-lime)}
+
+/* hero */
+.hero{display:flex;flex-direction:column;gap:6px}
+.hero .big{font-family:var(--f-display);color:var(--lime);font-size:clamp(96px,26vw,184px);line-height:.82;letter-spacing:1px}
+.hero .big small{font-size:.32em;color:var(--ink);letter-spacing:3px;margin-left:10px}
+.hero .sub{font-size:16px;color:var(--ink-mute);max-width:52ch}
+.hero .sub b{color:var(--ink);font-weight:500}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:22px}
+.stat{background:var(--card);border:1px solid var(--card-line);border-radius:14px;padding:14px 14px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.stat .v{font-family:var(--f-display);font-size:38px;line-height:1;color:var(--ink);letter-spacing:1px}
+.stat .l{font-size:12px;color:var(--ink-mute)}
+@media (max-width:620px){.stats{grid-template-columns:repeat(2,1fr)}.stat .v{font-size:32px}}
+
+/* section */
+.sec{display:flex;flex-direction:column;gap:14px}
+.sec-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.lede{font-size:17px;color:var(--ink-soft);max-width:58ch;margin:0}
+.lede em{font-style:normal;color:var(--lime);font-weight:500}
+.note{font-size:12px;color:var(--ink-faint);margin:0}
+.empty{font-size:14px;color:var(--ink-mute);padding:24px 8px;text-align:center}
+
+/* legend */
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--ink-mute)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:10px;height:10px;border-radius:3px;display:inline-block;flex:none}
+
+/* chart */
+.chart{position:relative;background:var(--card);border:1px solid var(--card-line);border-radius:16px;padding:14px 10px 8px}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart .axis text{fill:var(--ink-faint);font-size:11px;font-family:var(--f-body)}
+.chart .gridline{stroke:var(--grid);stroke-width:1}
+.chart-tools{display:flex;gap:8px;align-items:center}
+.ghost{border:1px solid var(--card-line);background:transparent;color:var(--ink-mute);border-radius:999px;padding:6px 12px;font-size:12px;cursor:pointer}
+.ghost:hover{color:var(--ink);border-color:var(--ink-faint)}
+.month-tag{position:absolute;top:14px;right:18px;font-family:var(--f-display);font-size:34px;letter-spacing:2px;color:var(--lime);pointer-events:none;opacity:.9}
+.tip{position:absolute;pointer-events:none;background:var(--tip);border:1px solid var(--card-line);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--ink-soft);min-width:170px;box-shadow:0 8px 24px rgba(0,0,0,.4);z-index:5}
+.tip .t{font-weight:600;color:var(--ink);margin-bottom:4px}
+.tip .r{display:flex;align-items:center;gap:6px;justify-content:space-between}
+.tip .r span:first-child{display:inline-flex;align-items:center;gap:6px}
+.tip .tot{border-top:1px solid var(--card-line);margin-top:4px;padding-top:4px;font-weight:600;color:var(--ink)}
+
+/* breakdown */
+.rows{display:flex;flex-direction:column;gap:10px}
+.row{display:grid;grid-template-columns:110px 1fr 64px;gap:12px;align-items:center}
+.row .name{display:flex;align-items:center;gap:8px;color:var(--ink);font-weight:500;font-size:14px;min-width:0}
+.row .bar{height:14px;background:rgba(255,255,255,0.04);border-radius:4px;overflow:hidden}
+.row .bar i{display:block;height:100%;border-radius:0 4px 4px 0;transition:width 1.1s var(--ease)}
+.row .h{text-align:right;font-family:var(--f-display);font-size:22px;color:var(--ink);letter-spacing:1px}
+.row .meta{grid-column:2 / 4;font-size:12px;color:var(--ink-faint);margin-top:-8px}
+@media (max-width:480px){.row{grid-template-columns:90px 1fr 54px}}
+
+/* heatmap */
+.heat{background:var(--card);border:1px solid var(--card-line);border-radius:16px;padding:14px;position:relative}
+.heat-scroll{overflow-x:auto}
+.heat svg{display:block;width:100%;height:auto}
+.heat-scroll svg.wide{min-width:560px}
+.heat text{fill:var(--ink-faint);font-size:9px;font-family:var(--f-body)}
+.heat rect{transform-box:fill-box;transform-origin:center;transition:transform .45s var(--ease)}
+.ramp{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-faint);justify-content:flex-end;margin-top:8px}
+.ramp i{width:12px;height:12px;border-radius:3px;display:inline-block}
+
+/* strength */
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{background:var(--card);border:1px solid var(--card-line);border-radius:12px;padding:10px 14px;display:flex;flex-direction:column;min-width:96px}
+.chip b{font-family:var(--f-display);font-size:28px;font-weight:400;color:var(--ink);letter-spacing:1px;line-height:1}
+.chip span{font-size:12px;color:var(--ink-mute)}
+
+/* facts */
+.facts{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.fact{background:var(--card);border:1px solid var(--card-line);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.fact.hl{background:var(--lime);border-color:var(--lime)}
+.fact.hl .fv,.fact.hl .fl,.fact.hl .fn{color:var(--on-lime)}
+.fv{font-family:var(--f-display);font-size:48px;line-height:.95;color:var(--ink);letter-spacing:1px}
+.fv small{font-size:.45em;letter-spacing:2px;margin-left:4px}
+.fl{font-size:14px;color:var(--ink);font-weight:500}
+.fn{font-size:12px;color:var(--ink-mute)}
+@media (max-width:560px){.facts{grid-template-columns:1fr}}
+
+/* weekly + firsts */
+.wbar{transform-box:fill-box;transform-origin:50% 100%}
+.ficon{transform-box:fill-box;transform-origin:50% 50%;font-size:15px}
+@media (max-width:480px){.ficon{font-size:11px}}
+[data-pop]{transition:transform .55s var(--ease)}
+.wbar[data-pop]{transition:transform .8s var(--ease)}
+.wd-c i[data-pop]{transition:transform .5s var(--ease)}
+.firsts{display:flex;flex-wrap:wrap;gap:6px}
+.firsts span{font-size:12px;color:var(--ink-mute);background:var(--card);border:1px solid var(--card-line);border-radius:999px;padding:4px 10px;white-space:nowrap}
+.firsts b{color:var(--ink);font-weight:500}
+/* race */
+.race-lbl{font-size:12px;font-family:var(--f-body);fill:var(--ink-soft)}
+.race-lbl tspan.k{fill:var(--ink-faint)}
+.rline{transition:stroke-dashoffset 2.8s cubic-bezier(.45,0,.25,1)}
+
+/* weekday grid */
+.wd{position:relative;background:var(--card);border:1px solid var(--card-line);border-radius:16px;padding:14px 12px;overflow-x:auto}
+.wd-grid{display:grid;grid-template-columns:92px repeat(7,minmax(34px,1fr));align-items:center;row-gap:6px;min-width:360px}
+.wd-c i.top{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--ink)}
+.wd-h{font-size:11px;color:var(--ink-faint);text-align:center;letter-spacing:1px;text-transform:uppercase}
+.wd-n{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);font-weight:500}
+.wd-c{display:flex;justify-content:center;align-items:center;height:34px}
+.wd-c i{display:block;border-radius:50%}
+.wd-t{font-family:var(--f-display);font-size:18px;letter-spacing:1px;color:var(--ink-mute);text-align:center}
+.wd-c i[data-pop]{transform-origin:50% 50%}
+@media (prefers-reduced-motion:reduce){[data-pop],.rline,.race-lbls{transition:none}}
+
+/* turning point + annotations */
+.turn{background:var(--card);border:1px solid var(--card-line);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:18px}
+.turn-top{display:flex;gap:22px;align-items:center}
+.turn-date{font-family:var(--f-display);color:var(--lime);line-height:.82;text-align:center;flex:none}
+.turn-date b{display:block;font-weight:400;font-size:88px}
+.turn-date span{font-size:26px;letter-spacing:4px;color:var(--ink)}
+.turn .lede{font-size:16px}
+.turn-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.turn-stats .stat{background:rgba(255,255,255,0.04)}
+.anno{font-size:11px;font-weight:600;font-family:var(--f-body);fill:var(--ink);paint-order:stroke;stroke:var(--surface);stroke-width:3px;stroke-linejoin:round}
+@media (max-width:480px){.turn-top{flex-direction:column;align-items:flex-start;gap:10px}.turn-date{display:flex;align-items:baseline;gap:8px}.turn-date b{font-size:64px}}
+
+/* scroll reveal: elements rest fully drawn; JS only primes ones that are off-screen */
+.rv{transition:transform .8s var(--ease),opacity .8s var(--ease)}
+.rv.pre{transform:translateY(28px) scale(.96);opacity:.35}
+@media (prefers-reduced-motion:reduce){.rv,.row .bar i,.heat rect{transition:none}}
+
+/* loader */
+.drop{border:1.5px dashed var(--card-line);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:10px;align-items:flex-start}
+.drop.over{border-color:var(--lime);background:rgba(232,248,74,0.05)}
+.btn{background:var(--lime);color:var(--on-lime);border:0;border-radius:999px;padding:9px 16px;font-weight:600;font-size:13px;cursor:pointer}
+.drop .err{color:var(--err);font-size:13px}
+.linkbtn{background:none;border:0;color:var(--ink-mute);text-decoration:underline;cursor:pointer;font-size:12px;padding:0}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand"><svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#2a0d52"/><path d="M14 30h6v4h-6zm30 0h6v4h-6zm-26-6h4v16h-4zm32 0h4v16h-4zm-26 6h20v4H24z" fill="#e8f84a"/></svg>TRACKR WRAPPED</div>
+    <div class="range" role="group" aria-label="Date range">
+      <div class="pick">
+        <label for="r-from">From</label><select id="r-from"></select>
+        <label for="r-to">to</label><select id="r-to"></select>
+      </div>
+      <button class="ghost" id="replay" style="margin-left:auto" title="Reset the animations, then scroll down to watch them again">↺ Replay animations</button>
+    </div>
+  </div>
+
+  <section class="hero">
+    <div class="eyebrow" id="hero-eyebrow">In training</div>
+    <div class="big num"><span id="hero-hours" data-count>0</span><small>HOURS</small></div>
+    <p class="sub" id="hero-sub"></p>
+    <div class="stats" id="stats"></div>
+  </section>
+
+  <section class="sec">
+    <div class="sec-head">
+      <div><div class="eyebrow">The shift</div><h2>How your training changed</h2></div>
+      <div class="chart-tools">
+        <div class="seg" role="group" aria-label="Chart scale">
+          <button id="m-share" aria-pressed="true">Share</button>
+          <button id="m-hours" aria-pressed="false">Hours</button>
+        </div>
+      </div>
+    </div>
+    <p class="lede" id="shift-lede"></p>
+    <div class="legend" id="legend"></div>
+    <div class="chart" id="chart"><div class="month-tag" id="month-tag"></div><div class="tip" id="tip" hidden></div></div>
+    <p class="note" id="chart-note"></p>
+  </section>
+
+  <section class="sec" id="turn-sec">
+    <div><div class="eyebrow">The turning point</div><h2 id="turn-h"></h2></div>
+    <div class="turn rv" id="turn"></div>
+  </section>
+
+  <section class="sec">
+    <div><div class="eyebrow">Week by week</div><h2>Building up, trying new things</h2></div>
+    <p class="lede" id="weekly-lede"></p>
+    <div class="legend"><span><i class="sw" style="background:var(--violet)"></i>Hours that week</span><span><i class="sw" style="background:var(--lime);height:3px"></i>4-week average</span><span>🏅 Icons mark firsts (hover for dates)</span></div>
+    <div class="chart" id="weekly"><div class="tip" id="wtip" hidden></div></div>
+  </section>
+
+  <section class="sec">
+    <div><div class="eyebrow">Where the hours went</div><h2>By discipline</h2></div>
+    <div class="rows" id="rows"></div>
+  </section>
+
+  <section class="sec">
+    <div><div class="eyebrow">The distance race</div><h2>Kilometres, adding up</h2></div>
+    <p class="lede" id="race-lede"></p>
+    <div class="chart" id="race"><div class="tip" id="rtip" hidden></div></div>
+    <p class="note">Running total of distance for each discipline. Strength, stretch, climbing and waterpolo have no distance, so they sit this one out.</p>
+  </section>
+
+  <section class="sec">
+    <div><div class="eyebrow">Your week, shaped</div><h2>When you do what</h2></div>
+    <p class="lede" id="weekday-lede"></p>
+    <div class="wd" id="weekday"><div class="tip" id="dtip" hidden></div></div>
+    <p class="note">Bigger dot, more sessions on that day. The ringed dot is each discipline's top day.</p>
+  </section>
+
+  <section class="sec">
+    <div class="sec-head"><div><div class="eyebrow">Every day you showed up</div><h2>The calendar</h2></div></div>
+    <div class="heat" id="heat"><div class="tip" id="htip" hidden></div></div>
+  </section>
+
+  <section class="sec">
+    <div><div class="eyebrow">The fun bit</div><h2>Fun facts</h2></div>
+    <div class="facts" id="facts"></div>
+  </section>
+
+  <section class="sec">
+    <div class="drop" id="drop">
+      <div><div class="eyebrow">Your data</div><div id="src-label" style="color:var(--ink);font-weight:500"></div></div>
+      <p class="note" style="margin:0">Export your log from Trackr's menu and drop the .json file here. It's read in your browser and never uploaded anywhere.</p>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <label class="btn" for="file">Load a training log</label>
+        <input type="file" id="file" accept=".json,application/json" class="sr">
+        <button class="linkbtn" id="reset" hidden>Back to the built-in log</button>
+      </div>
+      <div class="err" id="err" hidden></div>
+    </div>
+  </section>
+</div>
+
+<script id="builtin" type="application/json">[{"id":"3bd1c430-b904-457c-9194-e4475b170054","date":"2026-01-01","discipline":"Run","data":{"duration":"20.0","distance":"3.19","calories":"326","pace":"6:16"},"subType":null},{"id":"77b39af7-a995-4fb2-a2e8-782fd600b14e","date":"2026-01-02","discipline":"Run","data":{"duration":"48.5","distance":"8.04","calories":"921","pace":"6:02"},"subType":null},{"id":"655a892a-e126-4085-9943-32b818bf621d","date":"2026-01-04","discipline":"Run","data":{"duration":"44.2","distance":"7.03","calories":"806","pace":"6:17"},"subType":null},{"id":"be5cf3c7-74b8-4a60-84d2-7cfef5423cc1","date":"2026-01-05","discipline":"Run","data":{"duration":"30.0","distance":"5.22","calories":"543","pace":"5:45"},"subType":null},{"id":"f413c8a6-7524-4d68-8f9a-a8d28639a810","date":"2026-01-05","discipline":"Chilled","data":{"duration":"25.0","distance":"2.49","calories":"309"},"subType":"Walk"},{"id":"a146d982-f767-4ced-bf45-f5efb541733a","date":"2026-01-06","discipline":"Active","data":{"duration":"23.0","distance":"11.01","calories":"250"},"subType":"Cycling"},{"id":"1541f559-715e-4383-a60f-d676b044d952","date":"2026-01-07","discipline":"Run","data":{"duration":"40.0","distance":"6.3","calories":"608","pace":"6:21"},"subType":null},{"id":"05d7f287-837b-4665-b553-f347fa3e0e4a","date":"2026-01-07","discipline":"Chilled","data":{"duration":"30.0","distance":"3.0","calories":"402"},"subType":"Walk"},{"id":"9c1ae633-3872-48ee-b410-7e9d5e841dc9","date":"2026-01-09","discipline":"Run","data":{"duration":"40.0","distance":"6.31","calories":"462","pace":"6:20"},"subType":null},{"id":"94b356f4-a60f-4b6e-a679-f4660cbe4540","date":"2026-01-09","discipline":"Chilled","data":{"duration":"10.0","distance":"0.99","calories":"138"},"subType":"Walk"},{"id":"611aed95-89c4-428b-83ee-ac97de274d7f","date":"2026-01-09","discipline":"Active","data":{"duration":"10.7","distance":"4.85","calories":"100"},"subType":"Cycling"},{"id":"01e31f5c-e212-4bbb-8d0e-8b1c71488a51","date":"2026-01-10","discipline":"Run","data":{"duration":"73.5","distance":"12.07","calories":"1386","pace":"6:05"},"subType":null},{"id":"25263874-45aa-4b9f-affd-2bbe31aae808","date":"2026-01-11","discipline":"Run","data":{"duration":"13.1","distance":"2.09","calories":"202","pace":"6:16"},"subType":null},{"id":"b70bf002-022e-492f-bd55-8fffce8bf9b2","date":"2026-01-12","discipline":"Run","data":{"duration":"45.3","distance":"7.07","calories":"810","pace":"6:24"},"subType":null},{"id":"aceda05d-3a30-46dc-bd8b-412844476741","date":"2026-01-13","discipline":"Run","data":{"duration":"11.4","distance":"2.0","calories":"196","pace":"5:42"},"subType":null},{"id":"4c477fd5-69b3-447e-9e23-79b6ec162cc4","date":"2026-01-13","discipline":"Run","data":{"duration":"8.5","distance":"1.5","calories":"147","pace":"5:40"},"subType":null},{"id":"cd06116c-0ee0-4fe1-a153-9060162b4d7f","date":"2026-01-13","discipline":"Run","data":{"duration":"8.1","distance":"1.5","calories":"147","pace":"5:24"},"subType":null},{"id":"50a04949-5d2c-4ea7-b3ce-3b0699c6a06a","date":"2026-01-13","discipline":"Chilled","data":{"duration":"10.2","distance":"1.0","calories":"108"},"subType":"Walk"},{"id":"6923dfd0-2338-42a5-bef6-d155941d8f9f","date":"2026-01-14","discipline":"Run","data":{"duration":"47.8","distance":"7.52","calories":"862","pace":"6:21"},"subType":null},{"id":"f7551537-280f-4078-8091-bb9e9e8dd43d","date":"2026-01-14","discipline":"Swim","data":{"duration":"30.0","distance":"1.5","calories":"446"},"subType":null},{"id":"26f571dd-eede-4142-aab0-b36777dfebc3","date":"2026-01-15","discipline":"Run","data":{"duration":"11.6","distance":"2.0","calories":"195","pace":"5:48"},"subType":null},{"id":"36d4a521-d869-4295-8247-9677188dcd32","date":"2026-01-15","discipline":"Run","data":{"duration":"11.2","distance":"2.0","calories":"146","pace":"5:36"},"subType":null},{"id":"4db03d60-748d-4839-8d6a-944378693bc2","date":"2026-01-15","discipline":"Chilled","data":{"duration":"10.0","distance":"1.0","calories":"112"},"subType":"Walk"},{"id":"5ff067ee-74df-4a57-b981-8e2c7ebf395e","date":"2026-01-16","discipline":"Run","data":{"duration":"5.4","distance":"0.97","calories":"110","pace":"5:34"},"subType":null},{"id":"c98c0d4b-5b64-4e97-9127-5b559ffce319","date":"2026-01-16","discipline":"Swim","data":{"duration":"18.0","distance":"1.0","calories":"268"},"subType":null},{"id":"42848ef8-b7e3-459a-956a-86b109328f98","date":"2026-01-17","discipline":"Active","data":{"duration":"10.8","distance":"4.9","calories":"100"},"subType":"Cycling"},{"id":"8cc50e8b-49ca-4c21-82ed-4a73a7b878fe","date":"2026-01-17","discipline":"Run","data":{"duration":"9.0","distance":"1.5","calories":"171","pace":"6:00"},"subType":null},{"id":"db6c2eef-5b97-421b-9bb4-67516c096f3d","date":"2026-01-18","discipline":"Run","data":{"duration":"71.5","distance":"10.5","calories":"1202","pace":"6:49"},"subType":null},{"id":"ea29315a-ca78-4ca9-8ccc-7906238d65a5","date":"2026-01-20","discipline":"Run","data":{"duration":"17.6","distance":"2.1","calories":"240","pace":"8:23"},"subType":null},{"id":"478622f2-7fbd-4e08-bf4e-6278e59e603e","date":"2026-01-21","discipline":"Run","data":{"duration":"12.2","distance":"2.0","calories":"196","pace":"6:06"},"subType":null},{"id":"d7dab1e0-eded-4889-bfe5-27c960919ec6","date":"2026-01-21","discipline":"Run","data":{"duration":"18.1","distance":"3.0","calories":"294","pace":"6:02"},"subType":null},{"id":"f8cfedb9-32fa-4950-95f9-55b28987b6f7","date":"2026-01-23","discipline":"Run","data":{"duration":"66.2","distance":"10.04","calories":"1149","pace":"6:36"},"subType":null},{"id":"9678a605-95e2-47c8-933e-fe55d6139be1","date":"2026-01-24","discipline":"Run","data":{"duration":"12.5","distance":"1.77","calories":"139","pace":"7:04"},"subType":null},{"id":"cff0c601-b41a-40dd-ad1a-eddc4eb62d51","date":"2026-01-24","discipline":"Strength","data":{"duration":"28.2","distance":"","calories":"160"},"subType":null},{"id":"eee1fcfc-17ed-4bb0-a86b-4e412e4c144e","date":"2026-01-24","discipline":"Run","data":{"duration":"15.8","distance":"2.6","calories":"255","pace":"6:05"},"subType":null},{"id":"ed90f39c-9efa-4b2e-ba72-d28b95ab1054","date":"2026-01-24","discipline":"Chilled","data":{"duration":"13.5","distance":"1.5","calories":"173"},"subType":"Walk"},{"id":"28e418ad-cb61-4d0c-a1b1-d808ddd3f66a","date":"2026-01-25","discipline":"Run","data":{"duration":"60.2","distance":"10.02","calories":"693","pace":"6:00"},"subType":null},{"id":"4bc26f65-5b22-4498-a58d-34401074a313","date":"2026-01-26","discipline":"Active","data":{"duration":"30.0","distance":"13.94","calories":"308"},"subType":"Cycling"},{"id":"b820eabe-554e-4698-86ed-aaa9b049da0c","date":"2026-01-27","discipline":"Chilled","data":{"duration":"60.0","distance":"6.0","calories":"804"},"subType":"Walk"},{"id":"19d706e4-4c9f-4f84-acfe-4b3d948f6e17","date":"2026-01-28","discipline":"Run","data":{"duration":"40.0","distance":"6.33","calories":"649","pace":"6:19"},"subType":null},{"id":"aa6f3cdf-a8ab-49a4-a60b-4f154ce18861","date":"2026-01-28","discipline":"Chilled","data":{"duration":"10.0","distance":"1.01","calories":"101"},"subType":"Walk"},{"id":"9be736c6-df56-4aab-ac64-e7d4e1e86279","date":"2026-01-29","discipline":"Chilled","data":{"duration":"30.0","distance":"3.06","calories":"376"},"subType":"Walk"},{"id":"8a1542de-135f-4885-8e7c-b3caa085e692","date":"2026-01-29","discipline":"Active","data":{"type":"Elliptical","duration":"16.4","distance":"","calories":"133"},"subType":"Other"},{"id":"d7675d0c-03e3-4262-967e-3c08670dc1ef","date":"2026-01-29","discipline":"Active","data":{"duration":"15.5","distance":"","calories":"163"},"subType":"Cycling"},{"id":"7a05adcb-1f04-40b5-8b7e-c5f0b2cc0d89","date":"2026-01-30","discipline":"Run","data":{"duration":"40.4","distance":"7.02","calories":"574","pace":"5:45"},"subType":null},{"id":"07431793-0bc0-4e95-98c2-02256d5a008c","date":"2026-02-01","discipline":"Run","data":{"duration":"30.0","distance":"3.75","calories":"309","pace":"8:00"},"subType":null},{"id":"2c118a60-c952-4639-aa8b-32ef0d61a89e","date":"2026-02-02","discipline":"Run","data":{"duration":"39.7","distance":"7.98","calories":"768","pace":"4:58"},"subType":null},{"id":"b8df9423-ec2f-481b-bf57-cdcdbd99077f","date":"2026-02-02","discipline":"Active","data":{"duration":"10.6","distance":"","calories":"106"},"subType":"Cycling"},{"id":"9b37008e-d32b-4588-a6f7-3739c7cb1940","date":"2026-02-03","discipline":"Run","data":{"duration":"24.7","distance":"5.0","calories":"482","pace":"4:56"},"subType":null},{"id":"32afb66b-404d-45e3-8c2d-dff1d5f1941c","date":"2026-02-03","discipline":"Active","data":{"duration":"25.1","distance":"","calories":"233"},"subType":"Cycling"},{"id":"dc3e6d5d-e673-4928-aba8-48b29dee3681","date":"2026-02-04","discipline":"Active","data":{"type":"Elliptical","duration":"27.2","distance":"","calories":"203"},"subType":"Other"},{"id":"c63f44e7-f7a2-494f-96d7-4fbf743dfe6d","date":"2026-02-04","discipline":"Chilled","data":{"duration":"25.2","distance":"2.5","calories":"310"},"subType":"Walk"},{"id":"c8325b77-3f5e-48bc-8133-991ddfb96dda","date":"2026-02-05","discipline":"Run","data":{"duration":"33.5","distance":"6.04","calories":"491","pace":"5:33"},"subType":null},{"id":"84b52a39-71ef-4729-8c3c-e5f88bc45fbc","date":"2026-02-06","discipline":"Active","data":{"duration":"10.0","distance":"","calories":"63"},"subType":"Cycling"},{"id":"ae6c4951-f1c0-4123-964f-179a5e549d29","date":"2026-02-06","discipline":"Run","data":{"duration":"20.0","distance":"3.58","calories":"348","pace":"5:35"},"subType":null},{"id":"47d6cd63-5c80-4124-811c-039ae86d2197","date":"2026-02-06","discipline":"Run","data":{"duration":"20.0","distance":"3.5","calories":"332","pace":"5:43"},"subType":null},{"id":"a5e2abd2-2779-49d8-88ea-301dbd35f89e","date":"2026-02-06","discipline":"Chilled","data":{"duration":"10.0","distance":"1.01","calories":"112"},"subType":"Walk"},{"id":"559a2f20-144e-41a8-b3c4-37280ae9847e","date":"2026-02-06","discipline":"Active","data":{"type":"Elliptical","duration":"10.1","distance":"","calories":"73"},"subType":"Other"},{"id":"1f4e550f-ef6d-4669-b05a-8415c5fa2e15","date":"2026-02-07","discipline":"Run","data":{"duration":"60.8","distance":"10.1","calories":"818","pace":"6:01"},"subType":null},{"id":"9c2434ca-3516-46fc-8b69-ef651e3b018e","date":"2026-02-08","discipline":"Run","data":{"duration":"26.9","distance":"5.0","calories":"485","pace":"5:23"},"subType":null},{"id":"7935d004-a3d7-48a8-895c-d55f16d5dd3e","date":"2026-02-08","discipline":"Chilled","data":{"duration":"9.9","distance":"1.0","calories":"123"},"subType":"Walk"},{"id":"c81c487d-87dc-4622-9d15-d68cff72fc49","date":"2026-02-09","discipline":"Run","data":{"duration":"26.6","distance":"4.41","calories":"432","pace":"6:02"},"subType":null},{"id":"389b826e-d2b1-40af-b3ff-599873265302","date":"2026-02-10","discipline":"Active","data":{"type":"Climbing","duration":"60.0","distance":"","calories":"409"},"subType":"Other"},{"id":"ef467591-cf3c-486d-a0c8-b13b7ad17695","date":"2026-02-11","discipline":"Run","data":{"duration":"40.0","distance":"6.64","calories":"691","pace":"6:01"},"subType":null},{"id":"f6b9acb4-6cc2-4c34-b134-2c3d7ee0d03f","date":"2026-02-11","discipline":"Chilled","data":{"duration":"9.9","distance":"1.0","calories":"118"},"subType":"Walk"},{"id":"76c80dba-6333-475f-b878-6a47a26dc3f8","date":"2026-02-11","discipline":"Active","data":{"duration":"10.0","distance":"4.47","calories":"96"},"subType":"Cycling"},{"id":"af0b3721-cc9f-4c40-9e0f-31090a6f4250","date":"2026-02-13","discipline":"Strength","data":{"duration":"46.3","distance":"","calories":"482"},"subType":null},{"id":"cac7ff3b-53c0-4393-bcb7-eef41de48f40","date":"2026-02-15","discipline":"Run","data":{"duration":"57.6","distance":"10.01","calories":"680","pace":"5:45"},"subType":null},{"id":"cd2eab12-b2f0-4a3b-bf07-0eb05ea4d591","date":"2026-02-16","discipline":"Active","data":{"type":"Climbing","duration":"70.0","distance":"","calories":"478"},"subType":"Other"},{"id":"9833ef70-520d-4d8e-be05-0b24c22945a5","date":"2026-02-17","discipline":"Run","data":{"duration":"40.0","distance":"7.1","calories":"730","pace":"5:38"},"subType":null},{"id":"9f965d0e-a4c6-4d13-858f-13e29be5ae2b","date":"2026-02-17","discipline":"Chilled","data":{"duration":"9.8","distance":"0.97","calories":"120"},"subType":"Walk"},{"id":"2f11bc9a-9826-4699-8cc2-ffdafbd7cf4a","date":"2026-02-18","discipline":"Run","data":{"duration":"34.6","distance":"7.0","calories":"674","pace":"4:57"},"subType":null},{"id":"950918f4-750a-460d-8176-4bbf18338800","date":"2026-02-18","discipline":"Chilled","data":{"duration":"10.2","distance":"1.0","calories":"121"},"subType":"Walk"},{"id":"c375f671-4a36-4ec5-889f-a98e7c707c15","date":"2026-02-18","discipline":"Active","data":{"duration":"10.0","distance":"4.74","calories":"101"},"subType":"Cycling"},{"id":"7e996571-216c-490b-97a2-445bc9c47113","date":"2026-02-18","discipline":"Active","data":{"type":"Climbing","duration":"45.0","distance":"","calories":"307"},"subType":"Other"},{"id":"5c0fd5e3-07f6-49c3-a54c-26490fdd81be","date":"2026-02-19","discipline":"Run","data":{"duration":"27.7","distance":"5.0","calories":"486","pace":"5:32"},"subType":null},{"id":"a74cf7af-2616-4eeb-a7b5-9e305167794d","date":"2026-02-19","discipline":"Chilled","data":{"duration":"9.9","distance":"1.0","calories":"104"},"subType":"Walk"},{"id":"8f1e80af-e580-4b3b-9f65-3f550cc2320c","date":"2026-02-20","discipline":"Swim","data":{"duration":"30.0","distance":"1.5","calories":"446"},"subType":null},{"id":"4b1b50bd-a033-4ef2-9c07-1cfdf86aa8f9","date":"2026-02-20","discipline":"Run","data":{"duration":"30.0","distance":"4.95","calories":"518","pace":"6:04"},"subType":null},{"id":"73546e82-8354-4c9a-a98d-3d9a8946ff30","date":"2026-02-21","discipline":"Run","data":{"duration":"26.9","distance":"5.0","calories":"485","pace":"5:23"},"subType":null},{"id":"1d0aa536-f401-413b-b185-d6cb8e507cd8","date":"2026-02-21","discipline":"Active","data":{"type":"Climbing","duration":"60.0","distance":"","calories":"409"},"subType":"Other"},{"id":"28b69981-36b7-4f2c-a2c4-3c4a480e59c3","date":"2026-02-22","discipline":"Run","data":{"duration":"48.1","distance":"8.02","calories":"502","pace":"6:00"},"subType":null},{"id":"fa8924b9-4fd0-44cd-a48a-5e55efecd13f","date":"2026-02-22","discipline":"Swim","data":{"duration":"30.0","distance":"1.5","calories":"446"},"subType":null},{"id":"0236ad1b-1b86-40ef-a22c-31d54b3624ae","date":"2026-02-23","discipline":"Run","data":{"duration":"28.2","distance":"5.0","calories":"488","pace":"5:38"},"subType":null},{"id":"52713ade-461f-4009-9f16-f657d2bd6282","date":"2026-02-23","discipline":"Chilled","data":{"duration":"10.2","distance":"1.0","calories":"122"},"subType":"Walk"},{"id":"bab1d91f-ea81-4b08-ae8a-c4d4f9f45e9f","date":"2026-02-24","discipline":"Swim","data":{"duration":"38.0","distance":"2.0","calories":"565"},"subType":null},{"id":"3e1fe1fe-9d75-42ec-a7e1-e55e4f51bc3f","date":"2026-02-24","discipline":"Active","data":{"type":"Climbing","duration":"40.0","distance":"","calories":"273"},"subType":"Other"},{"id":"784378f6-b77b-48ec-9b9a-87a2c643676b","date":"2026-02-25","discipline":"Run","data":{"duration":"38.0","distance":"6.74","calories":"656","pace":"5:38"},"subType":null},{"id":"30c02d95-14f2-4a3f-b7d4-2151154b63cd","date":"2026-02-25","discipline":"Active","data":{"duration":"20.0","distance":"9.44","calories":"213"},"subType":"Cycling"},{"id":"015bfbae-81a2-4eb0-967c-865224b505a7","date":"2026-02-25","discipline":"Active","data":{"duration":"6.0","distance":"2.86","calories":"66"},"subType":"Cycling"},{"id":"318754c3-7ed8-4434-aebe-836c3386f099","date":"2026-02-25","discipline":"Active","data":{"type":"Elliptical","duration":"10.0","distance":"","calories":"82"},"subType":"Other"},{"id":"2896e8e7-c2b5-4bb3-9bef-ed575a088e0d","date":"2026-02-25","discipline":"Chilled","data":{"duration":"11.0","distance":"1.0","calories":"108"},"subType":"Walk"},{"id":"5ae43904-76dc-48e3-9884-7c8c53a1e56c","date":"2026-02-26","discipline":"Run","data":{"duration":"47.0","distance":"8.38","calories":"580","pace":"5:37"},"subType":null},{"id":"f6590f93-83e6-46ea-9dad-64b1c1530e34","date":"2026-02-27","discipline":"Run","data":{"duration":"30.0","distance":"4.94","calories":"517","pace":"6:04"},"subType":null},{"id":"5fdc481b-a150-4fd1-ad30-f5439efc84ae","date":"2026-02-27","discipline":"Chilled","data":{"duration":"9.9","distance":"0.99","calories":"105"},"subType":"Walk"},{"id":"8ba37f1c-02dd-4855-9b20-7705cfbc1caf","date":"2026-02-27","discipline":"Active","data":{"type":"Climbing","duration":"45.0","distance":"","calories":"307"},"subType":"Other"},{"id":"28a055ff-a24d-4df4-bf0a-8adba335555c","date":"2026-02-27","discipline":"Swim","data":{"duration":"23.0","distance":"1.2","calories":"342"},"subType":null},{"id":"1b0f98ca-94bc-42c4-9666-315dc0dd584d","date":"2026-02-28","discipline":"Chilled","data":{"duration":"4.3","distance":"0.44","calories":"25"},"subType":"Walk"},{"id":"2e62f698-cb87-4d37-8a82-46ab0a715e19","date":"2026-03-01","discipline":"Run","data":{"duration":"58.4","distance":"10.02","calories":"666","pace":"5:50"},"subType":null},{"id":"55eba9c3-f352-4b60-9225-1ce25a2be75d","date":"2026-03-02","discipline":"Run","data":{"duration":"30.0","distance":"5.22","calories":"543","pace":"5:45"},"subType":null},{"id":"09c4e8ef-401f-4620-9b45-b1d95e8b5abb","date":"2026-03-02","discipline":"Chilled","data":{"duration":"9.9","distance":"0.99","calories":"116"},"subType":"Walk"},{"id":"c72c98fb-bd99-465d-9d4d-9a636fd7b625","date":"2026-03-02","discipline":"Active","data":{"type":"Elliptical","duration":"15.0","distance":"","calories":"157"},"subType":"Other"},{"id":"62d0d951-8f46-4f55-b5ac-75d12a1d25e6","date":"2026-03-02","discipline":"Active","data":{"duration":"11.1","distance":"4.93","calories":"100"},"subType":"Cycling"},{"id":"45b3b645-7290-48f2-adfc-5c9bf0d9f74b","date":"2026-03-03","discipline":"Run","data":{"duration":"40.9","distance":"7.03","calories":"573","pace":"5:49"},"subType":null},{"id":"966fcb93-6904-42b7-b2a8-18bb253adb97","date":"2026-03-03","discipline":"Active","data":{"type":"Climbing","duration":"50.0","distance":"","calories":"341"},"subType":"Other"},{"id":"410b22e1-ca3d-46d0-a8fa-8b29e223ac6f","date":"2026-03-05","discipline":"Run","data":{"duration":"17.0","distance":"3.01","calories":"241","pace":"5:39"},"subType":null},{"id":"ebdd10f9-390d-4cc1-be5d-efa91c73ccc9","date":"2026-03-05","discipline":"Run","data":{"duration":"11.0","distance":"2.0","calories":"195","pace":"5:30"},"subType":null},{"id":"4aa701e3-46bb-48ee-a07f-6fac57a16db1","date":"2026-03-05","discipline":"Swim","data":{"duration":"23.0","distance":"1.2","calories":"342"},"subType":null},{"id":"b433ef25-4300-4486-9d22-b82b85992a20","date":"2026-03-07","discipline":"Run","data":{"duration":"52.9","distance":"9.04","calories":"763","pace":"5:51"},"subType":null},{"id":"caebb6ef-0453-4019-9ac9-b6547bc18807","date":"2026-03-08","discipline":"Run","data":{"duration":"29.6","distance":"4.95","calories":"287","pace":"5:59"},"subType":null},{"id":"0b345de8-0c3b-4311-b1b7-8d8824503583","date":"2026-03-09","discipline":"Active","data":{"duration":"45.0","distance":"10","calories":"600","avgSplit":"2:00"},"subType":"Row"},{"id":"899a7698-66c0-499f-a5f8-6d6ba81ff0ac","date":"2026-03-10","discipline":"Active","data":{"duration":"40","distance":"9","calories":"550","avgSplit":"2:00"},"subType":"Row"},{"id":"9feaf50e-a2a0-4646-bf5c-95f2fc51b4fd","date":"2026-03-10","discipline":"Swim","data":{"duration":"46.0","distance":"2.5","calories":"700"},"subType":null},{"id":"512468df-258a-4726-b32c-ae42c7b853f0","date":"2026-03-11","discipline":"Active","data":{"duration":"34.0","distance":"8","calories":"450","avgSplit":"2:00"},"subType":"Row"},{"id":"a6cf951d-3855-41b7-8cb9-07034d13ca7e","date":"2026-03-11","discipline":"Active","data":{"duration":"40.0","distance":"17.31","calories":"362"},"subType":"Cycling"},{"id":"3811f123-78b5-4aa2-aed9-84bde41f3983","date":"2026-03-12","discipline":"Swim","data":{"duration":"48.0","distance":"2.5","calories":"713"},"subType":null},{"id":"293b51f1-cb17-4d3d-af12-79f6007ce8bd","date":"2026-03-12","discipline":"Strength","data":{"duration":"30.0","distance":"","calories":"351"},"subType":null},{"id":"d7107ef1-5b9b-46cf-bdb9-88dc0de615db","date":"2026-03-13","discipline":"Active","data":{"duration":"35.0","distance":"8","calories":"500","avgSplit":"2:00"},"subType":"Row"},{"id":"97174c22-1730-4746-a05a-65e0242d3ac0","date":"2026-03-14","discipline":"Active","data":{"duration":"45.0","distance":"10","calories":"800","avgSplit":"2:00"},"subType":"Row"},{"id":"b17c528b-6e16-4d75-8aa5-b471ba7ea023","date":"2026-03-14","discipline":"Active","data":{"duration":"20.0","distance":"9.43","calories":"211"},"subType":"Cycling"},{"id":"724ad294-ba21-4c65-8f8e-2edfb4fbe746","date":"2026-03-16","discipline":"Swim","data":{"duration":"36.0","distance":"2.0","calories":"535"},"subType":null},{"id":"800d8d33-f933-4ac4-b296-caa14a387319","date":"2026-03-16","discipline":"Active","data":{"duration":"10.0","distance":"4.57","calories":"95"},"subType":"Cycling"},{"id":"2d7f239f-d039-4dc0-b6cf-64baafff705e","date":"2026-03-16","discipline":"Active","data":{"duration":"20.0","distance":"10.06","calories":"241"},"subType":"Cycling"},{"id":"91efc38a-f931-47d3-9a04-802a852e0157","date":"2026-03-16","discipline":"Active","data":{"type":"Elliptical","duration":"10.0","distance":"","calories":"75"},"subType":"Other"},{"id":"fc7ed2c0-bc7c-4a9f-a733-f9762528ead4","date":"2026-03-17","discipline":"Active","data":{"duration":"45.0","distance":"10","calories":"735","avgSplit":"2:00"},"subType":"Row"},{"id":"3549bc5e-1f76-4fa1-a1be-b5012a792dc9","date":"2026-03-17","discipline":"Active","data":{"duration":"20.0","distance":"9.37","calories":"209"},"subType":"Cycling"},{"id":"80ebedc7-cfb3-4f4a-b2f5-37428bd4daee","date":"2026-03-17","discipline":"Swim","data":{"duration":"23.0","distance":"1.2","calories":"342"},"subType":null},{"id":"b72b864a-f337-43ab-9fc7-594ed29ee83e","date":"2026-03-18","discipline":"Active","data":{"duration":"20.0","distance":"4.5","calories":"310","avgSplit":"2:00"},"subType":"Row"},{"id":"cbfbae91-2c1a-454b-8404-1b34e7c03239","date":"2026-03-18","discipline":"Active","data":{"duration":"20.0","distance":"9.42","calories":"211"},"subType":"Cycling"},{"id":"42dc790f-c216-4f00-b3c3-42c590d5970a","date":"2026-03-18","discipline":"Active","data":{"type":"Elliptical","duration":"12.0","distance":"","calories":"150"},"subType":"Other"},{"id":"4ce35b76-ab4e-49fd-86bc-cfd5f510072b","date":"2026-03-18","discipline":"Strength","data":{"duration":"20.0","distance":"","calories":"250"},"subType":null},{"id":"39a6f0a8-30d7-4b47-928b-b089469cb0be","date":"2026-03-19","discipline":"Active","data":{"duration":"45.0","distance":"10.5","calories":"750","avgSplit":"2:00"},"subType":"Row"},{"id":"c4ff3e16-5eab-44db-a6b8-7f36a26e054e","date":"2026-03-19","discipline":"Swim","data":{"duration":"35.0","distance":"2.0","calories":"520"},"subType":null},{"id":"6f38ed8e-2aee-443e-b2d5-19a2a71787cd","date":"2026-03-20","discipline":"Active","data":{"duration":"20.0","distance":"4.5","calories":"350","avgSplit":"2:00"},"subType":"Row"},{"id":"c7f5b02a-3f64-49a8-9559-7e6b69a49df0","date":"2026-03-20","discipline":"Active","data":{"duration":"15.0","distance":"6.64","calories":"142"},"subType":"Cycling"},{"id":"626e9d73-6032-4e51-b1b9-e2b5d0a96cb1","date":"2026-03-20","discipline":"Stretch","data":{"duration":"20.0","distance":"","calories":"136"},"subType":null},{"id":"787af206-3124-49d1-9279-7c6edf7dfb9f","date":"2026-03-20","discipline":"Active","data":{"duration":"20.0","distance":"8.34","calories":"170"},"subType":"Cycling"},{"id":"5209b70f-3826-4343-ad74-e05608972e87","date":"2026-03-21","discipline":"Active","data":{"type":"Elliptical","duration":"10.0","distance":"","calories":"125"},"subType":"Other"},{"id":"230a241a-9845-4ac9-974b-012521a7a6c6","date":"2026-03-21","discipline":"Active","data":{"duration":"50.0","distance":"12.5","calories":"800","avgSplit":"2:00"},"subType":"Row"},{"id":"00733231-68d6-4eec-b74e-ce855d965a43","date":"2026-03-21","discipline":"Active","data":{"duration":"10.0","distance":"4.33","calories":"91"},"subType":"Cycling"},{"id":"6655e62a-45ca-4664-a77b-41f1463f7b65","date":"2026-03-23","discipline":"Swim","data":{"duration":"55.0","distance":"3.0","calories":"818"},"subType":null},{"id":"f9e24b10-6a6d-4e45-b0cb-f87536a3981b","date":"2026-03-23","discipline":"Active","data":{"type":"Climbing","duration":"50.0","distance":"","calories":"341"},"subType":"Other"},{"id":"e92022f2-6926-47e8-9253-7a3926cd736b","date":"2026-03-24","discipline":"Active","data":{"duration":"45.0","distance":"10","calories":"800","avgSplit":"2:00"},"subType":"Row"},{"id":"91f3479d-95eb-4372-8e4a-914aacaf7c03","date":"2026-03-24","discipline":"Active","data":{"duration":"5.0","distance":"2.24","calories":"47"},"subType":"Cycling"},{"id":"b486c435-a8ee-4471-9dce-0bc44bfe3f2e","date":"2026-03-25","discipline":"Swim","data":{"duration":"55.0","distance":"3.0","calories":"818"},"subType":null},{"id":"ccf484df-10d2-4bed-8502-90eb5b20c20a","date":"2026-03-26","discipline":"Active","data":{"duration":"56.0","distance":"12.5","calories":"850","avgSplit":"2:00"},"subType":"Row"},{"id":"644d6250-9013-4d9e-9529-498feaafe9e9","date":"2026-03-27","discipline":"Swim","data":{"duration":"36.0","distance":"2.0","calories":"535"},"subType":null},{"id":"a44c2377-c97b-41b4-9616-4d12d8d1c829","date":"2026-03-28","discipline":"Active","data":{"duration":"36.0","distance":"8.5","calories":"550","avgSplit":"2:00"},"subType":"Row"},{"id":"61d2792f-f0d2-4c0d-8da8-31838d7c3635","date":"2026-03-30","discipline":"Swim","data":{"duration":"59.0","distance":"3.0","calories":"877"},"subType":null},{"id":"e1c08a10-cdfd-4e3f-84fd-0f585309e5bb","date":"2026-03-31","discipline":"Active","data":{"duration":"47.0","distance":"11.75","calories":"800","avgSplit":"2:00"},"subType":"Row"},{"id":"beba6888-ddd9-4186-9a04-53430e8f47f6","date":"2026-03-31","discipline":"Active","data":{"duration":"21.0","distance":"9.33","calories":"200"},"subType":"Cycling"},{"id":"83296681-ae3e-4340-919c-bd0a790e6338","date":"2026-04-01","discipline":"Swim","data":{"duration":"40.0","distance":"2.0","calories":"595"},"subType":null},{"id":"c569e645-62f4-4592-a227-78e06b3d8d9e","date":"2026-04-01","discipline":"Active","data":{"duration":"32.0","distance":"7.5","calories":"700","avgSplit":"2:00"},"subType":"Row"},{"id":"9d6e44f8-b5e9-4949-9c59-d39bcef3044d","date":"2026-04-01","discipline":"Active","data":{"duration":"11.0","distance":"4.6","calories":"94"},"subType":"Cycling"},{"id":"adc85a63-4ab2-4db5-8e39-4a1b73cca03d","date":"2026-04-02","discipline":"Swim","data":{"duration":"50.0","distance":"2.5","calories":"743"},"subType":null},{"id":"12c01b33-817e-413f-bfc7-f55079d2cd8f","date":"2026-04-03","discipline":"Active","data":{"duration":"59.0","distance":"13","calories":"900","avgSplit":"2:00"},"subType":"Row"},{"id":"c351bfd0-6a69-4cad-bdb9-90ce68bd6777","date":"2026-04-04","discipline":"Stretch","data":{"duration":"5.0","distance":"","calories":"34"},"subType":null},{"id":"120d2d4f-84ae-4738-b18f-381a1e242946","date":"2026-04-05","discipline":"Run","data":{"duration":"36.6","distance":"6.03","calories":"491","pace":"6:04"},"subType":null},{"id":"1376e3af-91b9-4d1f-ab99-13649ee8fb53","date":"2026-04-06","discipline":"Swim","data":{"duration":"40.0","distance":"2.0","calories":"595"},"subType":null},{"id":"edba0d9b-c3c0-44bf-b047-c9db04096c4d","date":"2026-04-07","discipline":"Active","data":{"duration":"57.0","distance":"12.5","calories":"900","avgSplit":"2:00"},"subType":"Row"},{"id":"df392e90-3b56-4d05-b43e-70d279ab694d","date":"2026-04-07","discipline":"Active","data":{"duration":"10.6","distance":"4.69","calories":"100"},"subType":"Cycling"},{"id":"19f4f33d-5ad2-4cc0-9391-6470c4bec5a1","date":"2026-04-07","discipline":"Swim","data":{"duration":"38.0","distance":"2.0","calories":"565"},"subType":null},{"id":"13612787-b253-4894-9fee-28d3dc131e18","date":"2026-04-08","discipline":"Run","data":{"duration":"35.0","distance":"5.64","calories":"573","pace":"6:12"},"subType":null},{"id":"3c92983a-58d2-4a0e-a81b-e7d18b1dc88c","date":"2026-04-08","discipline":"Chilled","data":{"duration":"15.0","distance":"1.44","calories":"173"},"subType":"Walk"},{"id":"cd6061b1-2773-4387-9bc2-556520053776","date":"2026-04-10","discipline":"Active","data":{"duration":"47.0","distance":"10","calories":"775","avgSplit":"2:00"},"subType":"Row"},{"id":"80ef7bfe-0cf9-45fa-8e38-49828a08ed04","date":"2026-04-10","discipline":"Swim","data":{"duration":"40.0","distance":"2.0","calories":"595"},"subType":null},{"id":"64a14ded-c994-4d47-b8a3-b2fd1f8ce11f","date":"2026-04-11","discipline":"Run","data":{"duration":"49.5","distance":"8.01","calories":"653","pace":"6:11"},"subType":null},{"id":"8c15281d-de21-4d25-b897-dbe4390f30d5","date":"2026-04-13","discipline":"Run","data":{"duration":"36.3","distance":"6.02","calories":"345","pace":"6:02"},"subType":null},{"id":"884c66c9-5b88-40cf-ba08-2d0e701668f3","date":"2026-04-14","discipline":"Active","data":{"duration":"33.0","distance":"7.5","calories":"650","avgSplit":"2:00"},"subType":"Row"},{"id":"5be45471-5f6b-4060-8485-a4272e4476fd","date":"2026-04-14","discipline":"Chilled","data":{"duration":"20.0","distance":"1.98","calories":"256"},"subType":"Walk"},{"id":"1ac6756b-7059-480a-a844-e604e3e6dfdd","date":"2026-04-14","discipline":"Active","data":{"duration":"10.0","distance":"4.61","calories":"102"},"subType":"Cycling"},{"id":"ff11d797-ae17-4955-ba02-10764a303aba","date":"2026-04-15","discipline":"Swim","data":{"duration":"36.0","distance":"2.0","calories":"535"},"subType":null},{"id":"060b6766-2cc3-4d76-b134-d6d9eb4d3e87","date":"2026-04-15","discipline":"Stretch","data":{"duration":"10.0","distance":"","calories":"68"},"subType":null},{"id":"07500e2d-75bd-490c-860f-e6766cff6170","date":"2026-04-16","discipline":"Stretch","data":{"duration":"5.0","distance":"","calories":"34"},"subType":null},{"id":"29a0c995-a32a-4f87-ab49-70f168af527d","date":"2026-04-16","discipline":"Active","data":{"duration":"35.0","distance":"8","calories":"600","avgSplit":"2:00"},"subType":"Row"},{"id":"b2847fe7-3792-4e71-9eb0-21128aee0e4e","date":"2026-04-17","discipline":"Run","data":{"duration":"18.1","distance":"3.0","calories":"294","pace":"6:02"},"subType":null},{"id":"f701d745-8bf4-4554-a28f-3ab16a25faa3","date":"2026-04-17","discipline":"Active","data":{"duration":"20.0","distance":"4.5","calories":"450","avgSplit":"2:00"},"subType":"Row"},{"id":"5411f33f-eed0-4119-a505-9aec7d4ec9d8","date":"2026-04-18","discipline":"Run","data":{"duration":"34.5","distance":"6.05","calories":"354","pace":"5:42"},"subType":null},{"id":"12345e83-2f49-416e-b226-e0e52eaf2634","date":"2026-04-19","discipline":"Active","data":{"duration":"46.0","distance":"10","calories":"890","avgSplit":"2:00"},"subType":"Row"},{"id":"74a093fc-9d38-4341-89b9-a0ad7b3e4cb8","date":"2026-04-19","discipline":"Chilled","data":{"duration":"20.0","distance":"1.82","calories":"253"},"subType":"Walk"},{"id":"b7b00014-2f66-4dbb-8b8b-c3f4b75e72c2","date":"2026-04-19","discipline":"Active","data":{"duration":"15.0","distance":"6.61","calories":"140"},"subType":"Cycling"},{"id":"0dc46fbf-ae54-411f-a9f7-1969021df7b5","date":"2026-04-20","discipline":"Active","data":{"duration":"35.0","distance":"8","calories":"550","avgSplit":"2:00"},"subType":"Row"},{"id":"8a5e9b0a-384f-4c55-bb78-53d6ba5cdbd1","date":"2026-04-20","discipline":"Chilled","data":{"duration":"30.0","distance":"2.48","calories":"389"},"subType":"Walk"},{"id":"d8df6f59-9901-4369-b953-0399562e2ba3","date":"2026-04-21","discipline":"Active","data":{"duration":"20.0","distance":"4.5","calories":"430","avgSplit":"2:00"},"subType":"Row"},{"id":"a493757f-3f8c-42c8-b8fc-e3583f34125d","date":"2026-04-21","discipline":"Chilled","data":{"duration":"10.0","distance":"1.0","calories":"130"},"subType":"Walk"},{"id":"2cb9f0e1-7811-4141-ac59-7f48b5354fde","date":"2026-04-21","discipline":"Strength","data":{"duration":"23.0","distance":"","calories":"107"},"subType":null},{"id":"6b2017ab-252b-464b-a8a2-adf6dcc2e1bb","date":"2026-04-21","discipline":"Run","data":{"duration":"12.0","distance":"2.0","calories":"184","pace":"6:00"},"subType":null},{"id":"87c6fb62-624d-45d1-8bb1-3ed8cb55a4b7","date":"2026-04-22","discipline":"Swim","data":{"duration":"55.0","distance":"3.0","calories":"818"},"subType":null},{"id":"5fbc307e-fd9a-4a17-be01-6da5000f565c","date":"2026-04-23","discipline":"Run","data":{"duration":"23.7","distance":"4.02","calories":"328","pace":"5:54"},"subType":null},{"id":"ef1e329e-bb5b-4d13-82a2-fb58e8bdad91","date":"2026-04-23","discipline":"Active","data":{"type":"Workout","duration":"8.0","distance":"","calories":"55"},"subType":"Other"},{"id":"6b3d54c8-2114-4dd2-b2c5-55dad72a6d51","date":"2026-04-23","discipline":"Active","data":{"type":"Workout","duration":"30.0","distance":"","calories":"205"},"subType":"Other"},{"id":"9e753732-244b-4ea1-a422-55d1c991ac0e","date":"2026-04-24","discipline":"Active","data":{"duration":"56.0","distance":"12.5","calories":"900","avgSplit":"2:00"},"subType":"Row"},{"id":"bc864151-4245-41d6-9222-9fcfa4d64839","date":"2026-04-24","discipline":"Active","data":{"duration":"20.0","distance":"9.68","calories":"224"},"subType":"Cycling"},{"id":"a46ef6be-4703-4b95-9002-baf946dcc4a6","date":"2026-04-25","discipline":"Run","data":{"duration":"36.0","distance":"6.02","calories":"324","pace":"5:59"},"subType":null},{"id":"d4b0dfc9-0c12-47fe-ba41-479067634a47","date":"2026-04-27","discipline":"Swim","data":{"duration":"55.0","distance":"3.0","calories":"865"},"subType":null},{"id":"95f45aaa-de98-4d31-870c-f7277733d9dd","date":"2026-04-28","discipline":"Active","data":{"duration":"32.0","distance":"7.5","calories":"700","avgSplit":"2:00"},"subType":"Row"},{"id":"86f03e47-6127-4bc5-ac02-1d086fe15bb0","date":"2026-04-28","discipline":"Chilled","data":{"duration":"23.0","distance":"2.12","calories":"317"},"subType":"Walk"},{"id":"5c08c262-778e-4b33-9f07-cc29c368c871","date":"2026-04-28","discipline":"Active","data":{"duration":"15.0","distance":"6.19","calories":"125"},"subType":"Cycling"},{"id":"6adbf846-c821-445a-be0b-e0ab1346e0c3","date":"2026-04-29","discipline":"Swim","data":{"duration":"55.0","distance":"3.0","calories":"818"},"subType":null},{"id":"11a9a597-8ede-4c8e-8079-43b849fe9406","date":"2026-04-29","discipline":"Chilled","data":{"duration":"10.0","distance":"1.0","calories":"140"},"subType":"Walk"},{"id":"7421e549-3daf-4449-8df3-e33ec9587208","date":"2026-04-29","discipline":"Active","data":{"duration":"20.0","distance":"4.5","calories":"450","avgSplit":"2:00"},"subType":"Row"},{"id":"0e0728cd-79d0-4c82-8034-6088dce6b60a","date":"2026-04-29","discipline":"Active","data":{"duration":"11.3","distance":"5.01","calories":"100"},"subType":"Cycling"},{"id":"169cccb6-a441-48df-8693-e2b62932ea27","date":"2026-04-30","discipline":"Run","data":{"duration":"41.2","distance":"7.01","calories":"575","pace":"5:53"},"subType":null},{"id":"760e4024-a977-4df2-96d8-0c6935662391","date":"2026-05-01","discipline":"Swim","data":{"duration":"52.0","distance":"3.0","calories":"800"},"subType":null},{"id":"c79a4b1d-b6c1-43c3-b1db-d62c8a81d791","date":"2026-05-02","discipline":"Active","data":{"duration":"33.0","distance":"7.5","calories":"650","avgSplit":"2:00"},"subType":"Row"},{"id":"d77e1bc8-d4a8-43d6-81bb-5fb11dc5badd","date":"2026-05-02","discipline":"Chilled","data":{"duration":"15.0","distance":"1.36","calories":"206"},"subType":"Walk"},{"id":"23a5f218-b8fc-43cc-a754-11801c79897f","date":"2026-05-02","discipline":"Active","data":{"duration":"8.2","distance":"3.82","calories":"80"},"subType":"Cycling"},{"id":"8ba74654-748e-4999-b1ba-28b835b2584a","date":"2026-05-03","discipline":"Strength","data":{"duration":"30.0","distance":"","calories":"400"},"subType":null},{"id":"60fa27fe-1db3-49b0-996b-d372d0995cee","date":"2026-05-03","discipline":"Active","data":{"duration":"20.0","distance":"4.5","calories":"450","avgSplit":"2:00"},"subType":"Row"},{"id":"6b42369b-835e-4e17-a9cf-0494ac932768","date":"2026-05-03","discipline":"Active","data":{"duration":"11.1","distance":"4.76","calories":"100"},"subType":"Cycling"},{"id":"9df920af-06ed-432e-bf19-4092bfbc9805","date":"2026-05-04","discipline":"Swim","data":{"duration":"57.0","distance":"3.0","calories":"900"},"subType":null},{"id":"58ccea8e-d25e-49f5-8df9-2f3f129175d9","date":"2026-05-05","discipline":"Run","data":{"duration":"40.0","distance":"5.9","calories":"562","pace":"6:47"},"subType":null},{"id":"699d6a97-8176-4dff-b5bc-3f47c6824571","date":"2026-05-05","discipline":"Chilled","data":{"duration":"12.0","distance":"1.09","calories":"140"},"subType":"Walk"},{"id":"1695ea89-c78a-48de-a248-933c29b58ac5","date":"2026-05-05","discipline":"Active","data":{"type":"Elliptical","duration":"10.0","distance":"","calories":"120"},"subType":"Other"},{"id":"acb30236-e664-4ef2-8d0a-357ffea4c7cc","date":"2026-05-05","discipline":"Active","data":{"duration":"11.1","distance":"4.77","calories":"100"},"subType":"Cycling"},{"id":"efd31ce3-4a46-4580-8b2e-cc68f03f875a","date":"2026-05-06","discipline":"Active","data":{"duration":"32.0","distance":"7.5","calories":"700","avgSplit":"2:00"},"subType":"Row"},{"id":"ed00f50f-cc93-43b3-bd26-95f928df7f2c","date":"2026-05-06","discipline":"Active","data":{"duration":"10.7","distance":"4.69","calories":"100"},"subType":"Cycling"},{"id":"91d78511-fc8c-48c9-950b-cfc6d7cb76b1","date":"2026-05-06","discipline":"Swim","data":{"duration":"37.0","distance":"2.0","calories":"550"},"subType":null},{"id":"a6738db7-ab31-4ff0-9f18-73014f97dc9f","date":"2026-05-07","discipline":"Active","data":{"duration":"32.0","distance":"7.5","calories":"700","avgSplit":"2:00"},"subType":"Row"},{"id":"60a464e1-71a3-4884-8a9d-fe929addd633","date":"2026-05-08","discipline":"Active","data":{"duration":"32.0","distance":"7.5","calories":"670","avgSplit":"2:00"},"subType":"Row"},{"id":"49e35bcf-bc84-4f77-9f13-4015a3bc4c5b","date":"2026-05-09","discipline":"Strength","data":{"duration":"30.0","distance":"","calories":"395"},"subType":null},{"id":"2960c5b2-68c5-4dd6-aef8-84759ab3482c","date":"2026-05-09","discipline":"Active","data":{"duration":"20.0","distance":"4.5","calories":"400","avgSplit":"2:00"},"subType":"Row"},{"id":"dcfb37e1-0dab-4b70-861f-968cb702dc73","date":"2026-05-09","discipline":"Active","data":{"duration":"10.0","distance":"","calories":"98"},"subType":"Cycling"},{"id":"27cbc948-8f32-403f-9e2a-77dde3e6e0a5","date":"2026-05-10","discipline":"Run","data":{"duration":"48.9","distance":"8.03","calories":"654","pace":"6:05"},"subType":null},{"id":"b1d3dad8-4469-41c3-9132-37df9dbd3054","date":"2026-05-11","discipline":"Swim","data":{"duration":"38.0","distance":"2.0","calories":"565"},"subType":null},{"id":"9972b799-e51f-42e1-9d34-053407c11dab","date":"2026-05-11","discipline":"Run","data":{"duration":"25.0","distance":"3.78","calories":"364","pace":"6:37"},"subType":null},{"id":"49dbc41a-780f-4235-bec3-4e444c31a9f5","date":"2026-05-11","discipline":"Active","data":{"duration":"11.9","distance":"5.13","calories":"110"},"subType":"Cycling"},{"id":"cc3a21c3-6647-4381-b782-d1d868ffca67","date":"2026-05-12","discipline":"Active","data":{"duration":"56.0","distance":"12","calories":"1000","avgSplit":"2:00"},"subType":"Row"},{"id":"dfd38ccf-3a1e-4bb0-97f8-5a40a30b4f30","date":"2026-05-13","discipline":"Swim","data":{"duration":"48.0","distance":"2.5","calories":"713"},"subType":null},{"id":"cfccbabe-aaa1-4c3b-9566-0e322c57bd14","date":"2026-05-14","discipline":"Run","data":{"duration":"35.3","distance":"6.01","calories":"492","pace":"5:52"},"subType":null},{"id":"68575278-9164-457b-bf97-2e7dbf40e3f1","date":"2026-05-14","discipline":"Swim","data":{"duration":"40.0","distance":"2.0","calories":"595"},"subType":null},{"id":"5720377b-950f-42f7-aa25-5dde8e160ebf","date":"2026-05-15","discipline":"Active","data":{"duration":"40.0","distance":"10.0","calories":"850","avgSplit":"2:00"},"subType":"Row"},{"id":"edc12571-98be-4afb-b9ea-11c4e461e86e","date":"2026-05-15","discipline":"Active","data":{"duration":"20.0","distance":"9.55","calories":"223"},"subType":"Cycling"},{"id":"342a0448-1e9a-4c72-b5ec-67ac2342444b","date":"2026-05-16","discipline":"Strength","data":{"duration":"38.0","distance":"","calories":"445"},"subType":null},{"id":"9c03f29b-1075-432c-9217-75ec40bb0a2c","date":"2026-05-16","discipline":"Active","data":{"duration":"4.0","distance":"1.0","calories":"100","avgSplit":"2:00"},"subType":"Row"},{"id":"bff093ef-35fa-4064-92eb-277eaa006932","date":"2026-05-17","discipline":"Swim","data":{"duration":"37.0","distance":"2.0","calories":"550"},"subType":null},{"id":"67c12a02-78a4-400b-a847-1d9114467846","date":"2026-05-17","discipline":"Strength","data":{"duration":"21.0","distance":"","calories":"143"},"subType":null},{"id":"704cf32e-c17c-4009-b15a-048379211239","date":"2026-05-18","discipline":"Active","data":{"duration":"20.0","distance":"4.5","calories":"450","avgSplit":"2:00"},"subType":"Row"},{"id":"c126774f-6ad9-4e91-a2b9-6f74be49f85f","date":"2026-05-18","discipline":"Swim","data":{"duration":"37.0","distance":"2.0","calories":"550"},"subType":null},{"id":"a1406a4c-7bb0-4809-90bc-c1a1e4990eaf","date":"2026-05-19","discipline":"Strength","data":{"duration":"40.0","distance":"","calories":"350"},"subType":null},{"id":"82ebdc68-6ea0-419a-8deb-4ad1020ec041","date":"2026-05-19","discipline":"Run","data":{"duration":"18.0","distance":"3.0","calories":"276","pace":"6:00"},"subType":null},{"id":"d8907b18-7bdf-49ca-ae31-0933f221f793","date":"2026-05-19","discipline":"Active","data":{"duration":"10.0","distance":"2.5","calories":"150","avgSplit":"2:00"},"subType":"Row"},{"id":"42f06e35-c210-4ffb-8bf7-886156c3f2d1","date":"2026-05-20","discipline":"Swim","data":{"duration":"48.0","distance":"2.5","calories":"713"},"subType":null},{"id":"29d467cf-dabf-40ca-8a25-2f46db93481c","date":"2026-05-20","discipline":"Active","data":{"duration":"20.0","distance":"4.5","calories":"300","avgSplit":"2:00"},"subType":"Row"},{"id":"938620e3-5e68-44da-aa5a-d366123ccdf2","date":"2026-05-20","discipline":"Active","data":{"duration":"25.0","distance":"11.17","calories":"240"},"subType":"Cycling"},{"id":"afeba832-886f-42f1-b5ab-3b41ad3ee8e1","date":"2026-05-22","discipline":"Run","data":{"duration":"41.9","distance":"7.04","calories":"571","pace":"5:57"},"subType":null},{"id":"eb83b6be-c9fb-46a3-b1fd-e8c36ac34e36","date":"2026-05-23","discipline":"Strength","data":{"duration":"50.0","distance":"","calories":"600"},"subType":null},{"id":"24d52695-3137-4029-9799-d3d6558f5282","date":"2026-05-24","discipline":"Run","data":{"duration":"60.2","distance":"10.01","calories":"818","pace":"6:01"},"subType":null},{"id":"49f90202-abe1-4b33-914f-ffbdc49c1c06","date":"2026-05-24","discipline":"Chilled","data":{"duration":"20.7","distance":"1.85","calories":"108"},"subType":"Walk"},{"id":"0b7c71f1-2f4c-418e-bd90-aec28af135fa","date":"2026-05-25","discipline":"Swim","data":{"duration":"38.0","distance":"2.0","calories":"565"},"subType":null},{"id":"dfad5363-1d74-4aec-9cf0-bf18fed7183e","date":"2026-05-25","discipline":"Active","data":{"duration":"20.0","distance":"4.5","calories":"400","avgSplit":"2:00"},"subType":"Row"},{"id":"d3dba1fc-2fbf-4862-9587-db562b63e1c2","date":"2026-05-25","discipline":"Active","data":{"type":"Elliptical","duration":"10.0","distance":"","calories":"125"},"subType":"Other"},{"id":"e536e42a-4342-4fd2-9032-c7eba009a77c","date":"2026-05-25","discipline":"Active","data":{"duration":"15.0","distance":"7.04","calories":"158"},"subType":"Cycling"},{"id":"118da131-c9b7-45f1-bf96-00531a68b208","date":"2026-05-26","discipline":"Run","data":{"duration":"40.0","distance":"5.92","calories":"564","pace":"6:45"},"subType":null},{"id":"7ece2d94-508b-468b-a582-57b01ed79278","date":"2026-05-26","discipline":"Strength","data":{"duration":"25.0","distance":"","calories":"350"},"subType":null},{"id":"1a24f9d3-1ec7-4709-aa9a-7da32c96d773","date":"2026-05-26","discipline":"Stretch","data":{"duration":"10.0","distance":"","calories":"68"},"subType":null},{"id":"954612ee-b904-4f47-b887-334e5bf982e4","date":"2026-05-27","discipline":"Swim","data":{"duration":"43.0","distance":"2.5","calories":"639"},"subType":null},{"id":"16f50097-8717-41cd-a188-62d7dd1fa956","date":"2026-05-28","discipline":"Active","data":{"duration":"55.0","distance":"12","calories":"900","avgSplit":"2:00"},"subType":"Row"},{"id":"a9cfae19-fac3-4947-bb3f-624b13eb17d9","date":"2026-05-29","discipline":"Swim","data":{"duration":"37.0","distance":"2.0","calories":"550"},"subType":null},{"id":"1192d7d8-b6aa-4f11-820d-0ea2c4818c44","date":"2026-05-30","discipline":"Run","data":{"duration":"41.5","distance":"7.02","calories":"574","pace":"5:55"},"subType":null},{"id":"715bdaa1-f510-4061-8093-d387cd943345","date":"2026-05-30","discipline":"Run","data":{"duration":"6.3","distance":"1.02","calories":"84","pace":"6:11"},"subType":null},{"id":"7d1d0128-680f-4720-8637-dc1fc4141309","date":"2026-05-30","discipline":"Chilled","data":{"duration":"25.2","distance":"2.1","calories":"135"},"subType":"Walk"},{"id":"024adc46-aa1a-4652-9e8d-5eb55fedd8e3","date":"2026-05-31","discipline":"Chilled","data":{"duration":"68","distance":"6.94","calories":"394","avgSpeed":""},"subType":"Walk"},{"id":"4e2f00e6-705c-47e2-b131-682b5aa61b2f","date":"2026-05-31","discipline":"Active","data":{"duration":"50.0","distance":"","calories":"500"},"subType":"Waterpolo"},{"id":"bda98bf5-4c63-42a6-958d-1cce452a32ce","date":"2026-06-01","discipline":"Strength","data":{"duration":"40","calories":"450","details":"8 sets"},"subType":null},{"id":"2eafdd92-fb96-4fe3-8bd4-f662ee2421df","date":"2026-06-01","discipline":"Active","data":{"duration":"10","distance":"2.5","avgSplit":"2:00","calories":"221"},"subType":"Row"},{"id":"eec1a239-18c2-461b-953d-44d1c0778af8","date":"2026-06-01","discipline":"Swim","data":{"distance":"2","duration":"37","calories":"464"},"subType":null},{"id":"2140d3ff-6f75-436f-8852-a1476fcf7feb","date":"2026-06-02","discipline":"Active","data":{"duration":"20","distance":"4.6","avgSplit":"2:10","calories":"400"},"subType":"Row"},{"id":"f13c32e4-157c-4dca-9367-e736a7c96826","date":"2026-06-02","discipline":"Chilled","data":{"distance":"2","duration":"20","avgSpeed":"6.0","calories":"270"},"subType":"Walk"},{"id":"4a200b0e-bf1e-4e1d-b10d-6e12ebbbaf3d","date":"2026-06-02","discipline":"Active","data":{"duration":"10","distance":"4.5","calories":"100"},"subType":"Cycling"},{"id":"9b83eb4f-34fa-4a97-acbf-262e2fe4c870","date":"2026-06-02","discipline":"Active","data":{"type":"Climbing","duration":"50","distance":"","calories":"392"},"subType":"Other"},{"id":"fd73df6c-7444-479d-a07a-c6dcefdbb30c","date":"2026-06-02","discipline":"Chilled","data":{"distance":"3","duration":"35","avgSpeed":"5.1","calories":"236"},"subType":"Walk"},{"id":"bc6ea81d-ed44-4a87-9b4d-061b6b96ba41","date":"2026-06-03","discipline":"Swim","data":{"distance":"2","duration":"35","calories":"439"},"subType":null},{"id":"a9bcaed6-8683-4102-98c0-e713806a890b","date":"2026-06-03","discipline":"Chilled","data":{"distance":"2","duration":"20","avgSpeed":"6.0","calories":"157"},"subType":"Walk"},{"id":"c6cc8739-c67f-4776-8d29-43734fddb6f2","date":"2026-06-04","discipline":"Run","data":{"distance":"6.6","duration":"40","pace":"6:04","calories":"681"},"subType":null},{"id":"147c196c-716e-450b-b193-1d293553cd6e","date":"2026-06-04","discipline":"Active","data":{"duration":"10","distance":"2.5","avgSplit":"2:00","calories":"221"},"subType":"Row"},{"id":"617ca2d7-44b2-498d-b8e3-eb419c896cf9","date":"2026-06-04","discipline":"Chilled","data":{"distance":"2","duration":"20","avgSpeed":"6.0","calories":"157"},"subType":"Walk"},{"id":"eea01862-eb44-45fc-92ca-b6f786cb7353","date":"2026-06-05","discipline":"Strength","data":{"duration":"40","calories":"350"},"subType":null},{"id":"0509fa68-a8bc-4d2a-ae85-0d7057b21f4b","date":"2026-06-05","discipline":"Active","data":{"duration":"25","distance":"11.6","calories":"265"},"subType":"Cycling"},{"id":"6a617ca8-8234-47dd-b5ba-8ee333ee0f4b","date":"2026-06-05","discipline":"Chilled","data":{"distance":"1","duration":"10","avgSpeed":"6.0","calories":"120"},"subType":"Walk"},{"id":"c7835e5a-b657-441c-bfbf-0526fe889099","date":"2026-06-06","discipline":"Run","data":{"distance":"10.34","duration":"61.5","pace":"5:57","calories":"944"},"subType":null},{"id":"8584f425-c8cb-46a4-96af-a87d5e57f7d5","date":"2026-06-07","discipline":"Active","data":{"duration":"32","distance":"7.6","avgSplit":"2:00","calories":"707"},"subType":"Row"},{"id":"bfbd44ab-767c-4ac8-9a56-6a5dc501e09a","date":"2026-06-07","discipline":"Active","data":{"duration":"20","distance":"10","calories":"250"},"subType":"Cycling"},{"id":"3e14c6b3-2bf9-4c63-9fc6-6a60d1d46bf2","date":"2026-06-07","discipline":"Active","data":{"duration":"10","distance":"2","avgSplit":"2:30","calories":"106"},"subType":"Row"},{"id":"b1459401-ea17-474e-a8f0-c5d3ab935595","date":"2026-06-08","discipline":"Active","data":{"duration":"11","distance":"2.5","avgSplit":"2:12","calories":"162"},"subType":"Row"},{"id":"370053c3-3833-4f4d-9c0a-ce85b71a5928","date":"2026-06-08","discipline":"Active","data":{"type":"Elliptical","duration":"10","distance":"0.76","calories":"125"},"subType":"Other"},{"id":"1f58347e-ef9a-45de-8b1a-29fe97d3bb7b","date":"2026-06-08","discipline":"Run","data":{"distance":"6.3","duration":"40","pace":"6:21","calories":"612"},"subType":null},{"id":"03827f4d-581a-452a-8bc7-1d8be973bf90","date":"2026-06-08","discipline":"Active","data":{"duration":"11","distance":"4.80","calories":"100"},"subType":"Cycling"},{"id":"d3926068-0021-45d5-9655-8ac49d7353d8","date":"2026-06-09","discipline":"Strength","data":{"duration":"40","calories":"400","details":"40 sets"},"subType":null},{"id":"4aa13511-f0ea-4c37-9a21-4003c92666cc","date":"2026-06-09","discipline":"Chilled","data":{"distance":"2","duration":"20","avgSpeed":"6.0","calories":"270"},"subType":"Walk"},{"id":"5fec40b9-ee22-44ac-b15c-ead0f936924f","date":"2026-06-09","discipline":"Active","data":{"duration":"2","distance":".5","avgSplit":"2:00","calories":"40"},"subType":"Row"},{"id":"302c46b5-421b-4ae8-9d7d-a0409b3ec47b","date":"2026-06-09","discipline":"Active","data":{"duration":"13","distance":"5","calories":"125"},"subType":"Cycling"},{"id":"a66595f5-e017-4dfd-bec2-57fa7804c84a","date":"2026-06-10","discipline":"Swim","data":{"duration":"43","distance":"2.5","calories":"640"},"subType":null},{"id":"d89eab05-30bc-45a9-abc0-046776a751c4","date":"2026-06-11","discipline":"Active","data":{"duration":"40","distance":"9.3","avgSplit":"1:59","calories":"896"},"subType":"Row"},{"id":"f4e74c47-b27d-4a53-806b-7383cf6adb85","date":"2026-06-11","discipline":"Chilled","data":{"duration":"15","distance":"1.5","avgSpeed":"6.0","calories":"200"},"subType":"Walk"},{"id":"59506c80-2974-40e4-87ec-477b5b01c132","date":"2026-06-11","discipline":"Active","data":{"duration":"20","distance":"9.4","calories":"215"},"subType":"Cycling"},{"id":"bf8dda11-a9f5-4c55-851f-76ec183f8958","date":"2026-06-12","discipline":"Swim","data":{"duration":"45","distance":"2.5","calories":"650"},"subType":null},{"id":"e7450829-e3f6-472e-a4d6-f693c93cba1f","date":"2026-06-12","discipline":"Chilled","data":{"duration":"40","distance":"4","avgSpeed":"6.0","calories":"313"},"subType":"Walk"},{"id":"531111be-14ee-49d2-9405-6456e684c876","date":"2026-06-13","discipline":"Run","data":{"duration":"63","distance":"11","pace":"5:44","calories":"1050"},"subType":null},{"id":"6080cd59-a19c-4c8d-bb52-76d21d25c648","date":"2026-06-13","discipline":"Chilled","data":{"duration":"16","distance":"1.5","avgSpeed":"5.6","calories":"85"},"subType":"Walk"},{"id":"3166cb7a-5144-4f56-8587-c472eb66dac6","date":"2026-06-14","discipline":"Strength","data":{"duration":"40","type":"","details":"","calories":"400"},"subType":null},{"id":"dc4a6f33-4323-4739-983b-f7a27eba442d","date":"2026-06-14","discipline":"Chilled","data":{"duration":"30","distance":"3","avgSpeed":"6.0","calories":"235"},"subType":"Walk"},{"id":"a82a1273-222c-4f70-a9be-3ca2d9fd6459","date":"2026-06-15","discipline":"Active","data":{"duration":"32","distance":"7.3","avgSplit":"1:58","calories":"500"},"subType":"Row"},{"id":"5860ebc6-632b-46c1-97e0-3ada64ce7839","date":"2026-06-15","discipline":"Active","data":{"duration":"20","distance":"9","calories":"207"},"subType":"Cycling"},{"id":"39e4ed2f-0f0e-4446-bc88-1c975b5c48ec","date":"2026-06-15","discipline":"Run","data":{"duration":"20","distance":"3.3","pace":"6:04","calories":"300"},"subType":null},{"id":"35901ba3-3ab6-4b24-a16b-3c8584c6a2fd","date":"2026-06-15","discipline":"Active","data":{"type":"Elliptical","duration":"10","distance":".8","calories":"125"},"subType":"Other"},{"id":"01cecba6-55ca-45f3-911f-c2a9c77638fd","date":"2026-06-16","discipline":"Swim","data":{"duration":"38","distance":"2","calories":"476"},"subType":null},{"id":"66afdfd5-7318-4cb5-bfc2-2a2e37d29bb8","date":"2026-06-16","discipline":"Run","data":{"duration":"20","distance":"3","pace":"6:40","calories":"300"},"subType":null},{"id":"fa081ef7-e040-41e7-945c-bf44901a5d70","date":"2026-06-16","discipline":"Chilled","data":{"duration":"10","distance":"1","avgSpeed":"6.0","calories":"135"},"subType":"Walk"},{"id":"75022935-f6bd-4bb8-bcfc-a3baffcf484b","date":"2026-06-16","discipline":"Active","data":{"duration":"10","distance":"4.4","calories":"90"},"subType":"Cycling"},{"id":"0b35e593-6609-461f-bd1c-3abb09f3180f","date":"2026-06-17","discipline":"Strength","data":{"duration":"40","type":"Upper weights","details":"","calories":"350"},"subType":null},{"id":"a654b5ce-5198-4d96-84fc-abd821e661bf","date":"2026-06-17","discipline":"Active","data":{"duration":"20","distance":"9.5","calories":"215"},"subType":"Cycling"},{"id":"c9b85e7d-8d5d-4cbb-8904-bf520c202e88","date":"2026-06-19","discipline":"Strength","data":{"duration":"24","type":"Cardio (24mins)","details":"Completed all 24 moves · 45s on / 15s off","calories":"250"},"subType":null},{"id":"788d0615-63cf-41a1-b311-3246073334c7","date":"2026-06-19","discipline":"Strength","data":{"duration":"24","type":"Lower (24mins)","details":"Completed all 24 moves · 45s on / 15s off","calories":"250"},"subType":null},{"id":"78ed95a0-17fc-45ea-a30f-865e11444d77","date":"2026-06-19","discipline":"Strength","data":{"duration":"24","type":"Core (24mins)","details":"Completed all 24 moves · 45s on / 15s off","calories":"250"},"subType":null},{"id":"ca855cb6-23bb-4dd1-8694-afef7fa07c53","date":"2026-06-20","discipline":"Strength","data":{"duration":"40","type":"","details":"","calories":"350"},"subType":null},{"id":"18f042be-0039-4677-9603-6a39f2d199ee","date":"2026-06-21","discipline":"Chilled","data":{"duration":"120","distance":"9","avgSpeed":"4.5","calories":"658"},"subType":"Walk"},{"id":"ee4f09fb-8e79-49d0-a34f-f8156cc46aa3","date":"2026-06-22","discipline":"Swim","data":{"duration":"55","distance":"3","calories":"820"},"subType":null},{"id":"b5576e2f-6a25-4fa3-92aa-4e5684a71e57","date":"2026-06-23","discipline":"Active","data":{"duration":"32","distance":"7","avgSplit":"2:17","calories":"450"},"subType":"Row"},{"id":"4658cfea-25a9-4d53-baa8-17678660952e","date":"2026-06-23","discipline":"Active","data":{"duration":"20","distance":"9.5","calories":"220"},"subType":"Cycling"},{"id":"0f257d4d-d2bd-4110-b9ca-8fd6700231a3","date":"2026-06-23","discipline":"Chilled","data":{"duration":"20","distance":"2","avgSpeed":"6.0","calories":"250"},"subType":"Walk"},{"id":"d4c00c66-5115-440e-a40f-313c8f51ebe6","date":"2026-06-23","discipline":"Strength","data":{"duration":"24","type":"Upper (24mins)","details":"Completed all 24 moves · 45s on / 15s off","calories":"250"},"subType":null},{"id":"ceb7aab2-b63c-4d20-b937-219e32a37975","date":"2026-06-24","discipline":"Active","data":{"duration":"10","distance":"2.5","avgSplit":"2:00","calories":"221"},"subType":"Row"},{"id":"276b35f5-06c2-4887-a3ec-01451031b836","date":"2026-06-24","discipline":"Strength","data":{"duration":"10","type":"Leg press","details":"","calories":"78"},"subType":null},{"id":"0b5c7375-c647-4711-a442-f28cd8570d86","date":"2026-06-24","discipline":"Swim","data":{"duration":"35","distance":"2","calories":"439"},"subType":null},{"id":"a2e5297c-84ed-43b5-897f-7599caf6b83c","date":"2026-06-25","discipline":"Active","data":{"duration":"10","distance":"2.5","avgSplit":"2:00","calories":"221"},"subType":"Row"},{"id":"a3b6b785-b266-4a8c-9961-466aee60a412","date":"2026-06-25","discipline":"Run","data":{"duration":"30","distance":"5.5","pace":"5:27","calories":"550"},"subType":null},{"id":"5805f740-d106-41d7-ae70-ea8d976adaa7","date":"2026-06-25","discipline":"Active","data":{"type":"Elliptical","duration":"10","distance":".8","calories":"150"},"subType":"Other"},{"id":"e908a4e7-f1b6-44ab-b234-c4e2c44fa44f","date":"2026-06-25","discipline":"Chilled","data":{"duration":"30","distance":"3","avgSpeed":"6.0","calories":"235"},"subType":"Walk"},{"id":"794da2ec-594f-46bf-904c-711509929b40","date":"2026-06-26","discipline":"Swim","data":{"duration":"30","distance":"1.5","calories":"376"},"subType":null},{"id":"f4e7af3c-6a8b-47a1-ac93-7c761e02a707","date":"2026-06-28","discipline":"Run","data":{"duration":"47.5","distance":"8","pace":"5:56","calories":"729"},"subType":null},{"id":"30a7cc92-2511-435d-a54c-71dedd88ecbb","date":"2026-06-28","discipline":"Chilled","data":{"duration":"20","distance":"2","avgSpeed":"6.0","calories":"157"},"subType":"Walk"},{"id":"2f2fd4dd-5e16-41c3-9b13-8c44e199d0ec","date":"2026-06-29","discipline":"Active","data":{"duration":"20","distance":"4.6","avgSplit":"2:10","calories":"310"},"subType":"Row"},{"id":"fc4abfdb-e120-4145-8cc6-6fb64f90fd40","date":"2026-06-29","discipline":"Strength","data":{"duration":"24","type":"Cardio (24mins)","details":"Completed all 24 moves · 45s on / 15s off","calories":"250"},"subType":null},{"id":"330c296f-52d8-4f83-aac6-a879d022ee66","date":"2026-06-29","discipline":"Swim","data":{"duration":"30","distance":"1.5","calories":"376"},"subType":null},{"id":"532c1996-730a-47fd-86f4-e582f1000342","date":"2026-06-30","discipline":"Run","data":{"duration":"37","distance":"7","pace":"5:17","calories":"676"},"subType":null},{"id":"62989507-da2d-4071-bde3-1411dcd69282","date":"2026-06-30","discipline":"Chilled","data":{"duration":"20","distance":"1.5","avgSpeed":"4.5","calories":"110"},"subType":"Walk"},{"id":"97cecffd-6215-4e14-9d5d-eca8cbf1e36a","date":"2026-07-01","discipline":"Strength","data":{"duration":"24","type":"Upper (24mins)","details":"Completed all 24 moves · 45s on / 15s off","calories":"250"},"subType":null},{"id":"13756a8f-e09e-42a9-8a8f-82b10bf88407","date":"2026-07-01","discipline":"Strength","data":{"duration":"24","type":"Lower (24mins)","details":"Completed all 24 moves · 45s on / 15s off","calories":"250"},"subType":null},{"id":"6fc7cc83-eace-48ba-a591-65289a12979d","date":"2026-07-01","discipline":"Strength","data":{"duration":"24","type":"Core (24mins)","details":"Completed all 24 moves · 45s on / 15s off","calories":"250"},"subType":null},{"id":"a128dd79-4b9c-4a15-b52d-11654661a3ee","date":"2026-07-01","discipline":"Active","data":{"duration":"35","distance":"15.6","calories":"340"},"subType":"Cycling"},{"id":"69b94303-71d3-4e59-9f98-2671ef1f1f79","date":"2026-07-02","discipline":"Active","data":{"duration":"20","distance":"4.7","avgSplit":"2:08","calories":"350"},"subType":"Row"},{"id":"97d6c0ba-9903-407c-beea-f49ff25313e1","date":"2026-07-02","discipline":"Swim","data":{"duration":"62","distance":"3","calories":"777"},"subType":null},{"id":"b63722f3-870e-44f6-b56b-c8213183ed43","date":"2026-07-03","discipline":"Strength","data":{"duration":"25","type":"Arms weights","details":"","calories":"225"},"subType":null},{"id":"a1d06cc9-175a-46d7-80ac-0db30fe92556","date":"2026-07-03","discipline":"Run","data":{"duration":"18","distance":"3","pace":"6:00","calories":"294"},"subType":null},{"id":"696a0967-4932-4b76-9e53-a7b5aeec2c2c","date":"2026-07-03","discipline":"Swim","data":{"duration":"35","distance":"2","calories":"500"},"subType":null},{"id":"3ebc5803-5cb4-470b-a35e-461353255d31","date":"2026-07-04","discipline":"Strength","data":{"duration":"24","type":"Cardio","details":"","calories":"300"},"subType":null},{"id":"887904e9-fee5-4083-86c7-2c88f761b730","date":"2026-07-04","discipline":"Strength","data":{"duration":"24","type":"Lower","details":"","calories":"250"},"subType":null},{"id":"e2114074-a0bb-4923-8141-7d41c2790f57","date":"2026-07-04","discipline":"Strength","data":{"duration":"24","type":"Upper","details":"","calories":"250"},"subType":null},{"id":"7f33678c-93f5-4a68-9f51-809fcdaaae3a","date":"2026-07-05","discipline":"Chilled","data":{"duration":"100","distance":"9.5","avgSpeed":"5.7","calories":"783"},"subType":"Walk"},{"id":"1b1b4877-6b3e-457e-9e94-080ab14d3030","date":"2026-07-05","discipline":"Active","data":{"duration":"55","distance":"","calories":"700"},"subType":"Waterpolo"},{"id":"5be12ba3-8aed-4c54-9e91-a9d662755d49","date":"2026-07-06","discipline":"Active","data":{"duration":"32","distance":"7.2","avgSplit":"2:13","calories":"500"},"subType":"Row"},{"id":"356ca02b-5b77-4031-9725-22ad3cfcb304","date":"2026-07-06","discipline":"Swim","data":{"duration":"36","distance":"2","calories":"451"},"subType":null},{"id":"767906d3-ae52-45bc-875a-6c4de8c8542b","date":"2026-07-07","discipline":"Active","data":{"duration":"20","distance":"4","avgSplit":"2:30","calories":"250"},"subType":"Row"},{"id":"e9532867-c0f9-4aed-89cc-5d3000f28097","date":"2026-07-07","discipline":"Chilled","data":{"duration":"20","distance":"2","avgSpeed":"6.0","calories":"157"},"subType":"Walk"},{"id":"ca07ffc5-c4eb-46f3-967c-28a938a682ee","date":"2026-07-07","discipline":"Active","data":{"duration":"20","distance":"9","calories":"200"},"subType":"Cycling"},{"id":"722a04d6-e6c9-4431-9dec-3edcc064e3fb","date":"2026-07-08","discipline":"Strength","data":{"duration":"40","type":"Full Body (40mins)","details":"Completed all 40 moves · 45s on / 15s off","calories":"450"},"subType":null},{"id":"8ba3eda8-675e-4d8a-ab70-149ca6b54ba0","date":"2026-07-08","discipline":"Swim","data":{"duration":"60","distance":"3","calories":"752"},"subType":null},{"id":"afafa5c7-ffe7-45a0-be96-0da08ac80246","date":"2026-07-09","discipline":"Swim","data":{"duration":"25","distance":"1.5","calories":"400"},"subType":null},{"id":"5b70e096-a0da-4f4c-b031-7ffa7a24d3b1","date":"2026-07-09","discipline":"Chilled","data":{"duration":"60","distance":"6","avgSpeed":"6.0","calories":"470"},"subType":"Walk"},{"id":"ad81f803-e779-4180-9e91-ec460a140cde","date":"2026-07-11","discipline":"Run","data":{"duration":"47","distance":"8.5","pace":"5:32","calories":"722"},"subType":null},{"id":"84966fd4-2c5c-4f90-aa28-ec5e71001e96","date":"2026-07-12","discipline":"Chilled","data":{"duration":"90","distance":"9","avgSpeed":"6.0","calories":"705"},"subType":"Walk"},{"id":"169b8f8e-0f4c-4a94-96a8-8f5248c453af","date":"2026-07-13","discipline":"Active","data":{"duration":"32","distance":"7.15","avgSplit":"2:14","calories":"448"},"subType":"Row"},{"id":"f8fb8b8b-ed08-42e2-90a5-61508d25c171","date":"2026-07-13","discipline":"Active","data":{"duration":"30","distance":"14.5","calories":"330"},"subType":"Cycling"},{"id":"06079886-7168-4360-bbeb-b6446fd0a4c1","date":"2026-07-14","discipline":"Strength","data":{"duration":"24","type":"Core","details":"","calories":"250"},"subType":null},{"id":"64ea160b-a112-4734-a773-904bdb159b5a","date":"2026-07-14","discipline":"Swim","data":{"duration":"45","distance":"2.5","calories":"650"},"subType":null},{"id":"78152320-3edd-4416-8daa-e5ca42c75acd","date":"2026-07-15","discipline":"Active","data":{"duration":"20","distance":"4.7","avgSplit":"2:08","calories":"425"},"subType":"Row"},{"id":"8ad296ed-f564-4a1c-9d30-0695dd00181e","date":"2026-07-15","discipline":"Active","data":{"duration":"10","distance":"4.5","calories":"100"},"subType":"Cycling"},{"id":"4239ed6f-0c5a-4408-bb89-6c69f256b6f8","date":"2026-07-15","discipline":"Active","data":{"duration":"45","distance":"","calories":"550"},"subType":"Waterpolo"},{"id":"e7dca3a6-78f5-4fca-9913-2faa7c999b94","date":"2026-07-15","discipline":"Chilled","data":{"duration":"45","distance":"5","avgSpeed":"6.7","calories":"388"},"subType":"Walk"},{"id":"ab64d5e0-18b6-4bfb-a2d9-f982f9e55cb4","date":"2026-07-16","discipline":"Active","data":{"duration":"20","distance":"4.5","avgSplit":"2:13","calories":"425"},"subType":"Row"},{"id":"624845d3-35fb-4207-a21d-b2bcf95d5fbb","date":"2026-07-16","discipline":"Active","data":{"duration":"10","distance":"4.5","calories":"100"},"subType":"Cycling"},{"id":"4163b68c-68f0-4eee-a788-aa448f50b36e","date":"2026-07-17","discipline":"Swim","data":{"duration":"57","distance":"3","calories":"800"},"subType":null},{"id":"78b99f51-6979-4799-9cc6-c8cf02d93bab","date":"2026-07-18","discipline":"Active","data":{"type":"Pilates","duration":"30","calories":"235"},"subType":"Other"},{"id":"69d05478-ee54-4079-9ef0-eee5dbb96742","date":"2026-07-18","discipline":"Active","data":{"type":"Surf","duration":"60","distance":"","calories":"650"},"subType":"Other"},{"id":"b002e9e1-f7e7-4dca-a4dc-6ed76a199d84","date":"2026-07-19","discipline":"Stretch","data":{"duration":"60","calories":"550"},"subType":null},{"id":"c184ef06-e693-46da-9d40-9363384bdb6f","date":"2026-07-20","discipline":"Active","data":{"duration":"32","distance":"7.3","avgSplit":"2:12","calories":"550"},"subType":"Row"},{"id":"204e4c55-293f-4bb1-a3cd-60a0754c967f","date":"2026-07-20","discipline":"Active","data":{"duration":"15","distance":"6.75","calories":"150"},"subType":"Cycling"},{"id":"136171af-3193-4b16-a61b-a24b23a49346","date":"2026-07-20","discipline":"Chilled","data":{"duration":"15","distance":"1.5","avgSpeed":"6.0","calories":"185"},"subType":"Walk"},{"id":"080ab655-9e28-4abe-bfc7-b432bdb07465","date":"2026-07-20","discipline":"Chilled","data":{"duration":"15","distance":"1.5","avgSpeed":"6.0","calories":"118"},"subType":"Walk"},{"id":"079b8b22-94c8-41d3-9bd8-6291ebc498b2","date":"2026-07-21","discipline":"Swim","data":{"duration":"55","distance":"3","calories":"750"},"subType":null},{"id":"9d41fa5b-cfb4-483d-9401-ecf171841b55","date":"2026-07-22","discipline":"Active","data":{"duration":"60","distance":"","calories":"700"},"subType":"Waterpolo"},{"id":"466a5c77-08f2-42d0-9ebd-b345d9b09d21","date":"2026-07-23","discipline":"Swim","data":{"duration":"35","distance":"2","calories":"500"},"subType":null},{"id":"230d095c-98b1-48cf-85a7-2958492355ba","date":"2026-07-23","discipline":"Active","data":{"type":"Pilates","duration":"20","calories":"157"},"subType":"Other"},{"id":"5ea1f3a4-9e2c-4581-a6d1-790f4ad4e426","date":"2026-07-24","discipline":"Stretch","data":{"duration":"20","calories":"157"},"subType":null},{"id":"947ebcae-a59e-452e-b3e1-597475c8dd82","date":"2026-07-24","discipline":"Stretch","data":{"duration":"30","distance":"","calories":"235"},"subType":null},{"id":"e9af45ee-c19b-4719-8715-f80d127f0a56","date":"2026-07-24","discipline":"Active","data":{"type":"Climbing","duration":"45","distance":"","calories":"353"},"subType":"Other"},{"id":"acfc8b94-b306-48a5-b514-a6bcb7f07b5b","date":"2026-07-25","discipline":"Active","data":{"duration":"32","distance":"7.2","avgSplit":"2:13","calories":"500"},"subType":"Row"},{"id":"5e540852-15ac-47f6-b22c-d9f5bcc66b2e","date":"2026-07-25","discipline":"Chilled","data":{"duration":"15","distance":"1.5","avgSpeed":"6.0","calories":"230"},"subType":"Walk"},{"id":"5e64815d-522f-4d0b-90a3-4b949b495558","date":"2026-07-25","discipline":"Stretch","data":{"duration":"22","calories":"172"},"subType":null},{"id":"69072f75-e961-442a-a066-e945569eacf5","date":"2026-07-26","discipline":"Run","data":{"duration":"46.5","distance":"8","pace":"5:49","calories":"750"},"subType":null},{"id":"f2292932-a17a-44df-8977-d2715759cbf5","date":"2026-07-26","discipline":"Stretch","data":{"duration":"40","calories":"313"},"subType":null},{"id":"37e5a559-bfd1-44ce-82f6-93d1843e6153","date":"2026-07-27","discipline":"Stretch","data":{"duration":"16","distance":"","calories":"50"},"subType":null},{"id":"c0570f29-5071-4d36-b09c-447f599a5c8f","date":"2026-07-27","discipline":"Swim","data":{"duration":"32","distance":"2","calories":"450"},"subType":null},{"id":"9c230582-10a8-428e-a884-d40a750fdf17","date":"2026-07-28","discipline":"Run","data":{"duration":"30","distance":"5","pace":"6:00","calories":"500"},"subType":null},{"id":"b39525cc-1942-4070-9089-b75341a5a0d4","date":"2026-07-28","discipline":"Strength","data":{"duration":"24","type":"Core (24mins)","details":"Completed all 24 moves · 45s on / 15s off","calories":"250"},"subType":null},{"id":"52488ddb-480d-4af9-9302-f20b9ef82c15","date":"2026-07-28","discipline":"Stretch","data":{"duration":"35","distance":"","calories":"150"},"subType":null},{"id":"e1882002-21f9-4afd-ba52-0aeecf1e6f4e","date":"2026-07-29","discipline":"Active","data":{"duration":"50","distance":"","calories":"770"},"subType":"Waterpolo"},{"id":"b914f6c7-b493-451e-abee-d6c9d754f4ee","date":"2026-07-30","discipline":"Strength","data":{"duration":"30","type":"Upper","details":"","calories":"300"},"subType":null},{"id":"9cf8da42-1fe3-4b0b-b103-ea738a71086b","date":"2026-07-30","discipline":"Run","data":{"duration":"27.5","distance":"5","pace":"5:30","calories":"500"},"subType":null},{"id":"d9a5be8d-0b76-4a70-af3e-3c6099c5b0c3","date":"2026-07-30","discipline":"Active","data":{"duration":"15","distance":"7","calories":"170"},"subType":"Cycling"},{"id":"799308db-8aaa-4fc5-9120-eb44ec93e696","date":"2026-07-30","discipline":"Stretch","data":{"duration":"40","distance":"","calories":"150"},"subType":null},{"id":"aab5e66f-2867-4a6a-86fe-380897e87687","date":"2026-07-31","discipline":"Swim","subType":null,"data":{"duration":"75","distance":"4","calories":"1175"}},{"id":"4c7d390c-4092-4607-8f76-88e02802d217","date":"2026-08-01","discipline":"Run","subType":null,"data":{"duration":"59","distance":"10","pace":"5:54","calories":"906"}},{"id":"07ca7e29-7b60-474e-b770-73bc21a8ee22","date":"2026-08-02","discipline":"Strength","subType":null,"data":{"duration":"50","type":"","calories":"750"}},{"id":"ea705ee7-6acc-4ae3-8eca-58ef425130a3","date":"2026-08-02","discipline":"Swim","subType":null,"data":{"duration":"35","distance":"2","calories":"548"}},{"id":"5cd09671-dd32-4e8c-902c-5c23c31d7c33","date":"2026-08-02","discipline":"Stretch","subType":null,"data":{"duration":"25","calories":"118"}},{"id":"c102eeb2-118d-4090-9c8a-1e75d36c50d7","date":"2026-08-03","discipline":"Run","subType":null,"data":{"duration":"30","distance":"5","pace":"6:00","calories":"500"}},{"id":"e00bf07d-a7ac-4b65-bf5f-8ea498fe0968","date":"2026-08-03","discipline":"Chilled","subType":"Walk","data":{"duration":"20","distance":"2","calories":"211"}},{"id":"66e63908-29c6-47a0-8794-54e33c897ed7","date":"2026-08-03","discipline":"Stretch","subType":null,"data":{"duration":"20","calories":"94"}},{"id":"241e338b-bb9f-4f04-977f-4fade9a2c18e","date":"2026-08-04","discipline":"Swim","subType":null,"data":{"duration":"55","distance":"3","calories":"862"}},{"id":"ce9fb182-20a6-4355-bf03-9529cbe1c25f","date":"2026-08-05","discipline":"Active","subType":"Waterpolo","data":{"duration":"50","calories":"783"}},{"id":"97bd98c3-c82f-4ac2-b45d-cb4d8ba5b3b1","date":"2026-08-06","discipline":"Run","subType":null,"data":{"duration":"40","distance":"6.25","pace":"6:24","calories":"610"}},{"id":"e999ab33-3a15-4b40-8fd4-7ca41aba0a3e","date":"2026-08-06","discipline":"Strength","subType":null,"data":{"duration":"45","type":"Upper","calories":"423"}},{"id":"eb89924f-3538-4ee8-876a-28a010deb3ae","date":"2026-08-06","discipline":"Stretch","subType":null,"data":{"duration":"40","calories":"188"}},{"id":"e8e06a53-ac81-49e2-8c39-16d28e183aea","date":"2026-08-07","discipline":"Swim","subType":null,"data":{"duration":"75","distance":"4","calories":"1175"}},{"id":"570a03ea-695b-4723-aff9-a812e84f0c6d","date":"2026-08-08","discipline":"Run","subType":null,"data":{"duration":"52","distance":"9","pace":"5:47","calories":"798"}},{"id":"2d8062c7-fc4f-493b-871e-58b88420f87b","date":"2026-08-08","discipline":"Chilled","subType":"Walk","data":{"duration":"40","distance":"4","calories":"313"}},{"id":"fb6e4afd-bde9-42d6-85c4-f13e0f852915","date":"2026-08-09","discipline":"Active","subType":"Row","data":{"duration":"32","distance":"7.4","avgSplit":"2:10","calories":"500"}},{"id":"8fca1956-e4b0-47d3-a226-28bfa5ee5a7d","date":"2026-08-09","discipline":"Active","subType":"Cycling","data":{"duration":"10","distance":"4.8","calories":"112"}},{"id":"706272fc-5081-45e8-adb8-5d7b3ab49427","date":"2026-08-09","discipline":"Strength","data":{"duration":"30","type":"Core (30mins)","details":"Completed all 30 moves · 50s on / 10s off","calories":"376"}},{"id":"2b87dd8c-dcf2-4941-af34-eacd981461e5","date":"2026-08-09","discipline":"Stretch","subType":null,"data":{"duration":"30","calories":"141"}},{"id":"a812131a-bbaf-4a23-bf92-26b3acdf36e3","date":"2026-08-10","discipline":"Strength","subType":null,"data":{"duration":"20","type":"Upper","calories":"188"}},{"id":"c6c26de7-e652-4a50-8185-4e8e06409d8f","date":"2026-08-10","discipline":"Run","subType":null,"data":{"duration":"40","distance":"6.7","pace":"5:58","calories":"690"}},{"id":"6f94e48f-0ebb-45fc-85eb-8a880829b111","date":"2026-08-10","discipline":"Chilled","subType":"Walk","data":{"duration":"10","distance":"1","calories":"95"}},{"id":"1a7110fd-52c7-4180-be67-37941e5b80e6","date":"2026-08-10","discipline":"Active","subType":"Cycling","data":{"duration":"30","distance":"14","calories":"295"}},{"id":"22918558-0e22-403f-b302-e3068d90ad77","date":"2026-08-11","discipline":"Swim","subType":null,"data":{"duration":"80","distance":"4","calories":"1253"}},{"id":"b8661544-a4d4-4524-aabf-fc08948db11e","date":"2026-08-12","discipline":"Stretch","subType":null,"data":{"duration":"20","calories":"94"}},{"id":"ed3d9c42-d432-4104-9379-8ac1dbb4c922","date":"2026-08-12","discipline":"Active","subType":"Waterpolo","data":{"duration":"45","calories":"705"}},{"id":"8aff9da4-c802-4150-9ea4-d75b0665b180","date":"2026-08-13","discipline":"Strength","subType":null,"data":{"duration":"20","type":"Upper","calories":"188"}},{"id":"5bb748fd-3cca-46e8-944c-d334f481daa2","date":"2026-08-13","discipline":"Run","subType":null,"data":{"duration":"40","distance":"6.7","pace":"5:58","calories":"700"}},{"id":"6077be42-204e-44ac-8848-62fbdac6bd0d","date":"2026-08-13","discipline":"Active","subType":"Cycling","data":{"duration":"20","distance":"9.3","calories":"219"}},{"id":"82da801d-35c7-4250-b4f5-e46932f811b0","date":"2026-08-13","discipline":"Stretch","subType":null,"data":{"duration":"15","calories":"71"}},{"id":"afd22385-fd03-4f74-a373-18e5e6e85659","date":"2026-08-14","discipline":"Swim","subType":null,"data":{"duration":"80","distance":"4","calories":"1253"}},{"id":"1f6a9e14-257e-44b4-b4fb-eee37e670f27","date":"2026-08-15","discipline":"Run","subType":null,"data":{"duration":"59","distance":"10","pace":"5:54","calories":"906"}},{"id":"76e920a4-d151-4bcb-8cfd-83e1e6b1208a","date":"2026-08-16","discipline":"Chilled","subType":"Walk","data":{"duration":"50","distance":"5","calories":"392"}},{"id":"8e00e9fe-64b9-4878-92b1-afe01a823636","date":"2026-08-16","discipline":"Active","subType":"Row","data":{"duration":"20","distance":"4.5","avgSplit":"2:13","calories":"300"}},{"id":"5164e6bd-0c02-418f-a780-8dd2832dabdc","date":"2026-08-16","discipline":"Active","subType":"Cycling","data":{"duration":"20","distance":"9.6","calories":"219"}},{"id":"86855c49-4d66-4139-a475-a487b976b763","date":"2026-08-16","discipline":"Stretch","subType":null,"data":{"duration":"20","calories":"94"}},{"id":"80bb090d-8af2-4fe9-a8fd-bed2a8edfc7a","date":"2026-08-17","discipline":"Run","subType":null,"data":{"duration":"23.75","distance":"5","pace":"4:45","calories":"500"}},{"id":"7c22a06b-51ad-4b42-a4ab-40a73d2e42fa","date":"2026-08-17","discipline":"Chilled","subType":"Walk","data":{"duration":"10","distance":"1","calories":"130"}},{"id":"6d1bccfa-417c-493f-be52-30f59932c5e3","date":"2026-08-17","discipline":"Strength","data":{"duration":"49","type":"Full Body (50mins)","details":"Completed all 50 moves · 50s on / 10s off","calories":"614"}},{"id":"ae8c8870-d468-4108-9031-67fd20be7f88","date":"2026-08-17","discipline":"Stretch","subType":null,"data":{"duration":"20","calories":"94"}},{"id":"484e16c0-5811-43de-9ddc-6ac26c1c860a","date":"2026-08-18","discipline":"Swim","subType":null,"data":{"duration":"75","distance":"4","calories":"1175"}},{"id":"75b43a00-ed6d-43b8-9af1-0a59bad8f21e","date":"2026-08-18","discipline":"Chilled","subType":"Walk","data":{"duration":"20","distance":"2","calories":"157"}},{"id":"69e3355a-a8da-4e2c-8eb0-31a0a0dafa99","date":"2026-08-19","discipline":"Active","subType":"Waterpolo","data":{"duration":"50","calories":"783"}},{"id":"3f49bcf5-b4c2-41d6-9de4-fa276e8141c5","date":"2026-08-20","discipline":"Active","subType":"Cycling","data":{"duration":"45","distance":"21.5","calories":"500"}},{"id":"7efaf115-d813-425a-a7c2-a2258c1fd6ca","date":"2026-08-20","discipline":"Active","subType":"Other","data":{"type":"Hill walk","duration":"10","distance":"1","calories":"140"}},{"id":"a2ab644f-0cfc-4cef-898c-5ad21db8b76e","date":"2026-08-20","discipline":"Chilled","subType":"Walk","data":{"duration":"25","distance":"2.5","calories":"196"}},{"id":"52911365-8ace-4c7d-899f-cbc64a206814","date":"2026-08-21","discipline":"Swim","subType":null,"data":{"duration":"60","distance":"3","calories":"940"}},{"id":"a7c25ad0-42d6-4790-b204-c25e2dda2c68","date":"2026-08-23","discipline":"Run","subType":null,"data":{"duration":"59","distance":"10","pace":"5:54","calories":"940"}},{"id":"c9a109a3-4b4e-46ee-9c89-d80374a311fb","date":"2026-08-23","discipline":"Stretch","subType":null,"data":{"duration":"30","calories":"141"}},{"id":"fc0c7af1-4840-4059-8bde-9fe914c912cb","date":"2026-08-24","discipline":"Active","subType":"Row","data":{"duration":"10","distance":"2.5","avgSplit":"2:00","calories":"221"}},{"id":"f284c049-8ad5-4b34-ab76-93c8c3fff77b","date":"2026-08-24","discipline":"Strength","subType":null,"data":{"duration":"40","type":"Upper and legs","calories":"350"}},{"id":"d55c54bd-41e3-4176-ad7e-5fe329752929","date":"2026-08-24","discipline":"Run","subType":null,"data":{"duration":"27.5","distance":"5","pace":"5:30","calories":"500"}},{"id":"495d4b7f-702a-46bc-809c-2d4cc5a52071","date":"2026-08-24","discipline":"Active","subType":"Other","data":{"type":"Hill walk","duration":"10","distance":"1","calories":"120"}},{"id":"e1f2e797-5f0b-41ae-b34f-d6749bd9e8bb","date":"2026-08-24","discipline":"Active","subType":"Cycling","data":{"duration":"21","distance":"9.5","calories":"205"}},{"id":"0a81113e-7525-462a-9598-9ec0fe764c66","date":"2026-08-24","discipline":"Stretch","subType":null,"data":{"duration":"20","calories":"94"}},{"id":"555e810c-2daf-45b5-986d-8526e9a58223","date":"2026-08-25","discipline":"Swim","subType":null,"data":{"duration":"80","distance":"4","calories":"1253"}},{"id":"dd3f77c2-0d79-4a85-b912-5d4fb269627e","date":"2026-08-26","discipline":"Chilled","subType":"Walk","data":{"duration":"20","distance":"2","calories":"157"}},{"id":"4c176a06-067f-49f5-8fcc-3961ce14a46a","date":"2026-08-26","discipline":"Chilled","subType":"Walk","data":{"duration":"20","distance":"2","calories":"157"}},{"id":"e3138d20-ca53-4ea9-ac6c-ae59fbf5cbe3","date":"2026-08-26","discipline":"Active","subType":"Waterpolo","data":{"duration":"50","calories":"783"}},{"id":"6eeb1edd-247a-4281-87a8-409ff9cec1eb","date":"2026-08-27","discipline":"Active","subType":"Row","data":{"duration":"32","distance":"7.2","avgSplit":"2:13","calories":"459"}},{"id":"9c83b2aa-2941-424f-9fa8-af0b50aacb75","date":"2026-08-27","discipline":"Run","subType":null,"data":{"duration":"24","distance":"4","pace":"6:00","calories":"400"}},{"id":"b0c6373f-8cd2-4aca-9ed5-33134dddd32e","date":"2026-08-27","discipline":"Strength","subType":null,"data":{"duration":"20","type":"","calories":"188"}},{"id":"9ad2d8b7-47a7-4f96-9004-dd4ee70052a9","date":"2026-08-27","discipline":"Run","subType":null,"data":{"duration":"12","distance":"2","pace":"6:00","calories":"200"}},{"id":"620cfe51-cd86-49b8-870b-52e0b50c50f7","date":"2026-08-28","discipline":"Swim","subType":null,"data":{"duration":"80","distance":"4","calories":"1253"}},{"id":"194669d4-31a3-4d2c-ae1c-e620392a736d","date":"2026-08-29","discipline":"Run","subType":null,"data":{"duration":"58","distance":"10","pace":"5:48","calories":"950"}},{"id":"77cfbba1-0c6f-403d-a7cc-f28903060879","date":"2026-08-29","discipline":"Chilled","subType":"Walk","data":{"duration":"20","distance":"2","calories":"157"}},{"id":"968362ca-5b2b-46bb-89f3-c0d1f9bff0d1","date":"2026-08-29","discipline":"Stretch","subType":null,"data":{"duration":"10","calories":"47"}},{"id":"cd67f2a4-754c-4f8a-8d3f-1e666c5d535e","date":"2026-08-30","discipline":"Swim","subType":null,"data":{"duration":"20","distance":"1","calories":"313"}},{"id":"cc5e3448-e3dc-4b5b-81ef-29f157c87a74","date":"2026-08-31","discipline":"Swim","subType":null,"data":{"duration":"80","distance":"4","calories":"1253"}},{"id":"af032d34-1fab-4d4a-9701-0cf4eeb9db81","date":"2026-09-02","discipline":"Active","subType":"Waterpolo","data":{"duration":"55","calories":"862"}},{"id":"b8aa7f0e-d2ad-4ba2-ae58-9d4925a924c8","date":"2026-09-02","discipline":"Chilled","subType":"Walk","data":{"duration":"30","distance":"3","calories":"235"}},{"id":"93b94411-4053-4a87-a5fe-d50a1d74d1e8","date":"2026-09-03","discipline":"Run","subType":null,"data":{"duration":"25","distance":"5","pace":"5:00","calories":"500"}},{"id":"ff183bbe-ec7f-4e6c-b5d2-00010294f109","date":"2026-09-03","discipline":"Active","subType":"Other","data":{"type":"Hill walk","duration":"20","distance":"2","calories":"270"}},{"id":"9bc4b420-9a75-4f90-8985-8cd4c300f4d6","date":"2026-09-03","discipline":"Active","subType":"Cycling","data":{"duration":"15","distance":"6.9","calories":"165"}},{"id":"fef8274c-8ce1-4889-a707-2da4924a65df","date":"2026-09-03","discipline":"Chilled","subType":"Walk","data":{"duration":"20","distance":"2","calories":"157"}},{"id":"d1969e5a-83f7-4d25-b35c-3da36b160397","date":"2026-09-04","discipline":"Swim","subType":null,"data":{"duration":"55","distance":"3","calories":"862"}},{"id":"550aef1e-6006-4a53-bb6d-af0ffaf5a1bf","date":"2026-09-05","discipline":"Run","subType":null,"data":{"duration":"45.5","distance":"8","pace":"5:41","calories":"800"}},{"id":"a561c17b-11be-4a83-8c6e-a0cc68acad3d","date":"2026-09-05","discipline":"Active","subType":"Other","data":{"type":"Hill walk","duration":"15","distance":"1.5","calories":"190"}},{"id":"86cddc61-0c00-4eaa-9e07-7e407c8a9441","date":"2026-09-05","discipline":"Active","subType":"Other","data":{"type":"Elliptical","duration":"15","distance":"1.3","calories":"188"}},{"id":"0524695b-a018-4d20-acbd-98eef0a05b85","date":"2026-09-05","discipline":"Active","subType":"Cycling","data":{"duration":"15","distance":"7","calories":"160"}},{"id":"bc8774c4-c9b4-4dc7-b088-5b9c92b71a34","date":"2026-09-05","discipline":"Run","subType":null,"data":{"duration":"6","distance":"1","pace":"6:00","calories":"100"}},{"id":"f43de5dd-f8fc-4cb4-a791-056c715ea634","date":"2026-09-06","discipline":"Strength","data":{"duration":"49","type":"Full Body (50mins)","details":"Completed all 50 moves · 50s on / 10s off","calories":"614"}},{"id":"4ff2c629-571c-43b4-b3b9-9e3ec21379f2","date":"2026-09-06","discipline":"Stretch","subType":null,"data":{"duration":"25","calories":"118"}},{"id":"ebb5d5e0-3c8f-4d42-a3f6-4b871fe10f4e","date":"2026-09-06","discipline":"Chilled","subType":"Walk","data":{"duration":"60","distance":"6","calories":"470"}},{"id":"5fa68696-7148-47ca-9927-eda90183a7dc","date":"2026-09-07","discipline":"Swim","subType":null,"data":{"duration":"60","distance":"3","calories":"940"}},{"id":"633f893c-9245-4a41-82ee-58c327a70cf4","date":"2026-09-07","discipline":"Stretch","subType":null,"data":{"duration":"15","calories":"71"}},{"id":"99134f76-9416-451a-8f2e-de0e4b8b7e08","date":"2026-09-08","discipline":"Run","subType":null,"data":{"duration":"40","distance":"6.6","pace":"6:04","calories":"680"}},{"id":"be4607c5-c607-4d09-8076-0775812cd1c0","date":"2026-09-08","discipline":"Active","subType":"Cycling","data":{"duration":"10","distance":"4.5","calories":"110"}},{"id":"e5501d8e-bdc9-431c-905f-c01affa2b1c5","date":"2026-09-08","discipline":"Chilled","subType":"Walk","data":{"duration":"10","distance":"1","calories":"78"}},{"id":"cfa700dc-9507-4cbb-b6ea-0db73b6bdb8f","date":"2026-09-09","discipline":"Strength","subType":null,"data":{"duration":"35","type":"Upper","calories":"329"}},{"id":"cf2a35c3-2482-48d0-85c1-46097ca0ae74","date":"2026-09-09","discipline":"Active","subType":"Other","data":{"type":"Hill walk","duration":"20","distance":"2","calories":"251"}},{"id":"dce86248-4157-4adc-9f52-105e07413230","date":"2026-09-09","discipline":"Active","subType":"Cycling","data":{"duration":"10","distance":"3.5","calories":"90"}},{"id":"fcfe0622-7c1b-4906-be1b-e8e619125684","date":"2026-09-09","discipline":"Active","subType":"Waterpolo","data":{"duration":"50","calories":"783"}},{"id":"9a9f7108-f680-489a-af8b-109b163688f1","date":"2026-09-10","discipline":"Run","subType":null,"data":{"duration":"29","distance":"5","pace":"5:48","calories":"500"}},{"id":"1830768d-2a62-4b28-9614-70b03ca9e1a7","date":"2026-09-10","discipline":"Chilled","subType":"Walk","data":{"duration":"20","distance":"2","calories":"157"}},{"id":"bb146810-5fe4-47be-8517-8839457a344a","date":"2026-09-11","discipline":"Chilled","subType":"Walk","data":{"duration":"60","distance":"6","calories":"470"}},{"id":"6715e261-027a-46ab-a84d-6d33a2e8e31f","date":"2026-09-13","discipline":"Run","subType":null,"data":{"duration":"57","distance":"10","pace":"5:42","calories":"900"}},{"id":"66c51e7f-c01c-4354-a555-9758348e414d","date":"2026-09-13","discipline":"Chilled","subType":"Walk","data":{"duration":"40","distance":"4","calories":"313"}},{"id":"0cc8efb7-2c0e-4575-b971-c51e7b372468","date":"2026-09-14","discipline":"Chilled","subType":"Walk","data":{"duration":"20","distance":"2","calories":"157"}},{"id":"f0a54f1d-f1b0-412c-a8e7-f6310184764e","date":"2026-09-14","discipline":"Swim","subType":null,"data":{"duration":"75","distance":"4","calories":"1175"}},{"id":"a1a2d762-70d1-4d41-a780-25db04180308","date":"2026-09-14","discipline":"Run","subType":null,"data":{"duration":"24","distance":"4","pace":"6:00","calories":"400"}},{"id":"b901629c-a5fe-4430-85aa-e64245c2437d","date":"2026-09-14","discipline":"Active","subType":"Cycling","data":{"duration":"11","distance":"4.5","calories":"121"}},{"id":"febbe991-f207-4357-89f6-26267f548df2","date":"2026-09-15","discipline":"Active","subType":"Row","data":{"duration":"32","distance":"7.1","avgSplit":"2:15","calories":"450"}},{"id":"3b2403cd-651e-468a-9864-7c39e7b17aa3","date":"2026-09-15","discipline":"Strength","subType":null,"data":{"duration":"25","type":"","calories":"235"}},{"id":"a0c8c5bf-7136-41aa-b081-3bb272d6776e","date":"2026-09-15","discipline":"Run","subType":null,"data":{"duration":"18","distance":"3","pace":"6:00","calories":"300"}},{"id":"0107555c-4faa-4508-bec5-c566eb02d7dd","date":"2026-09-15","discipline":"Active","subType":"Other","data":{"type":"Hill walk","duration":"10","distance":"1","calories":"115"}},{"id":"f69a3952-65f8-40d2-8a8c-b3b0134ce4f8","date":"2026-09-15","discipline":"Chilled","subType":"Walk","data":{"duration":"25","distance":"2.5","calories":"196"}},{"id":"42e2e835-b504-4980-923e-962f3cce0ca5","date":"2026-09-16","discipline":"Strength","data":{"duration":"30","type":"Cardio (30mins)","details":"Completed all 30 moves · 50s on / 10s off","calories":"376"}},{"id":"1da3e4e3-2c8c-4a53-89ca-69ccb719db5a","date":"2026-09-16","discipline":"Strength","data":{"duration":"30","type":"Lower (30mins)","details":"Completed all 30 moves · 50s on / 10s off","calories":"376"}},{"id":"9349f1b3-5c34-4902-84a0-f9e0c6ed5bc9","date":"2026-09-16","discipline":"Strength","subType":null,"data":{"duration":"15","type":"Legs","calories":"120"}},{"id":"095d3f18-9849-4499-b9ab-1dff2704a56f","date":"2026-09-16","discipline":"Active","subType":"Cycling","data":{"duration":"10","distance":"4.5","calories":"100"}},{"id":"ab7ee1b6-3122-4c24-9f5c-ddaf02af779d","date":"2026-09-16","discipline":"Stretch","subType":null,"data":{"duration":"28","calories":"132"}},{"id":"f92d26e2-1b19-48e2-96f0-35a49d18a9d5","date":"2026-09-17","discipline":"Chilled","subType":"Walk","data":{"duration":"30","distance":"3","calories":"235"}},{"id":"877119b8-b759-4da6-b1e6-553ce62095b9","date":"2026-09-18","discipline":"Active","subType":"Row","data":{"duration":"32","distance":"7","avgSplit":"2:17","calories":"415"}},{"id":"c171cd27-a034-4306-9af4-6c7736b5f162","date":"2026-09-18","discipline":"Active","subType":"Other","data":{"type":"Elliptical","duration":"15","distance":"1.2","calories":"188"}},{"id":"660ece16-6b99-414c-8868-d2c227d946e4","date":"2026-09-18","discipline":"Active","subType":"Cycling","data":{"duration":"15","distance":"6.7","calories":"145"}},{"id":"e01eac25-0482-4d9c-ba74-e8dcb883d56b","date":"2026-09-19","discipline":"Run","subType":null,"data":{"duration":"64.5","distance":"11","pace":"5:52","calories":"990"}},{"id":"b205ce0a-7e20-4839-857d-dc91ed105e59","date":"2026-09-19","discipline":"Chilled","subType":"Walk","data":{"duration":"20","distance":"2","calories":"157"}},{"id":"8fe74ad3-a9fa-45d8-ab13-f2b80c7f1de2","date":"2026-09-20","discipline":"Strength","subType":null,"data":{"duration":"30","type":"Core","calories":"376"}},{"id":"a9740d38-136c-40ef-9cb5-ad09ccc4e6fc","date":"2026-09-20","discipline":"Strength","subType":null,"data":{"duration":"30","type":"Lower","calories":"376"}},{"id":"2ff106ac-5d95-490f-bf5b-f1f7121d2265","date":"2026-09-20","discipline":"Stretch","subType":null,"data":{"duration":"25","calories":"118"}},{"id":"7494d86f-e59a-4a86-bc79-f581cf70efa8","date":"2026-09-20","discipline":"Chilled","subType":"Walk","data":{"duration":"20","distance":"2","calories":"157"}},{"id":"a64d7572-0c5f-4894-967a-7b9e43490fcb","date":"2026-09-21","discipline":"Run","subType":null,"data":{"duration":"40","distance":"6.7","pace":"5:58","calories":"680"}},{"id":"1a898494-0ee8-4e65-8430-309755b73914","date":"2026-09-21","discipline":"Active","subType":"Cycling","data":{"duration":"20","distance":"9.3","calories":"219"}},{"id":"e0e76e2e-5067-4a69-877d-a5ee03a07dbe","date":"2026-09-21","discipline":"Chilled","subType":"Walk","data":{"duration":"15","distance":"1.8","calories":"118"}},{"id":"5dd39bb0-e1cb-4549-b42b-7ff2e7ee5dc6","date":"2026-09-22","discipline":"Run","subType":null,"data":{"duration":"28.75","distance":"5","pace":"5:45","calories":"500"}},{"id":"8f90adf1-1cea-4e5c-a649-2054de536fca","date":"2026-09-22","discipline":"Chilled","subType":"Walk","data":{"duration":"20","distance":"2","calories":"157"}},{"id":"81635f75-9e3d-42fe-b0f0-f6746e892892","date":"2026-09-22","discipline":"Active","subType":"Other","data":{"type":"Hill walk","duration":"15","distance":"1.5","calories":"188"}},{"id":"fee3a5b6-cf6e-4155-99ea-b2c9aa083815","date":"2026-09-22","discipline":"Active","subType":"Cycling","data":{"duration":"15","distance":"6.9","calories":"165"}},{"id":"383bf14a-a072-42ee-bad3-3050d96793e9","date":"2026-09-23","discipline":"Active","subType":"Row","data":{"duration":"20","distance":"4.75","avgSplit":"2:06","calories":"450"}},{"id":"679ce0de-cb91-4a5d-b42b-6a22246c901b","date":"2026-09-23","discipline":"Run","subType":null,"data":{"duration":"20","distance":"3.33","pace":"6:00","calories":"330"}},{"id":"27eaac38-98de-46f0-bd3c-fac97a85dddb","date":"2026-09-23","discipline":"Active","subType":"Other","data":{"type":"Hill walk","duration":"10","distance":"1","calories":"125"}},{"id":"b5ab9237-e8f8-4f24-9fcc-f261858ebd7a","date":"2026-09-24","discipline":"Swim","subType":null,"data":{"duration":"45","distance":"2.5","calories":"705"}},{"id":"4f175261-84e1-4125-b41d-81c7822080b7","date":"2026-09-24","discipline":"Active","subType":"Other","data":{"type":"Baseball","duration":"20","distance":"","calories":"251"}},{"id":"98da50f4-304c-4de0-a412-a627be593f94","date":"2026-09-24","discipline":"Chilled","subType":"Walk","data":{"duration":"25","distance":"2.5","calories":"196"}},{"id":"001963e4-ccc6-40fb-b6a1-298ac52cb21e","date":"2026-09-25","discipline":"Run","subType":null,"data":{"duration":"39.8","distance":"7","pace":"5:41","calories":"611"}},{"id":"13289bf7-8cc3-47da-9817-c0af4a898865","date":"2026-09-25","discipline":"Chilled","subType":"Walk","data":{"duration":"25","distance":"2.5","calories":"196"}},{"id":"702c933d-59ab-4c00-ad2b-b7f814ebb293","date":"2026-09-25","discipline":"Chilled","subType":"Walk","data":{"duration":"25","distance":"2.5","calories":"196"}},{"id":"5ebe8359-5bed-4a55-99dd-ae90b404850c","date":"2026-09-27","discipline":"Strength","data":{"duration":"49","type":"Full Body (50mins)","details":"Completed all 50 moves · 50s on / 10s off","calories":"614"}},{"id":"8dce1590-31b0-47f1-930e-f6b5efe44e5e","date":"2026-09-27","discipline":"Stretch","subType":null,"data":{"duration":"20","calories":"94"}},{"id":"b0c8d397-ddba-408b-b297-2d008b5faf26","date":"2026-09-27","discipline":"Chilled","subType":"Walk","data":{"duration":"30","distance":"3","calories":"235"}},{"id":"d45a49e7-4a71-46ba-8c33-273ebc259d0b","date":"2026-09-29","discipline":"Run","subType":null,"data":{"duration":"32","distance":"5","pace":"6:24","calories":"470"}},{"id":"07fabd75-46e5-4494-b852-24316be31c33","date":"2026-09-29","discipline":"Active","subType":"Other","data":{"type":"Elliptical","duration":"23","distance":"1.8","calories":"290"}},{"id":"c1163019-d386-48c5-9521-285f645442fa","date":"2026-09-29","discipline":"Active","subType":"Cycling","data":{"duration":"15","distance":"7","calories":"165"}},{"id":"f4ee6055-9d69-49e4-9943-eedb1a893c5b","date":"2026-09-29","discipline":"Swim","subType":null,"data":{"duration":"35","distance":"2","calories":"548"}},{"id":"2926b7d4-d246-49e3-8f89-ade928583c35","date":"2026-09-29","discipline":"Chilled","subType":"Walk","data":{"duration":"20","distance":"2","calories":"157"}},{"id":"c9f6978f-f59d-4f68-87d1-a6fb294aab43","date":"2026-09-30","discipline":"Strength","subType":null,"data":{"duration":"60","type":"Upper","calories":"564"}},{"id":"587cc9c1-f1fd-4eaf-974f-e31215293218","date":"2026-09-30","discipline":"Active","subType":"Other","data":{"type":"Hill walk","duration":"30","distance":"3","calories":"440"}},{"id":"2a743f67-b02b-4878-bbd3-8d2f80fb16f5","date":"2026-09-30","discipline":"Chilled","subType":"Walk","data":{"duration":"15","distance":"1.5","calories":"118"}},{"id":"e4b76186-d41f-49ce-bf63-7936ce09f5c8","date":"2026-10-01","discipline":"Active","subType":"Other","data":{"type":"Climbing","duration":"60","distance":"","calories":"500"}},{"id":"6491730c-74e9-4545-bb6e-b66752f2d56d","date":"2026-10-01","discipline":"Run","subType":null,"data":{"duration":"16","distance":"3","pace":"5:20","calories":"300"}},{"id":"0206cb19-189b-4e01-9250-a27afa09d9aa","date":"2026-10-02","discipline":"Swim","subType":null,"data":{"duration":"55","distance":"3","calories":"862"}},{"id":"1daeebae-21e4-4161-8c1d-ebd30a828154","date":"2026-10-03","discipline":"Run","subType":null,"data":{"duration":"32","distance":"6","pace":"5:20","calories":"600"}},{"id":"4128f2d9-df8b-4c58-b493-e1c409b37bcc","date":"2026-10-03","discipline":"Active","subType":"Other","data":{"type":"Elliptical","duration":"13","distance":"1.1","calories":"163"}},{"id":"d6923163-e730-49e5-89df-2ca0065ad9b9","date":"2026-10-03","discipline":"Active","subType":"Row","data":{"duration":"5","distance":"1.25","avgSplit":"2:00","calories":"110"}},{"id":"0d6424e9-ea00-4ff7-ac69-0ebb78f3451d","date":"2026-10-03","discipline":"Strength","data":{"duration":"30","type":"Core (30mins)","details":"Completed all 30 moves · 50s on / 10s off","calories":"376"}},{"id":"6f64bdb6-0b95-46e0-bcb9-1c95401a10e6","date":"2026-10-03","discipline":"Stretch","subType":null,"data":{"duration":"21","calories":"99"}},{"id":"2c09bc5d-2302-493c-9942-b586ac6a72b7","date":"2026-10-04","discipline":"Run","subType":null,"data":{"duration":"58.5","distance":"10","pace":"5:51","calories":"950"}},{"id":"a0fa72c4-9447-43ba-906e-5f2287b946d2","date":"2026-10-05","discipline":"Swim","subType":null,"data":{"duration":"60","distance":"3.5","calories":"940"}},{"id":"e75bdeaf-dff3-4862-a06a-e10a48cd68f8","date":"2026-10-06","discipline":"Swim","subType":null,"data":{"duration":"20","distance":"1.2","calories":"313"}},{"id":"3f5f2063-629b-445a-b3dc-315c89547a41","date":"2026-10-06","discipline":"Chilled","subType":"Walk","data":{"duration":"20","distance":"2","calories":"157"}},{"id":"4848987f-2e28-4baf-992d-b9110a220ca2","date":"2026-10-07","discipline":"Active","subType":"Waterpolo","data":{"duration":"40","calories":"627"}}]</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script>
+(function(){
+const ORDER=['Run','Swim','Row','Stretch','Strength','Climbing','Cycling','Walk','Waterpolo','Other'];
+const COLOR={Run:'#16a34a',Swim:'#0b95d4',Row:'#ea580c',Stretch:'#9061f9',Strength:'#8f9c08',Climbing:'#4f46e5',Cycling:'#d6247a',Walk:'#c9b79c',Waterpolo:'#0d9488',Other:'#c026d3'};
+const VERB={Run:'running',Swim:'swimming',Row:'rowing',Stretch:'stretching',Strength:'strength',Climbing:'climbing',Cycling:'cycling',Walk:'walking',Waterpolo:'waterpolo',Other:'other activities'};
+const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MONTHS_L=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DOW=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+const $=id=>document.getElementById(id);
+const num=x=>{const v=parseFloat(x);return isFinite(v)?v:0};
+const fmt=(v,d=0)=>v.toLocaleString('en-AU',{minimumFractionDigits:d,maximumFractionDigits:d});
+const DAY=86400000;
+const parseD=s=>{const[a,b,c]=s.split('-').map(Number);return Date.UTC(a,b-1,c)};
+const dLabel=t=>{const d=new Date(t);return d.getUTCDate()+' '+MONTHS[d.getUTCMonth()]};
+const mKey=t=>{const d=new Date(t);return d.getUTCFullYear()*12+d.getUTCMonth()};
+const kStart=k=>Date.UTC(Math.floor(k/12),k%12,1);
+const kEnd=k=>kStart(k+1)-DAY;
+const kName=(k,long)=>(long?MONTHS_L:MONTHS)[k%12]+' '+Math.floor(k/12);
+
+function cleanActivity(s){
+  const t=String(s||'').trim(), l=t.toLowerCase();
+  if(!t) return 'Other';
+  if(/^(el|ecl|elip|ellip)/.test(l)) return 'Elliptical';
+  if(/climb|boulder/.test(l)) return 'Climbing';
+  if(/hill/.test(l)) return 'Hill walk';
+  return t.charAt(0).toUpperCase()+t.slice(1);
+}
+function strengthGroup(s){
+  const l=String(s||'').toLowerCase();
+  if(!l.trim()) return 'Untagged';
+  if(/full/.test(l)||(/upper/.test(l)&&/(leg|lower)/.test(l))) return 'Full body';
+  if(/upper|arm|push|pull|chest|back|shoulder/.test(l)) return 'Upper';
+  if(/lower|leg|glute/.test(l)) return 'Lower';
+  if(/core|ab/.test(l)) return 'Core';
+  if(/cardio|hiit/.test(l)) return 'Cardio';
+  return 'Other';
+}
+function normalise(raw){
+  return raw.filter(e=>e&&e.date&&e.discipline&&/^\d{4}-\d{2}-\d{2}$/.test(e.date)).map(e=>{
+    const d=e.data||{}; let cat, act=null, sg=null;
+    switch(e.discipline){
+      case 'Run':cat='Run';break;
+      case 'Swim':cat='Swim';break;
+      case 'Stretch':cat='Stretch';break;
+      case 'Chilled':cat='Walk';act=e.subType||'Walk';break;
+      case 'Strength':
+        if(/climb/i.test(d.type||'')){cat='Climbing'}else{cat='Strength';sg=strengthGroup(d.type)}
+        break;
+      case 'Active':
+        if(e.subType==='Row')cat='Row';else if(e.subType==='Cycling')cat='Cycling';else if(e.subType==='Waterpolo')cat='Waterpolo';
+        else{act=cleanActivity(d.type||e.subType);cat=act==='Climbing'?'Climbing':'Other'}
+        break;
+      default:cat='Other';act=cleanActivity(e.subType||e.discipline);
+    }
+    return {date:e.date,t:parseD(e.date),cat,act,sg,min:num(d.duration),km:num(d.distance),cal:num(d.calories)};
+  });
+}
+
+let RAW=null, ALL=[], SOURCE='builtin', MODE='share', FROM=null, TO=null, MINK=0, MAXK=0, MAXT=0;
+const store={get(k){try{return localStorage.getItem(k)}catch(_){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(_){}}};
+
+/* ---------- range picker ---------- */
+function setupRange(){
+  MINK=mKey(Math.min(...ALL.map(s=>s.t))); MAXT=Math.max(...ALL.map(s=>s.t)); MAXK=mKey(MAXT);
+  const opts=[];for(let k=MINK;k<=MAXK;k++)opts.push(`<option value="${k}">${kName(k)}</option>`);
+  $('r-from').innerHTML=opts.join('');$('r-to').innerHTML=opts.join('');
+  const sf=+store.get('tw:from'), st=+store.get('tw:to');
+  if(sf>=MINK&&sf<=MAXK&&st>=MINK&&st<=MAXK&&sf<=st){FROM=sf;TO=st}
+  else{const y=Math.floor(MAXK/12);FROM=Math.max(MINK,y*12);TO=MAXK}
+}
+function applyRange(){
+  if(FROM>TO){const t=FROM;FROM=TO;TO=t}
+  $('r-from').value=FROM;$('r-to').value=TO;
+  store.set('tw:from',FROM);store.set('tw:to',TO);
+  render();
+}
+$('r-from').onchange=e=>{FROM=+e.target.value;if(FROM>TO)TO=FROM;applyRange()};
+$('r-to').onchange=e=>{TO=+e.target.value;if(TO<FROM)FROM=TO;applyRange()};
+
+/* ---------- analysis ---------- */
+function analyse(){
+  const P={start:kStart(FROM),end:Math.min(kEnd(TO),MAXT),fromK:FROM,toK:TO};
+  const S=ALL.filter(s=>s.t>=P.start&&s.t<=P.end).sort((a,b)=>a.t-b.t);
+  const nDays=Math.round((P.end-P.start)/DAY)+1;
+  const nM=TO-FROM+1;
+  const byDay=new Map();
+  S.forEach(s=>{const k=Math.round((s.t-P.start)/DAY);if(!byDay.has(k))byDay.set(k,[]);byDay.get(k).push(s)});
+  const cats={};ORDER.forEach(c=>cats[c]={sessions:0,min:0,km:0,cal:0,months:new Array(nM).fill(0)});
+  S.forEach(s=>{const c=cats[s.cat];c.sessions++;c.min+=s.min;c.km+=s.km;c.cal+=s.cal;c.months[mKey(s.t)-FROM]+=s.min});
+  const totMin=S.reduce((a,s)=>a+s.min,0), totKm=S.reduce((a,s)=>a+s.km,0), totCal=S.reduce((a,s)=>a+s.cal,0);
+  let best=0,bestEnd=-1,cur=0;
+  for(let i=0;i<nDays;i++){if(byDay.has(i)){cur++;if(cur>best){best=cur;bestEnd=i}}else cur=0}
+  const nWeeks=Math.floor(nDays/7);
+  const weeks=[];for(let w=0;w<nWeeks;w++){const o={w,t:P.start+w*7*DAY};ORDER.forEach(c=>o[c]=0);weeks.push(o)}
+  S.forEach(s=>{const w=Math.floor((s.t-P.start)/DAY/7);if(w<nWeeks)weeks[w][s.cat]+=s.min/60});
+  const roll=weeks.map((wk,i)=>{const o={w:i,t:wk.t};let n=0;ORDER.forEach(c=>o[c]=0);
+    for(let j=Math.max(0,i-3);j<=i;j++){n++;ORDER.forEach(c=>o[c]+=weeks[j][c])}
+    ORDER.forEach(c=>o[c]/=n);return o});
+  const monthTot=new Array(nM).fill(0);S.forEach(s=>monthTot[mKey(s.t)-FROM]+=s.min);
+  const multiYear=Math.floor(FROM/12)!==Math.floor(TO/12);
+  return {P,S,nDays,nM,byDay,cats,totMin,totKm,totCal,streak:{len:best,end:bestEnd},weeks,roll,monthTot,multiYear};
+}
+
+function rangeLabel(A){
+  const s=new Date(A.P.start), e=new Date(A.P.end);
+  const sy=s.getUTCFullYear(), ey=e.getUTCFullYear();
+  const partial=A.P.end<kEnd(TO);
+  const endTxt=partial?dLabel(A.P.end):MONTHS[e.getUTCMonth()];
+  if(FROM===TO&&!partial) return MONTHS_L[FROM%12]+' '+sy;
+  if(sy===ey) return (partial?dLabel(A.P.start):MONTHS[s.getUTCMonth()])+' – '+endTxt+' '+ey;
+  return MONTHS[s.getUTCMonth()]+' '+sy+' – '+endTxt+' '+ey;
+}
+
+/* ---------- render ---------- */
+function render(){
+  const A=analyse();
+  const activeDays=A.byDay.size, pct=A.nDays?Math.round(activeDays/A.nDays*100):0;
+  $('hero-eyebrow').textContent='In training · '+rangeLabel(A);
+  setCount($('hero-hours'),A.totMin/60,0);
+  $('hero-sub').innerHTML=A.S.length
+    ?`<b>${fmt(A.S.length)} sessions</b> across <b>${activeDays} of ${A.nDays} days</b>. That's training on ${pct}% of days in this period.`
+    :'No sessions logged in this period. Pick a different range above.';
+  const sd=A.streak.end>=0?dLabel(A.P.start+(A.streak.end-A.streak.len+1)*DAY)+' – '+dLabel(A.P.start+A.streak.end*DAY):'';
+  $('stats').innerHTML=[
+    [A.S.length,0,'','sessions'],
+    [pct,0,'%','of days active'],
+    [A.totKm,0,'','km covered'],
+    [A.streak.len,0,A.streak.len===1?' day':' days','longest streak'+(sd?' · '+sd:'')]
+  ].map(([v,d,s,l])=>`<div class="stat rv"><div class="v num" data-count data-v="${v}" data-d="${d}" data-s="${s}">${fmt(v,d)+s}</div><div class="l">${l}</div></div>`).join('');
+
+  const used=ORDER.filter(c=>A.cats[c].sessions>0); A.used=used;
+  const lastFull=(A.P.end===kEnd(mKey(A.P.end)))?A.nM-1:A.nM-2;
+  const share=(c,m)=>A.monthTot[m]?A.cats[c].months[m]/A.monthTot[m]:0;
+  const lead=used.slice().sort((a,b)=>A.cats[b].months[0]-A.cats[a].months[0])[0];
+  if(lead&&lastFull>0&&A.monthTot[0]>0){
+    const spread=used.filter(c=>share(c,lastFull)>=0.05).length;
+    const mn=m=>MONTHS_L[(FROM+m)%12]+(A.multiYear?' '+Math.floor((FROM+m)/12):'');
+    $('shift-lede').innerHTML=`In ${mn(0)}, ${VERB[lead]} was <em>${Math.round(share(lead,0)*100)}%</em> of your training time. By ${mn(lastFull)} it was <em>${Math.round(share(lead,lastFull)*100)}%</em>, with your time spread across ${spread} discipline${spread===1?'':'s'}.`;
+  } else $('shift-lede').textContent='';
+  $('legend').innerHTML=used.map(c=>`<span><i class="sw" style="background:${COLOR[c]}"></i>${c}</span>`).join('');
+  drawChart(A,false);
+  drawTurn(A);
+  drawWeekly(A);
+  drawRows(A);
+  drawRace(A);
+  drawWeekday(A);
+  drawHeat(A);
+  drawFacts(A);
+  $('src-label').textContent=(SOURCE==='builtin'?'Built-in log':'Your loaded file')+' · '+fmt(ALL.length)+' sessions, '+dLabel(Math.min(...ALL.map(s=>s.t)))+' '+new Date(Math.min(...ALL.map(s=>s.t))).getUTCFullYear()+' to '+dLabel(MAXT)+' '+new Date(MAXT).getUTCFullYear();
+  $('reset').hidden=SOURCE==='builtin';
+  $('err').hidden=true;
+  setupReveal();
+}
+
+let chartTimer=null, lastA=null;
+function drawChart(A,animate,hold){
+  lastA=A;
+  const box=$('chart'); box.querySelectorAll('svg,.empty').forEach(n=>n.remove());
+  if(chartTimer){chartTimer.stop();chartTimer=null}
+  $('month-tag').textContent='';
+  const data=A.roll;
+  if(data.length<3){box.insertAdjacentHTML('beforeend','<div class="empty">Pick a range of at least three weeks to see how your training changed.</div>');$('chart-note').textContent='';return}
+  const W=Math.max(300,box.clientWidth-20), H=Math.round(Math.min(320,Math.max(220,W*0.45)));
+  const m={t:10,r:8,b:24,l:34};
+  const keys=A.used;
+  const stack=d3.stack().keys(keys).offset(MODE==='share'?d3.stackOffsetExpand:d3.stackOffsetNone)(data);
+  const x=d3.scaleUtc().domain([data[0].t,data[data.length-1].t]).range([m.l,W-m.r]);
+  const ymax=MODE==='share'?1:(d3.max(stack[stack.length-1]||[],d=>d[1])||1)*1.08;
+  const y=d3.scaleLinear().domain([0,ymax]).nice().range([H-m.b,m.t]);
+  const svg=d3.select(box).insert('svg','.month-tag').attr('viewBox',`0 0 ${W} ${H}`).attr('role','img')
+    .attr('aria-label','Stacked area chart of weekly training hours by discipline');
+  const g=svg.append('g');
+  const ticks=MODE==='share'?[0,.25,.5,.75,1]:y.ticks(5);
+  g.append('g').selectAll('line').data(ticks).join('line').attr('class','gridline').attr('x1',m.l).attr('x2',W-m.r).attr('y1',d=>y(d)).attr('y2',d=>y(d));
+  g.append('g').attr('class','axis').selectAll('text').data(ticks).join('text').attr('x',m.l-6).attr('y',d=>y(d)+4).attr('text-anchor','end')
+    .text(d=>MODE==='share'?Math.round(d*100)+'%':d+'h');
+  const months=[];for(let k=FROM;k<=TO+1;k++){const t=kStart(k);if(t>=data[0].t-3*DAY&&t<=data[data.length-1].t)months.push(k)}
+  const every=Math.max(1,Math.ceil(months.length/(W<480?6:12)));
+  g.append('g').attr('class','axis').selectAll('text').data(months.filter((_,i)=>i%every===0)).join('text')
+    .attr('x',k=>Math.max(m.l+10,x(kStart(k)))).attr('y',H-6).attr('text-anchor','middle')
+    .text(k=>MONTHS[k%12]+(A.multiYear&&k%12===0?" '"+String(Math.floor(k/12)).slice(2):''));
+  const clipId='clip'+Math.random().toString(36).slice(2);
+  const clipRect=svg.append('clipPath').attr('id',clipId).append('rect').attr('x',0).attr('y',0).attr('height',H).attr('width',(animate&&!reduce)||hold?m.l:W);
+  const area=d3.area().x(d=>x(d.data.t)).y0(d=>y(d[0])).y1(d=>y(d[1])).curve(d3.curveMonotoneX);
+  g.append('g').attr('clip-path',`url(#${clipId})`).selectAll('path').data(stack).join('path').attr('d',area).attr('fill',d=>COLOR[d.key])
+    .attr('stroke','var(--surface)').attr('stroke-width',1.5).attr('stroke-linejoin','round');
+  const sag=g.append('g').style('transition','opacity .35s ease');annotate(sag,x,m,H,A,false);
+  const sAnnoX=MOMENTS.map(mo=>parseD(mo.date)).filter(t=>t>=A.P.start&&t<=A.P.end).map(t=>x(t));
+  if((animate&&!reduce)||hold)sag.style('opacity',0);
+  const cross=g.append('line').attr('y1',m.t).attr('y2',H-m.b).attr('stroke','rgba(255,255,255,.55)').attr('stroke-width',1).style('display','none');
+  const tip=$('tip'), bis=d3.bisector(d=>d.t).center;
+  svg.append('rect').attr('x',m.l).attr('y',m.t).attr('width',W-m.l-m.r).attr('height',H-m.t-m.b).attr('fill','transparent')
+    .on('pointermove',ev=>{
+      const [px]=d3.pointer(ev), d=data[bis(data,x.invert(px))], cx=x(d.t);
+      cross.attr('x1',cx).attr('x2',cx).style('display',null);
+      const tot=keys.reduce((a,k)=>a+d[k],0);
+      const rows=keys.slice().reverse().filter(k=>d[k]>0.01).map(k=>`<div class="r"><span><i class="sw" style="background:${COLOR[k]}"></i>${k}</span><span class="num">${MODE==='share'?Math.round(d[k]/tot*100)+'%':fmt(d[k],1)+'h'}</span></div>`).join('');
+      tip.innerHTML=`<div class="t">Week of ${dLabel(d.t)}${A.multiYear?' '+new Date(d.t).getUTCFullYear():''}</div>${rows}<div class="r tot"><span>4-week avg</span><span class="num">${fmt(tot,1)}h / wk</span></div>`;
+      tip.hidden=false;
+      const bw=box.clientWidth, sc=bw/W, left=cx*sc+10;
+      tip.style.left=(left+180>bw?cx*sc-190:left)+'px'; tip.style.top='16px';
+    })
+    .on('pointerleave',()=>{cross.style('display','none');tip.hidden=true});
+  if(animate&&!reduce){
+    const tag=$('month-tag'), dur=3200;
+    chartTimer=d3.timer(el=>{
+      const p=Math.min(1,el/dur), cx=m.l+(W-m.l-m.r)*d3.easeCubicInOut(p);
+      clipRect.attr('width',cx+1);
+      if(sAnnoX.length&&cx>=Math.min(...sAnnoX))sag.style('opacity',1);
+      tag.textContent=p<1?MONTHS[new Date(x.invert(cx)).getUTCMonth()].toUpperCase():'';
+      if(p>=1){chartTimer.stop();chartTimer=null;clipRect.attr('width',W);sag.style('opacity',1)}
+    });
+  }
+  $('chart-note').textContent=(MODE==='share'?"Share of each week's training time.":'Hours per week.')+" Each point averages that week and the three before it, so one big or quiet week doesn't spike the line.";
+}
+
+function drawRows(A){
+  const list=A.used.slice().sort((a,b)=>A.cats[b].min-A.cats[a].min);
+  if(!list.length){$('rows').innerHTML='<div class="empty">Nothing logged in this period.</div>';return}
+  const max=A.cats[list[0]].min||1;
+  $('rows').innerHTML=list.map(c=>{const k=A.cats[c];
+    const peak=k.months.indexOf(Math.max(...k.months)), pk=FROM+peak;
+    const bits=[fmt(k.sessions)+' session'+(k.sessions===1?'':'s')]; if(k.km>0.5)bits.push(fmt(k.km)+' km');
+    if(A.nM>1)bits.push('biggest month '+MONTHS[pk%12]+(A.multiYear?' '+Math.floor(pk/12):''));
+    const w=(k.min/max*100).toFixed(1);
+    return `<div class="row" data-grow><div class="name"><i class="sw" style="background:${COLOR[c]}"></i>${c}</div>
+      <div class="bar"><i data-w="${w}" style="width:${w}%;background:${COLOR[c]}"></i></div>
+      <div class="h num"><span data-count data-v="${k.min/60}" data-d="0" data-s="h">${fmt(k.min/60)}h</span></div><div class="meta">${bits.join(' · ')}</div></div>`}).join('');
+}
+
+function drawHeat(A){
+  const box=$('heat'); box.querySelectorAll('.heat-scroll,.ramp').forEach(n=>n.remove());
+  const off=(new Date(A.P.start).getUTCDay()+6)%7;
+  const cols=Math.ceil((A.nDays+off)/7);
+  const cell=12,gap=3,left=24,top=16;
+  const W=left+cols*(cell+gap), H=top+7*(cell+gap);
+  const fills=['rgba(255,255,255,0.05)','rgba(232,248,74,0.22)','rgba(232,248,74,0.45)','rgba(232,248,74,0.7)','#e8f84a'];
+  const fillFor=mn=>mn<=0?fills[0]:mn<30?fills[1]:mn<60?fills[2]:mn<90?fills[3]:fills[4];
+  let s=`<svg viewBox="0 0 ${W} ${H}" class="${cols>30?'wide':''}" role="img" aria-label="Calendar of daily training minutes" style="${cols<=30?'max-width:'+(W*1.6)+'px':''}">`;
+  ['M','','W','','F','',''].forEach((l,i)=>{if(l)s+=`<text x="0" y="${top+i*(cell+gap)+cell-2}">${l}</text>`});
+  let lastMo=-1;
+  for(let i=0;i<A.nDays;i++){
+    const t=A.P.start+i*DAY, dd=new Date(t), c=Math.floor((i+off)/7), r=(i+off)%7;
+    if(dd.getUTCMonth()!==lastMo&&(dd.getUTCDate()<=7||i===0)){lastMo=dd.getUTCMonth();s+=`<text x="${left+c*(cell+gap)}" y="10">${MONTHS[lastMo]}</text>`}
+    const day=A.byDay.get(i)||[], mn=day.reduce((a,x)=>a+x.min,0);
+    s+=`<rect data-i="${i}" data-c="${c}" x="${left+c*(cell+gap)}" y="${top+r*(cell+gap)}" width="${cell}" height="${cell}" rx="2.5" fill="${fillFor(mn)}"/>`;
+  }
+  s+='</svg>';
+  box.insertAdjacentHTML('afterbegin',`<div class="heat-scroll">${s}</div>`);
+  box.insertAdjacentHTML('beforeend',`<div class="ramp">Less ${fills.map(f=>`<i style="background:${f}"></i>`).join('')} 90+ min</div>`);
+  const tip=$('htip'), svg=box.querySelector('svg');
+  svg.addEventListener('pointermove',ev=>{
+    const r=ev.target.closest('rect'); if(!r){tip.hidden=true;return}
+    const i=+r.dataset.i, day=A.byDay.get(i)||[], t=A.P.start+i*DAY;
+    tip.innerHTML=`<div class="t">${DOW[(new Date(t).getUTCDay()+6)%7]} ${dLabel(t)}</div>`+(day.length?day.map(x=>`<div class="r"><span><i class="sw" style="background:${COLOR[x.cat]}"></i>${x.act&&x.cat==='Other'?x.act:x.cat}</span><span class="num">${fmt(x.min)} min</span></div>`).join(''):'<div class="r">Rest day</div>');
+    tip.hidden=false;
+    const bb=box.getBoundingClientRect(), rb=r.getBoundingClientRect();
+    let lx=rb.left-bb.left+16; if(lx+190>bb.width) lx=rb.left-bb.left-196;
+    tip.style.left=Math.max(4,lx)+'px'; tip.style.top=(rb.top-bb.top+16)+'px';
+  });
+  svg.addEventListener('pointerleave',()=>tip.hidden=true);
+}
+
+function drawChips(A){
+  const g={};A.S.filter(s=>s.cat==='Strength').forEach(s=>{g[s.sg]=g[s.sg]||{n:0,min:0};g[s.sg].n++;g[s.sg].min+=s.min});
+  const keys=['Upper','Lower','Core','Full body','Cardio','Other','Untagged'].filter(k=>g[k]);
+  $('chips').innerHTML=keys.length?keys.map(k=>`<div class="chip rv"><b class="num" data-count data-v="${g[k].n}" data-d="0" data-s="">${g[k].n}</b><span>${k} · ${fmt(g[k].min/60,1)}h</span></div>`).join(''):'<p class="note">No strength sessions in this period.</p>';
+}
+
+function drawFacts(A){
+  const S=A.S, F=[];
+  const yr=t=>A.multiYear?' '+new Date(t).getUTCFullYear():'';
+  const runs=S.filter(s=>s.cat==='Run'&&s.km>0);
+  if(runs.length){
+    const lr=runs.reduce((a,b)=>b.km>a.km?b:a);
+    F.push({n:lr.km,d:1,u:'KM',l:'Longest run',x:dLabel(lr.t)+yr(lr.t)+' · '+fmt(lr.min)+' min'});
+    const fast=runs.filter(r=>r.km>=5&&r.min>0);
+    if(fast.length){const f=fast.reduce((a,b)=>b.min/b.km<a.min/a.km?b:a);const p=f.min/f.km;let mm=Math.floor(p),ss=Math.round((p-mm)*60);if(ss===60){mm++;ss=0}
+      F.push({v:mm+':'+String(ss).padStart(2,'0'),u:'/KM',l:'Fastest run of 5 km or more',x:fmt(f.km,1)+' km on '+dLabel(f.t)+yr(f.t)});}
+  }
+  const trips=[['Geelong',75],['Ballarat',115],['Bendigo',150],['Canberra',660],['Adelaide',725],['Sydney',880],['Brisbane',1750],['Cairns',3050],['Perth',3420],['Darwin',3740]];
+  const tr=trips.filter(t=>t[1]<=A.totKm).pop();
+  if(tr) F.push({hl:true,n:A.totKm,d:0,u:'KM',l:`Melbourne to ${tr[0]}${A.totKm-tr[1]>50?', then '+fmt(A.totKm-tr[1])+' km more':''}`,x:'Every run, swim, row, ride and walk added up, roughly by road'});
+  const swimKm=A.cats.Swim.km;
+  if(swimKm>0) F.push({n:swimKm*20,d:0,u:'LENGTHS',l:'Of a 50 m pool',x:fmt(swimKm,1)+' km swum in '+A.cats.Swim.sessions+' sessions'});
+  const wk=A.weeks.map(w=>({t:w.t,h:A.used.reduce((a,k)=>a+w[k],0)}));
+  if(wk.length>1){const b=wk.reduce((a,c)=>c.h>a.h?c:a);F.push({n:b.h,d:1,u:'HOURS',l:'Your biggest week',x:'Week of '+dLabel(b.t)+yr(b.t)});}
+  if(A.nM>1){const bm=A.monthTot.indexOf(Math.max(...A.monthTot)),k=FROM+bm;
+    F.push({v:MONTHS[k%12].toUpperCase(),u:A.multiYear?String(Math.floor(k/12)):'',l:'Busiest month',x:fmt(A.monthTot[bm]/60,1)+' hours of training'});}
+  if(S.length){const dow=new Array(7).fill(0);S.forEach(s=>dow[(new Date(s.t).getUTCDay()+6)%7]++);
+    const fd=dow.indexOf(Math.max(...dow));
+    F.push({v:DOW[fd].slice(0,3).toUpperCase(),u:'',l:'Favourite day to train',x:dow[fd]+' sessions on '+DOW[fd]+'s'});}
+  let mv=null;A.byDay.forEach((arr,i)=>{const n=new Set(arr.map(x=>x.cat)).size;if(!mv||n>mv.n||(n===mv.n&&arr.length>mv.c))mv={i,n,c:arr.length,arr}});
+  if(mv&&mv.n>1) F.push({n:mv.n,d:0,u:'DISCIPLINES',l:'Your most varied day',x:dLabel(A.P.start+mv.i*DAY)+': '+[...new Set(mv.arr.map(x=>x.cat))].join(', ')});
+  if(A.totCal>0) F.push({hl:true,n:Math.round(A.totCal/95),d:0,u:'TIM TAMS',l:'Burned, in biscuits',x:fmt(A.totCal)+' Calories at about 95 a Tim Tam'});
+  const oth={};S.filter(s=>s.cat==='Other').forEach(s=>{oth[s.act]=(oth[s.act]||0)+1});
+  const oe=Object.entries(oth).sort((a,b)=>b[1]-a[1]);
+  if(oe.length>1) F.push({n:oe.length,d:0,u:'EXTRAS',l:'Other things you tried',x:oe.map(([k,n])=>k+(n>1?' ×'+n:'')).join(', ')});
+  if(F.length%2===1&&F.length>1&&window.innerWidth>560) F.pop();
+  $('facts').innerHTML=F.length?F.map(f=>{
+    const val=f.v!==undefined?f.v:`<span data-count data-v="${f.n}" data-d="${f.d}" data-s="">${fmt(f.n,f.d)}</span>`;
+    return `<div class="fact rv${f.hl?' hl':''}"><div class="fv num">${val}${f.u?`<small>${f.u}</small>`:''}</div><div class="fl">${f.l}</div><div class="fn">${f.x}</div></div>`}).join(''):'<p class="note">Nothing to report for this period yet.</p>';
+}
+
+/* ---------- life moments (things the log can't know on its own) ---------- */
+const MOMENTS=[{date:'2026-03-08',icon:'🩹',title:'Calf injury',headline:'The calf went',disc:'Run'}];
+function nextAfter(mo){const t=parseD(mo.date);const n=ALL.filter(s=>s.cat===mo.disc&&s.t>t).map(s=>s.t);return n.length?Math.min(...n):null}
+function annotate(g,x,m,H,A,band){
+  MOMENTS.forEach(mo=>{const t=parseD(mo.date);if(t<A.P.start||t>A.P.end)return;
+    const cx=x(t),[x0,x1]=x.range();if(cx<x0||cx>x1)return;
+    if(band){const nx=nextAfter(mo);if(nx){const x2=Math.min(x(nx),x1);g.append('rect').attr('x',cx).attr('y',m.t).attr('width',Math.max(0,x2-cx)).attr('height',H-m.b-m.t).attr('fill','var(--err)').attr('fill-opacity',0.08)}}
+    g.append('line').attr('x1',cx).attr('x2',cx).attr('y1',m.t).attr('y2',H-m.b).attr('stroke','var(--err)').attr('stroke-dasharray','3 3').attr('stroke-width',1.2);
+    g.append('text').attr('class','anno').attr('x',cx+5).attr('y',m.t+12).text(mo.icon+' '+mo.title+' · '+dLabel(t));
+  });
+}
+function drawTurn(A){
+  const sec=$('turn-sec');
+  const mo=MOMENTS.find(m=>{const t=parseD(m.date);return t>=A.P.start&&t<=A.P.end});
+  if(!mo){sec.hidden=true;return} sec.hidden=false;
+  const t=parseD(mo.date), nx=nextAfter(mo), gap=nx?Math.round((nx-t)/DAY):null;
+  const last=ALL.filter(s=>s.cat===mo.disc&&s.t===t).pop();
+  const nf=FIRSTS.filter(f=>f.t>t&&f.t<=t+7*DAY).sort((a,b)=>a.t-b.t)[0];
+  const newSince=FIRSTS.filter(f=>f.t>t&&f.t<=A.P.end).length;
+  const sh=arr=>{const tot=arr.reduce((a,s)=>a+s.min,0);return tot?Math.round(arr.filter(s=>s.cat===mo.disc).reduce((a,s)=>a+s.min,0)/tot*100):0};
+  const before=sh(A.S.filter(s=>s.t<=t)), after=sh(A.S.filter(s=>s.t>t));
+  const d=new Date(t);
+  $('turn-h').textContent=mo.headline;
+  const nfTxt=nf?` ${Math.round((nf.t-t)/DAY)===1?'The next day':Math.round((nf.t-t)/DAY)+' days later'} you did your first ever ${nf.k.toLowerCase()}, and the year started to change shape.`:'';
+  $('turn').innerHTML=`<div class="turn-top"><div class="turn-date"><b>${d.getUTCDate()}</b><span>${MONTHS[d.getUTCMonth()].toUpperCase()}</span></div>
+    <p class="lede">${last&&last.km?`Your ${fmt(last.km,2)} km run on ${dLabel(t)} was the last for ${gap!==null?gap+' days':'the rest of the period'}.`:`${mo.title} on ${dLabel(t)}.`}${nfTxt}</p></div>
+    <div class="turn-stats">
+      ${gap!==null?`<div class="stat"><div class="v num" data-count data-v="${gap}" data-d="0" data-s="">${gap}</div><div class="l">days without ${VERB[mo.disc]}</div></div>`:''}
+      <div class="stat"><div class="v num" style="white-space:nowrap;font-size:clamp(26px,7vw,34px)">${before}% → ${after}%</div><div class="l">of your time spent ${VERB[mo.disc]}, before vs after</div></div>
+      <div class="stat"><div class="v num" data-count data-v="${newSince}" data-d="0" data-s="">${newSince}</div><div class="l">new activities tried since</div></div>
+    </div>`;
+}
+
+/* ---------- week by week + firsts ---------- */
+const ICON={Run:'🏃',Swim:'🏊',Strength:'🏋️',Row:'🚣',Waterpolo:'🤽',Cycling:'🚴',Walk:'🚶',Stretch:'🧘',Climbing:'🧗',Elliptical:'⚙️',Surf:'🏄',Pilates:'🤸',Baseball:'⚾','Hill walk':'⛰️',Workout:'💪',Boxing:'🥊',Tennis:'🎾',Hiking:'🥾',Yoga:'🧘',Golf:'⛳',Kayak:'🛶',Ski:'⛷️',Basketball:'🏀',Soccer:'⚽',Football:'🏉'};
+const iconFor=k=>ICON[k]||'✦';
+let FIRSTS=[];
+function computeFirsts(){
+  const seen=new Map();
+  ALL.slice().sort((a,b)=>a.t-b.t).forEach(s=>{const k=s.cat==='Other'?s.act:s.cat;if(!seen.has(k))seen.set(k,{k,t:s.t})});
+  FIRSTS=[...seen.values()];
+}
+function weekTotals(A){
+  const wk=A.weeks.map(w=>({t:w.t,h:A.used.reduce((a,k)=>a+w[k],0),n:0}));
+  A.S.forEach(s=>{const i=Math.floor((s.t-A.P.start)/DAY/7);if(i<wk.length)wk[i].n++});
+  wk.forEach((w,i)=>{let a=0,n=0;for(let j=Math.max(0,i-3);j<=i;j++){a+=wk[j].h;n++}w.avg=a/n});
+  return wk;
+}
+function drawWeekly(A){
+  const box=$('weekly'); box.querySelectorAll('svg,.empty').forEach(n=>n.remove());
+  const wk=weekTotals(A);
+  const firsts=[...FIRSTS,...MOMENTS.map(m=>({k:m.title,t:parseD(m.date),icon:m.icon}))].sort((a,b)=>a.t-b.t).filter(f=>f.t>=A.P.start&&f.t<=A.P.end).map(f=>({...f,i:Math.max(0,Math.min(wk.length-1,Math.floor((f.t-A.P.start)/DAY/7)))}));
+  if(wk.length<3){box.insertAdjacentHTML('beforeend','<div class="empty">Pick a range of at least three weeks to see your weekly build.</div>');$('weekly-lede').textContent='';return}
+  // lede: early vs late average
+  const span=Math.max(2,Math.min(8,Math.floor(wk.length/3)));
+  const early=d3.mean(wk.slice(0,span),w=>w.h), late=d3.mean(wk.slice(-span),w=>w.h);
+  const per=span>=8?'two months':span+' weeks';
+  $('weekly-lede').innerHTML=late>=early
+    ?`Your average week grew from <em>${fmt(early,1)} hours</em> in your first ${per} to <em>${fmt(late,1)} hours</em> in your last ${per}.`
+    :`Your average week went from <em>${fmt(early,1)} hours</em> in your first ${per} to <em>${fmt(late,1)} hours</em> in your last ${per}.`;
+  const stackAt={};firsts.forEach(f=>{f.s=stackAt[f.i]=(stackAt[f.i]||0);stackAt[f.i]++});
+  const maxStack=Math.max(0,...Object.values(stackAt));
+  const W=Math.max(300,box.clientWidth-20), H=Math.round(Math.min(340,Math.max(240,W*0.46)));
+  const m={t:10,r:8,b:24,l:34}, step=18;
+  const x=d3.scaleBand().domain(d3.range(wk.length)).range([m.l,W-m.r]).paddingInner(0.22);
+  const maxH=d3.max(wk,w=>w.h)||1;
+  const y=d3.scaleLinear().domain([0,maxH]).nice().range([H-m.b,m.t+maxStack*step+8]);
+  const svg=d3.select(box).insert('svg','.tip').attr('viewBox',`0 0 ${W} ${H}`).attr('role','img').attr('aria-label','Bar chart of training hours each week, with icons marking first-time activities');
+  const g=svg.append('g');
+  const ticks=y.ticks(4);
+  g.append('g').selectAll('line').data(ticks).join('line').attr('class','gridline').attr('x1',m.l).attr('x2',W-m.r).attr('y1',d=>y(d)).attr('y2',d=>y(d)).attr('stroke','var(--grid)');
+  g.append('g').attr('class','axis').selectAll('text').data(ticks).join('text').attr('x',m.l-6).attr('y',d=>y(d)+4).attr('text-anchor','end').text(d=>d+'h');
+  const mticks=[];for(let k=FROM;k<=TO;k++){const t0=kStart(k);const i=Math.floor((t0-A.P.start)/DAY/7);if(t0>=A.P.start&&i<wk.length)mticks.push({k,i})}
+  const every=Math.max(1,Math.ceil(mticks.length/(W<480?6:12)));
+  g.append('g').attr('class','axis').selectAll('text').data(mticks.filter((_,j)=>j%every===0)).join('text')
+    .attr('x',d=>Math.max(m.l+10,x(d.i))).attr('y',H-6).attr('text-anchor','start').text(d=>MONTHS[d.k%12]+(A.multiYear&&d.k%12===0?" '"+String(Math.floor(d.k/12)).slice(2):''));
+  g.append('g').selectAll('rect').data(wk).join('rect').attr('class','wbar').attr('data-pop','').attr('data-delay',(d,i)=>i*45)
+    .attr('x',(d,i)=>x(i)).attr('width',x.bandwidth()).attr('y',d=>y(d.h)).attr('height',d=>Math.max(0,y(0)-y(d.h))).attr('rx',Math.min(3,x.bandwidth()/3)).attr('fill','var(--violet)').attr('fill-opacity',0.85);
+  g.append('path').datum(wk).attr('class','draw').attr('data-dur',(wk.length-1)*45).attr('fill','none').attr('stroke','var(--lime)').attr('stroke-width',2).attr('stroke-linejoin','round')
+    .attr('d',d3.line().x((d,i)=>x(i)+x.bandwidth()/2).y(d=>y(d.avg)).curve(d3.curveMonotoneX));
+  g.append('g').selectAll('text').data(firsts).join('text').attr('class','ficon').attr('data-pop','').attr('data-delay',f=>700+f.i*45+f.s*80)
+    .attr('x',f=>x(f.i)+x.bandwidth()/2).attr('y',f=>y(wk[f.i].h)-6-f.s*step).attr('text-anchor','middle').text(f=>f.icon||iconFor(f.k));
+  const tip=$('wtip');
+  g.append('g').selectAll('rect').data(wk).join('rect').attr('x',(d,i)=>x(i)-x.step()*x.paddingInner()/2).attr('width',x.step()).attr('y',m.t).attr('height',H-m.b-m.t).attr('fill','transparent')
+    .on('pointermove',(ev,d)=>{const i=wk.indexOf(d);const fs=firsts.filter(f=>f.i===i);
+      tip.innerHTML=`<div class="t">Week of ${dLabel(d.t)}${A.multiYear?' '+new Date(d.t).getUTCFullYear():''}</div><div class="r"><span>Hours</span><span class="num">${fmt(d.h,1)}h</span></div><div class="r"><span>Sessions</span><span class="num">${d.n}</span></div><div class="r"><span>4-week avg</span><span class="num">${fmt(d.avg,1)}h</span></div>`+(fs.length?'<div class="tot">'+fs.map(f=>`<div class="r"><span>${f.icon?f.icon+' '+f.k:iconFor(f.k)+' First '+f.k.toLowerCase()}</span><span class="num">${dLabel(f.t)}</span></div>`).join('')+'</div>':'');
+      tip.hidden=false;const bw=box.clientWidth,sc=bw/W,cx=(x(i)+x.bandwidth()/2)*sc;tip.style.left=(cx+190>bw?cx-196:cx+12)+'px';tip.style.top='16px'})
+    .on('pointerleave',()=>tip.hidden=true);
+}
+
+/* ---------- distance race ---------- */
+function drawRace(A){
+  const box=$('race'); box.querySelectorAll('svg,.empty').forEach(n=>n.remove());
+  const cats=['Run','Cycling','Row','Walk','Swim','Other'].filter(c=>A.cats[c].km>=1).sort((a,b)=>A.cats[b].km-A.cats[a].km);
+  if(!cats.length||A.nDays<7){box.insertAdjacentHTML('beforeend','<div class="empty">No distance logged in this period.</div>');$('race-lede').textContent='';return}
+  const n=A.nDays, cum={};cats.forEach(c=>cum[c]=new Array(n).fill(0));
+  A.S.forEach(s=>{if(s.km>0&&cum[s.cat])cum[s.cat][Math.round((s.t-A.P.start)/DAY)]+=s.km});
+  cats.forEach(c=>{for(let i=1;i<n;i++)cum[c][i]+=cum[c][i-1]});
+  // lede: leader + latest overtake
+  let swap=null;
+  for(let i=1;i<n;i++)for(const a of cats)for(const b of cats){if(a===b)continue;
+    if(cum[a][i-1]<=cum[b][i-1]&&cum[a][i]>cum[b][i]&&cum[b][i]>=40&&(!swap||cum[b][i]>=swap.v))swap={a,b,i,v:cum[b][i]}}
+  const leader=cats[0];
+  $('race-lede').innerHTML=`${leader==='Run'?'Running':leader==='Row'?'Rowing':leader==='Swim'?'Swimming':leader==='Walk'?'Walking':leader} finished in front with <em>${fmt(cum[leader][n-1])} km</em>.`+
+    (swap?` The big move: ${VERB[swap.a]} passed ${VERB[swap.b]} on ${dLabel(A.P.start+swap.i*DAY)}.`:'');
+  const W=Math.max(300,box.clientWidth-20), H=Math.round(Math.min(320,Math.max(230,W*0.44)));
+  const m={t:12,r:W<480?78:96,b:24,l:44};
+  const x=d3.scaleUtc().domain([A.P.start,A.P.end]).range([m.l,W-m.r]);
+  const y=d3.scaleLinear().domain([0,cum[leader][n-1]]).nice().range([H-m.b,m.t]);
+  const svg=d3.select(box).insert('svg','.tip').attr('viewBox',`0 0 ${W} ${H}`).attr('role','img').attr('aria-label','Line chart of cumulative distance by discipline');
+  const g=svg.append('g');
+  const ticks=y.ticks(4);
+  g.append('g').selectAll('line').data(ticks).join('line').attr('class','gridline').attr('x1',m.l).attr('x2',W-m.r).attr('y1',d=>y(d)).attr('y2',d=>y(d)).attr('stroke','var(--grid)');
+  g.append('g').attr('class','axis').selectAll('text').data(ticks).join('text').attr('x',m.l-6).attr('y',d=>y(d)+4).attr('text-anchor','end').text(d=>fmt(d));
+  const months=[];for(let k=FROM;k<=TO;k++){const t0=kStart(k);if(t0>=A.P.start&&t0<=A.P.end)months.push(k)}
+  const every=Math.max(1,Math.ceil(months.length/(W<480?5:12)));
+  g.append('g').attr('class','axis').selectAll('text').data(months.filter((_,j)=>j%every===0)).join('text')
+    .attr('x',k=>Math.max(m.l+10,x(kStart(k)))).attr('y',H-6).attr('text-anchor','middle').text(k=>MONTHS[k%12]);
+  const line=d3.line().x((d,i)=>x(A.P.start+i*DAY)).y(d=>y(d));
+  const rcid='rc'+Math.random().toString(36).slice(2);const cr=svg.append('clipPath').attr('id',rcid).append('rect').attr('x',0).attr('y',0).attr('height',H).attr('width',W);
+  g.append('g').attr('clip-path',`url(#${rcid})`).selectAll('path').data(cats).join('path').attr('class','rline').attr('d',c=>line(cum[c])).attr('fill','none').attr('stroke',c=>COLOR[c]).attr('stroke-width',2.5).attr('stroke-linejoin','round').attr('stroke-linecap','round');
+  const ag=g.append('g').attr('class','race-anno');annotate(ag,x,m,H,A,true);
+  // end labels, nudged apart
+  const lbl=cats.map(c=>({c,y:y(cum[c][n-1])}));lbl.sort((a,b)=>a.y-b.y);
+  for(let i=1;i<lbl.length;i++)if(lbl[i].y-lbl[i-1].y<15)lbl[i].y=lbl[i-1].y+15;
+  const over=lbl.length?lbl[lbl.length-1].y-(H-m.b):0;if(over>0)lbl.forEach(l=>l.y-=over);
+  const lg=g.append('g').attr('class','race-lbls');
+  lg.selectAll('text').data(lbl).join('text').attr('class','race-lbl').attr('x',W-m.r+8).attr('y',d=>d.y+4)
+    .html(d=>`<tspan fill="${COLOR[d.c]}">●</tspan> ${d.c} <tspan class="k">${fmt(cum[d.c][n-1])}</tspan>`);
+  const annoX=MOMENTS.map(mo=>parseD(mo.date)).filter(t=>t>=A.P.start&&t<=A.P.end).map(t=>x(t));
+  if(box._timer){box._timer.stop();box._timer=null}
+  box._prime=()=>{if(box._timer){box._timer.stop();box._timer=null}cr.attr('width',m.l);ag.style('transition','none').style('opacity',0);lg.style('transition','none').style('opacity',0)};
+  box._play=()=>{const dur=3000;ag.style('transition','opacity .35s ease');lg.style('transition','opacity .5s ease');
+    box._timer=d3.timer(el=>{const p=Math.min(1,el/dur),cx=m.l+(W-m.r-m.l)*d3.easeCubicInOut(p);cr.attr('width',cx+2);
+      if(annoX.length&&cx>=Math.min(...annoX))ag.style('opacity',1);
+      if(p>=1){box._timer.stop();box._timer=null;cr.attr('width',W);ag.style('opacity',1);lg.style('opacity',1)}})};
+  const cross=g.append('line').attr('y1',m.t).attr('y2',H-m.b).attr('stroke','rgba(255,255,255,.55)').style('display','none');
+  const tip=$('rtip');
+  svg.append('rect').attr('x',m.l).attr('y',m.t).attr('width',W-m.l-m.r).attr('height',H-m.t-m.b).attr('fill','transparent')
+    .on('pointermove',ev=>{const [px]=d3.pointer(ev);const i=Math.max(0,Math.min(n-1,Math.round((x.invert(px)-A.P.start)/DAY)));const cx=x(A.P.start+i*DAY);
+      cross.attr('x1',cx).attr('x2',cx).style('display',null);
+      const st=cats.slice().sort((a,b)=>cum[b][i]-cum[a][i]);
+      tip.innerHTML=`<div class="t">${dLabel(A.P.start+i*DAY)}</div>`+st.map(c=>`<div class="r"><span><i class="sw" style="background:${COLOR[c]}"></i>${c}</span><span class="num">${fmt(cum[c][i])} km</span></div>`).join('');
+      tip.hidden=false;const bw=box.clientWidth,sc=bw/W;tip.style.left=(cx*sc+190>bw?cx*sc-196:cx*sc+12)+'px';tip.style.top='16px'})
+    .on('pointerleave',()=>{cross.style('display','none');tip.hidden=true});
+}
+
+/* ---------- weekday grid ---------- */
+function drawWeekday(A){
+  const box=$('weekday'); box.querySelectorAll('.wd-grid,.empty').forEach(n=>n.remove());
+  const rows=A.used.slice().sort((a,b)=>A.cats[b].sessions-A.cats[a].sessions);
+  if(!rows.length){box.insertAdjacentHTML('beforeend','<div class="empty">Nothing logged in this period.</div>');$('weekday-lede').textContent='';return}
+  const cnt={};rows.forEach(c=>cnt[c]=new Array(7).fill(0));
+  A.S.forEach(s=>cnt[s.cat][(new Date(s.t).getUTCDay()+6)%7]++);
+  const max=Math.max(1,...rows.map(c=>Math.max(...cnt[c])));
+  const D3=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  let h='<div class="wd-grid"><div></div>'+D3.map(d=>`<div class="wd-h">${d}</div>`).join('')+'';
+  rows.forEach((c,ri)=>{const top=cnt[c].indexOf(Math.max(...cnt[c]));
+    h+=`<div class="wd-n" data-row="${c}"><i class="sw" style="background:${COLOR[c]}"></i>${c}</div>`;
+    cnt[c].forEach((v,d)=>{const sz=v?Math.round(7+23*Math.sqrt(v/max)):4;
+      h+=`<div class="wd-c" data-c="${c}" data-d="${d}" data-v="${v}"><i data-pop data-delay="${d*45}"${v&&d===top?' class="top"':''} style="width:${sz}px;height:${sz}px;background:${v?COLOR[c]:'var(--card-line)'}"></i></div>`});
+  });
+  box.insertAdjacentHTML('beforeend',h+'</div>');
+  // lede: weekend vs weekday runs, plus busiest day
+  const all=new Array(7).fill(0);A.S.forEach(s=>all[(new Date(s.t).getUTCDay()+6)%7]++);
+  const bd=all.indexOf(Math.max(...all));
+  const rn=A.S.filter(s=>s.cat==='Run'&&s.km>0), isWe=s=>((new Date(s.t).getUTCDay()+6)%7)>=5;
+  const we=rn.filter(isWe), wd=rn.filter(s=>!isWe(s)), avg=a=>a.reduce((x,s)=>x+s.km,0)/a.length;
+  let txt='';
+  if(we.length>=4&&wd.length>=4&&avg(we)>avg(wd)*1.15) txt=`Weekends are for long runs: your Saturday and Sunday runs average <em>${fmt(avg(we),1)} km</em>, against ${fmt(avg(wd),1)} km on weekdays. `;
+  else if(we.length>=4&&wd.length>=4) txt=`Your weekend runs average <em>${fmt(avg(we),1)} km</em>, against ${fmt(avg(wd),1)} km on weekdays. `;
+  $('weekday-lede').innerHTML=txt+`${DOW[bd]} is your busiest day, with ${all[bd]} sessions.`;
+  const tip=$('dtip');
+  box.addEventListener('pointermove',ev=>{const c=ev.target.closest('.wd-c');if(!c){tip.hidden=true;return}
+    tip.innerHTML=`<div class="t">${c.dataset.c} on ${DOW[+c.dataset.d]}s</div><div class="r"><span>Sessions</span><span class="num">${c.dataset.v}</span></div>`;
+    tip.hidden=false;const bb=box.getBoundingClientRect(),rb=c.getBoundingClientRect();let lx=rb.left-bb.left+box.scrollLeft+rb.width;if(lx+180>bb.width+box.scrollLeft)lx=rb.left-bb.left+box.scrollLeft-180;tip.style.left=lx+'px';tip.style.top=(rb.top-bb.top+8)+'px'});
+  box.addEventListener('pointerleave',()=>tip.hidden=true);
+}
+
+/* ---------- scroll animation ---------- */
+function setCount(el,v,d,s){el.dataset.v=v;el.dataset.d=d||0;el.dataset.s=s||'';el.textContent=fmt(v,d||0)+(s||'')}
+function countUp(el){
+  const v=+el.dataset.v, d=+el.dataset.d||0, s=el.dataset.s||'';
+  if(reduce||!isFinite(v)){el.textContent=fmt(v,d)+s;return}
+  const t0=performance.now(), dur=v>50?1400:900;
+  (function tick(now){const p=Math.min(1,(now-t0)/dur), e=1-Math.pow(1-p,3);
+    el.textContent=fmt(v*e,d)+s; if(p<1)requestAnimationFrame(tick)})(t0);
+}
+let io=null, chartIO=null, fullIO=null, rowIO=null;
+function inView(el){const r=el.getBoundingClientRect();return r.top<innerHeight&&r.bottom>0}
+function prime(el){
+  if(el.classList.contains('rv'))el.classList.add('pre');
+  el.querySelectorAll('[data-count]').forEach(n=>n.textContent=fmt(0,+n.dataset.d||0)+(n.dataset.s||''));
+  if(el.matches('[data-count]'))el.textContent=fmt(0,+el.dataset.d||0)+(el.dataset.s||'');
+  el.querySelectorAll('.bar i').forEach(b=>{b.style.transition='none';b.style.width='0%';b.offsetWidth;b.style.transition=''});
+  el.querySelectorAll('[data-pop]').forEach(n=>{n.style.transition='none';n.style.transform='scale(0)'});
+  el.querySelectorAll('.draw').forEach(p=>{const L=p.getTotalLength();p.style.transition='none';p.style.strokeDasharray=L;p.style.strokeDashoffset=L});
+  if(el.id==='race'&&el._prime)el._prime();
+  if(el.id==='heat')el.querySelectorAll('rect').forEach(r=>{r.style.transition='none';r.style.transform='scale(0.15)';});
+}
+function play(el){
+  el.classList.remove('pre');
+  if(el.matches('[data-count]'))countUp(el);
+  el.querySelectorAll('[data-count]').forEach(countUp);
+  el.querySelectorAll('.bar i').forEach(b=>{requestAnimationFrame(()=>b.style.width=b.dataset.w+'%')});
+  const pops=el.querySelectorAll('[data-pop]');if(pops.length){pops[0].getBoundingClientRect();pops.forEach(n=>{n.style.transition='';n.style.transitionDelay=(+n.dataset.delay||0)+'ms';n.style.transform='scale(1)'})}
+  const dr=el.querySelectorAll('.draw');if(dr.length){dr[0].getBoundingClientRect();dr.forEach(p=>{p.style.transition=`stroke-dashoffset ${p.dataset.dur||1500}ms linear 400ms`;p.style.strokeDashoffset=0})}
+  if(el.id==='race'&&el._play)el._play();
+  if(el.id==='heat'){const rs=el.querySelectorAll('rect');rs[0]&&rs[0].getBoundingClientRect();
+    rs.forEach(r=>{r.style.transition='';r.style.transitionDelay=(+r.dataset.c*18)+'ms';r.style.transform='scale(1)'});}
+}
+function setupReveal(){
+  if(io)io.disconnect(); if(chartIO)chartIO.disconnect(); if(fullIO)fullIO.disconnect(); if(rowIO)rowIO.disconnect();
+  const targets=[$('hero-hours'),...document.querySelectorAll('.stat,.row,.fact,.turn'),$('heat'),$('weekly'),$('race'),$('weekday')];
+  if(reduce||!('IntersectionObserver' in window)){return}
+  // stagger siblings in grids
+  document.querySelectorAll('.stats .rv,.chips .rv,.facts .rv').forEach((el,i,arr)=>{const sib=[...el.parentNode.children].indexOf(el);el.style.transitionDelay=(sib%4)*70+'ms'});
+  document.querySelectorAll('.row').forEach((el,i)=>{const b=el.querySelector('.bar i');if(b)b.style.transitionDelay=i*60+'ms'});
+  targets.forEach(el=>{if(el)prime(el)});
+  io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){play(e.target);io.unobserve(e.target)}}),{rootMargin:'0px 0px -12% 0px',threshold:0});
+  // weekly chart + weekday grid wait until (nearly) the whole thing is on screen
+  const late=new Set([$('weekly')]);
+  const need=el=>Math.min(0.9,innerHeight*0.9/Math.max(1,el.getBoundingClientRect().height));
+  fullIO=new IntersectionObserver(es=>es.forEach(e=>{if(e.intersectionRatio>=need(e.target)-0.01){play(e.target);fullIO.unobserve(e.target)}}),{threshold:[0,.1,.2,.3,.4,.5,.6,.7,.8,.85,.9,.95,1]});
+  // weekday grid: each discipline's row fills once you've scrolled to it, in order
+  const wd=$('weekday');let q=[],busy=false;
+  const nextRow=()=>{if(!q.length){busy=false;return}busy=true;const c=q.shift();
+    const dots=[...wd.querySelectorAll('.wd-c')].filter(n=>n.dataset.c===c).map(n=>n.querySelector('i'));
+    dots.length&&dots[0].getBoundingClientRect();
+    dots.forEach(n=>{n.style.transition='';n.style.transitionDelay=(+n.dataset.delay||0)+'ms';n.style.transform='scale(1)'});
+    setTimeout(nextRow,230)};
+  rowIO=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){q.push(e.target.dataset.row);rowIO.unobserve(e.target);if(!busy)nextRow()}}),{threshold:1,rootMargin:'0px 0px -6% 0px'});
+  wd.querySelectorAll('.wd-n').forEach(n=>rowIO.observe(n));
+  targets.forEach(el=>{if(!el||el===wd)return; if(late.has(el)){fullIO.observe(el);return}
+    if(inView(el)&&el.getBoundingClientRect().top<innerHeight*0.88){requestAnimationFrame(()=>play(el))} else io.observe(el)});
+  // chart: draws itself the first time it scrolls into view
+  const chart=$('chart');
+  { const r=chart.getBoundingClientRect(), vis=Math.max(0,Math.min(r.bottom,innerHeight)-Math.max(r.top,0))/r.height; if(vis<0.35) drawChart(lastA,false,true); }
+  chartIO=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting&&e.intersectionRatio>=0.35){drawChart(lastA,true);chartIO.disconnect()}}),{threshold:[0,0.35]});
+  chartIO.observe(chart);
+}
+
+/* ---------- controls ---------- */
+function setMode(m){MODE=m;$('m-share').setAttribute('aria-pressed',String(m==='share'));$('m-hours').setAttribute('aria-pressed',String(m==='hours'));if(lastA)drawChart(lastA,true)}
+$('m-share').onclick=()=>setMode('share');
+$('m-hours').onclick=()=>setMode('hours');
+$('replay').onclick=()=>{window.scrollTo({top:0,behavior:'instant'});requestAnimationFrame(()=>requestAnimationFrame(()=>setupReveal()))};
+let rt=null,lastW=innerWidth;window.addEventListener('resize',()=>{if(innerWidth===lastW)return;lastW=innerWidth;clearTimeout(rt);rt=setTimeout(()=>{if(lastA){drawChart(lastA,false);drawWeekly(lastA);drawRace(lastA)}},150)});
+
+function useData(arr,src){
+  const all=normalise(arr);
+  if(!all.length){$('err').hidden=false;$('err').textContent="That file has no sessions Trackr Wrapped can read. Check it's a Trackr export (a list of sessions with a date and discipline).";return false}
+  RAW=arr;ALL=all;SOURCE=src;computeFirsts();setupRange();applyRange();return true;
+}
+function loadText(txt){
+  try{const j=JSON.parse(txt);const arr=Array.isArray(j)?j:(j.sessions||j.data||[]);
+    if(!Array.isArray(arr)||!arr.some(e=>e&&e.date&&e.discipline))throw new Error('shape');
+    useData(arr,'file');
+  }catch(e){$('err').hidden=false;$('err').textContent="Couldn't read that file. Load the .json export from Trackr.";}
+}
+$('file').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>loadText(r.result);r.readAsText(f);e.target.value=''});
+const drop=$('drop');
+['dragenter','dragover'].forEach(t=>drop.addEventListener(t,e=>{e.preventDefault();drop.classList.add('over')}));
+['dragleave','drop'].forEach(t=>drop.addEventListener(t,e=>{e.preventDefault();drop.classList.remove('over')}));
+drop.addEventListener('drop',e=>{const f=e.dataTransfer.files[0];if(!f)return;const r=new FileReader();r.onload=()=>loadText(r.result);r.readAsText(f)});
+$('reset').onclick=()=>useData(JSON.parse($('builtin').textContent),'builtin');
+
+function start(){ if(window.d3) useData(JSON.parse($('builtin').textContent),'builtin'); else setTimeout(start,50) }
+start();
+})();
+</script>
+
+</body>
+</html>
