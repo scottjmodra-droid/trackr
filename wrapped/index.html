@@ -681,8 +681,8 @@ function drawWeekly(A){
   g.append('g').selectAll('text').data(firsts).join('text').attr('class','ficon').attr('data-pop','').attr('data-delay',f=>700+f.i*45+f.s*80)
     .attr('x',f=>x(f.i)+x.bandwidth()/2).attr('y',f=>y(wk[f.i].h)-6-f.s*step).attr('text-anchor','middle').text(f=>f.icon||iconFor(f.k));
   const tip=$('wtip');
-  g.append('g').selectAll('rect').data(wk).join('rect').attr('x',(d,i)=>x(i)-x.step()*x.paddingInner()/2).attr('width',x.step()).attr('y',m.t).attr('height',H-m.b-m.t).attr('fill','transparent')
-    .on('pointermove',(ev,d)=>{const i=wk.indexOf(d);const fs=firsts.filter(f=>f.i===i);
+  g.append('rect').attr('x',m.l).attr('width',W-m.l-m.r).attr('y',m.t).attr('height',H-m.b-m.t).attr('fill','transparent')
+    .on('pointermove',ev=>{const [px]=d3.pointer(ev);const i=Math.max(0,Math.min(wk.length-1,Math.floor((px-m.l)/x.step())));const d=wk[i];const fs=firsts.filter(f=>f.i===i);
       tip.innerHTML=`<div class="t">Week of ${dLabel(d.t)}${A.multiYear?' '+new Date(d.t).getUTCFullYear():''}</div><div class="r"><span>Hours</span><span class="num">${fmt(d.h,1)}h</span></div><div class="r"><span>Sessions</span><span class="num">${d.n}</span></div><div class="r"><span>4-week avg</span><span class="num">${fmt(d.avg,1)}h</span></div>`+(fs.length?'<div class="tot">'+fs.map(f=>`<div class="r"><span>${f.icon?f.icon+' '+f.k:iconFor(f.k)+' First '+f.k.toLowerCase()}</span><span class="num">${dLabel(f.t)}</span></div>`).join('')+'</div>':'');
       tip.hidden=false;const bw=box.clientWidth,sc=bw/W,cx=(x(i)+x.bandwidth()/2)*sc;tip.style.left=(cx+190>bw?cx-196:cx+12)+'px';tip.style.top='16px'})
     .on('pointerleave',ev=>{if(ev.pointerType!=='touch')tip.hidden=true});
@@ -773,7 +773,7 @@ function drawWeekday(A){
   const tip=$('dtip');
   box.addEventListener('pointermove',ev=>{const c=ev.target.closest('.wd-c');if(!c){tip.hidden=true;return}
     tip.innerHTML=`<div class="t">${c.dataset.c} on ${DOW[+c.dataset.d]}s</div><div class="r"><span>Sessions</span><span class="num">${c.dataset.v}</span></div>`;
-    tip.hidden=false;const bb=box.getBoundingClientRect(),rb=c.getBoundingClientRect();let lx=rb.left-bb.left+box.scrollLeft+rb.width;if(lx+180>bb.width+box.scrollLeft)lx=rb.left-bb.left+box.scrollLeft-180;tip.style.left=lx+'px';tip.style.top=(rb.top-bb.top+8)+'px'});
+    tip.hidden=false;const bb=box.getBoundingClientRect(),rb=c.getBoundingClientRect(),tw=tip.offsetWidth,th=tip.offsetHeight;const cx=rb.left-bb.left+box.scrollLeft+rb.width/2;tip.style.left=Math.max(4+box.scrollLeft,Math.min(cx-tw/2,box.scrollLeft+bb.width-tw-4))+'px';let ty=rb.top-bb.top-th-6;if(ty<4)ty=rb.bottom-bb.top+6;tip.style.top=ty+'px'});
   box.addEventListener('pointerleave',ev=>{if(ev.pointerType!=='touch')tip.hidden=true});
 }
 
