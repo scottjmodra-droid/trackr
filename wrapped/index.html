@@ -168,6 +168,10 @@ button,input,select{font-family:inherit}
 .anno{font-size:11px;font-weight:600;font-family:var(--f-body);fill:var(--ink);paint-order:stroke;stroke:var(--surface);stroke-width:3px;stroke-linejoin:round}
 @media (max-width:480px){.turn-top{flex-direction:column;align-items:flex-start;gap:10px}.turn-date{display:flex;align-items:baseline;gap:8px}.turn-date b{font-size:64px}}
 
+/* touch: tap a data point instead of selecting the chart */
+.chart,.heat,.wd{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+.chart svg{touch-action:pan-y}
+
 /* scroll reveal: elements rest fully drawn; JS only primes ones that are off-screen */
 .rv{transition:transform .8s var(--ease),opacity .8s var(--ease)}
 .rv.pre{transform:translateY(28px) scale(.96);opacity:.35}
@@ -466,7 +470,7 @@ function drawChart(A,animate,hold){
   const sag=g.append('g').style('transition','opacity .35s ease');annotate(sag,x,m,H,A,false);
   const sAnnoX=MOMENTS.map(mo=>parseD(mo.date)).filter(t=>t>=A.P.start&&t<=A.P.end).map(t=>x(t));
   if((animate&&!reduce)||hold)sag.style('opacity',0);
-  const cross=g.append('line').attr('y1',m.t).attr('y2',H-m.b).attr('stroke','rgba(255,255,255,.55)').attr('stroke-width',1).style('display','none');
+  const cross=g.append('line').attr('class','xhair').attr('y1',m.t).attr('y2',H-m.b).attr('stroke','rgba(255,255,255,.55)').attr('stroke-width',1).style('display','none');
   const tip=$('tip'), bis=d3.bisector(d=>d.t).center;
   svg.append('rect').attr('x',m.l).attr('y',m.t).attr('width',W-m.l-m.r).attr('height',H-m.t-m.b).attr('fill','transparent')
     .on('pointermove',ev=>{
@@ -479,7 +483,7 @@ function drawChart(A,animate,hold){
       const bw=box.clientWidth, sc=bw/W, left=cx*sc+10;
       tip.style.left=(left+180>bw?cx*sc-190:left)+'px'; tip.style.top='16px';
     })
-    .on('pointerleave',()=>{cross.style('display','none');tip.hidden=true});
+    .on('pointerleave',ev=>{if(ev.pointerType==='touch')return;cross.style('display','none');tip.hidden=true});
   if(animate&&!reduce){
     const tag=$('month-tag'), dur=3200;
     chartTimer=d3.timer(el=>{
@@ -537,7 +541,7 @@ function drawHeat(A){
     let lx=rb.left-bb.left+16; if(lx+190>bb.width) lx=rb.left-bb.left-196;
     tip.style.left=Math.max(4,lx)+'px'; tip.style.top=(rb.top-bb.top+16)+'px';
   });
-  svg.addEventListener('pointerleave',()=>tip.hidden=true);
+  svg.addEventListener('pointerleave',ev=>{if(ev.pointerType!=='touch')tip.hidden=true});
 }
 
 function drawChips(A){
@@ -668,7 +672,7 @@ function drawWeekly(A){
     .on('pointermove',(ev,d)=>{const i=wk.indexOf(d);const fs=firsts.filter(f=>f.i===i);
       tip.innerHTML=`<div class="t">Week of ${dLabel(d.t)}${A.multiYear?' '+new Date(d.t).getUTCFullYear():''}</div><div class="r"><span>Hours</span><span class="num">${fmt(d.h,1)}h</span></div><div class="r"><span>Sessions</span><span class="num">${d.n}</span></div><div class="r"><span>4-week avg</span><span class="num">${fmt(d.avg,1)}h</span></div>`+(fs.length?'<div class="tot">'+fs.map(f=>`<div class="r"><span>${f.icon?f.icon+' '+f.k:iconFor(f.k)+' First '+f.k.toLowerCase()}</span><span class="num">${dLabel(f.t)}</span></div>`).join('')+'</div>':'');
       tip.hidden=false;const bw=box.clientWidth,sc=bw/W,cx=(x(i)+x.bandwidth()/2)*sc;tip.style.left=(cx+190>bw?cx-196:cx+12)+'px';tip.style.top='16px'})
-    .on('pointerleave',()=>tip.hidden=true);
+    .on('pointerleave',ev=>{if(ev.pointerType!=='touch')tip.hidden=true});
 }
 
 /* ---------- distance race ---------- */
@@ -717,7 +721,7 @@ function drawRace(A){
     box._timer=d3.timer(el=>{const p=Math.min(1,el/dur),cx=m.l+(W-m.r-m.l)*d3.easeCubicInOut(p);cr.attr('width',cx+2);
       if(annoX.length&&cx>=Math.min(...annoX))ag.style('opacity',1);
       if(p>=1){box._timer.stop();box._timer=null;cr.attr('width',W);ag.style('opacity',1);lg.style('opacity',1)}})};
-  const cross=g.append('line').attr('y1',m.t).attr('y2',H-m.b).attr('stroke','rgba(255,255,255,.55)').style('display','none');
+  const cross=g.append('line').attr('class','xhair').attr('y1',m.t).attr('y2',H-m.b).attr('stroke','rgba(255,255,255,.55)').style('display','none');
   const tip=$('rtip');
   svg.append('rect').attr('x',m.l).attr('y',m.t).attr('width',W-m.l-m.r).attr('height',H-m.t-m.b).attr('fill','transparent')
     .on('pointermove',ev=>{const [px]=d3.pointer(ev);const i=Math.max(0,Math.min(n-1,Math.round((x.invert(px)-A.P.start)/DAY)));const cx=x(A.P.start+i*DAY);
@@ -725,7 +729,7 @@ function drawRace(A){
       const st=cats.slice().sort((a,b)=>cum[b][i]-cum[a][i]);
       tip.innerHTML=`<div class="t">${dLabel(A.P.start+i*DAY)}</div>`+st.map(c=>`<div class="r"><span><i class="sw" style="background:${COLOR[c]}"></i>${c}</span><span class="num">${fmt(cum[c][i])} km</span></div>`).join('');
       tip.hidden=false;const bw=box.clientWidth,sc=bw/W;tip.style.left=(cx*sc+190>bw?cx*sc-196:cx*sc+12)+'px';tip.style.top='16px'})
-    .on('pointerleave',()=>{cross.style('display','none');tip.hidden=true});
+    .on('pointerleave',ev=>{if(ev.pointerType==='touch')return;cross.style('display','none');tip.hidden=true});
 }
 
 /* ---------- weekday grid ---------- */
@@ -757,7 +761,7 @@ function drawWeekday(A){
   box.addEventListener('pointermove',ev=>{const c=ev.target.closest('.wd-c');if(!c){tip.hidden=true;return}
     tip.innerHTML=`<div class="t">${c.dataset.c} on ${DOW[+c.dataset.d]}s</div><div class="r"><span>Sessions</span><span class="num">${c.dataset.v}</span></div>`;
     tip.hidden=false;const bb=box.getBoundingClientRect(),rb=c.getBoundingClientRect();let lx=rb.left-bb.left+box.scrollLeft+rb.width;if(lx+180>bb.width+box.scrollLeft)lx=rb.left-bb.left+box.scrollLeft-180;tip.style.left=lx+'px';tip.style.top=(rb.top-bb.top+8)+'px'});
-  box.addEventListener('pointerleave',()=>tip.hidden=true);
+  box.addEventListener('pointerleave',ev=>{if(ev.pointerType!=='touch')tip.hidden=true});
 }
 
 /* ---------- scroll animation ---------- */
@@ -822,6 +826,13 @@ function setupReveal(){
   chartIO=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting&&e.intersectionRatio>=0.35){drawChart(lastA,true);chartIO.disconnect()}}),{threshold:[0,0.35]});
   chartIO.observe(chart);
 }
+
+/* ---------- touch: a tap acts like a hover; tapping elsewhere closes it ---------- */
+document.addEventListener('pointerdown',ev=>{
+  if(ev.pointerType!=='touch')return;
+  if(!ev.target.closest('.chart,.heat,.wd')){document.querySelectorAll('.tip').forEach(t=>t.hidden=true);document.querySelectorAll('.xhair').forEach(l=>l.style.display='none');return}
+  ev.target.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,clientX:ev.clientX,clientY:ev.clientY,pointerType:'touch',pointerId:ev.pointerId}));
+},true);
 
 /* ---------- controls ---------- */
 function setMode(m){MODE=m;$('m-share').setAttribute('aria-pressed',String(m==='share'));$('m-hours').setAttribute('aria-pressed',String(m==='hours'));if(lastA)drawChart(lastA,true)}
