@@ -105,6 +105,12 @@ button,input,select{font-family:inherit}
 /* heatmap */
 .heat{background:var(--card);border:1px solid var(--card-line);border-radius:16px;padding:14px;position:relative}
 .heat-scroll{overflow-x:auto}
+.heat-wrap{position:relative}
+.heat-fade{position:absolute;top:0;right:0;bottom:0;width:56px;pointer-events:none;background:linear-gradient(to right,rgba(31,10,61,0),rgba(31,10,61,.95));opacity:0;transition:opacity .3s}
+.heat-wrap.more .heat-fade{opacity:1}
+.ramp .swipe{color:var(--lime);font-weight:500;font-size:12px;margin-right:auto}
+.ramp-key{display:flex;align-items:center;gap:6px;white-space:nowrap}
+.ramp .swipe{white-space:nowrap}
 .heat svg{display:block;width:100%;height:auto}
 .heat-scroll svg.wide{min-width:560px}
 .heat text{fill:var(--ink-faint);font-size:9px;font-family:var(--f-body)}
@@ -513,7 +519,7 @@ function drawRows(A){
 }
 
 function drawHeat(A){
-  const box=$('heat'); box.querySelectorAll('.heat-scroll,.ramp').forEach(n=>n.remove());
+  const box=$('heat'); box.querySelectorAll('.heat-wrap,.ramp').forEach(n=>n.remove());
   const off=(new Date(A.P.start).getUTCDay()+6)%7;
   const cols=Math.ceil((A.nDays+off)/7);
   const cell=12,gap=3,left=24,top=16;
@@ -530,8 +536,12 @@ function drawHeat(A){
     s+=`<rect data-i="${i}" data-c="${c}" x="${left+c*(cell+gap)}" y="${top+r*(cell+gap)}" width="${cell}" height="${cell}" rx="2.5" fill="${fillFor(mn)}"/>`;
   }
   s+='</svg>';
-  box.insertAdjacentHTML('afterbegin',`<div class="heat-scroll">${s}</div>`);
-  box.insertAdjacentHTML('beforeend',`<div class="ramp">Less ${fills.map(f=>`<i style="background:${f}"></i>`).join('')} 90+ min</div>`);
+  box.insertAdjacentHTML('afterbegin',`<div class="heat-wrap"><div class="heat-scroll">${s}</div><div class="heat-fade"></div></div>`);
+  box.insertAdjacentHTML('beforeend',`<div class="ramp"><span class="swipe" hidden>Swipe for more →</span><span class="ramp-key">Less ${fills.map(f=>`<i style="background:${f}"></i>`).join('')} 90+ min</span></div>`);
+  { const sc=box.querySelector('.heat-scroll'), wr=box.querySelector('.heat-wrap'), hint=box.querySelector('.swipe');
+    const upd=()=>{const can=sc.scrollWidth>sc.clientWidth+4, more=can&&sc.scrollLeft+sc.clientWidth<sc.scrollWidth-4;
+      wr.classList.toggle('more',more); hint.hidden=!more};
+    sc.addEventListener('scroll',upd,{passive:true}); window.addEventListener('resize',upd); requestAnimationFrame(upd); }
   const tip=$('htip'), svg=box.querySelector('svg');
   svg.addEventListener('pointermove',ev=>{
     const r=ev.target.closest('rect'); if(!r){tip.hidden=true;return}
@@ -648,11 +658,13 @@ function drawWeekly(A){
     :`Your average week went from <em>${fmt(early,1)} hours</em> in your first ${per} to <em>${fmt(late,1)} hours</em> in your last ${per}.`;
   const stackAt={};firsts.forEach(f=>{f.s=stackAt[f.i]=(stackAt[f.i]||0);stackAt[f.i]++});
   const maxStack=Math.max(0,...Object.values(stackAt));
-  const W=Math.max(300,box.clientWidth-20), H=Math.round(Math.min(340,Math.max(240,W*0.46)));
+  const W=Math.max(300,box.clientWidth-20), H=Math.round(Math.min(300,Math.max(220,W*0.42)));
   const m={t:10,r:8,b:24,l:34}, step=18;
   const x=d3.scaleBand().domain(d3.range(wk.length)).range([m.l,W-m.r]).paddingInner(0.22);
   const maxH=d3.max(wk,w=>w.h)||1;
-  const y=d3.scaleLinear().domain([0,maxH]).nice().range([H-m.b,m.t+maxStack*step+8]);
+  const plotH=H-m.b-m.t; let kk=plotH/maxH;
+  wk.forEach((w,i)=>{const s=stackAt[i]||0; if(s&&w.h>0) kk=Math.min(kk,(plotH-22-(s-1)*step)/w.h)});
+  const y=d3.scaleLinear().domain([0,plotH/kk]).range([H-m.b,m.t]);
   const svg=d3.select(box).insert('svg','.tip').attr('viewBox',`0 0 ${W} ${H}`).attr('role','img').attr('aria-label','Bar chart of training hours each week, with icons marking first-time activities');
   const g=svg.append('g');
   const ticks=y.ticks(4);
