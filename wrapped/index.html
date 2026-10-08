@@ -179,6 +179,15 @@ button,input,select{font-family:inherit}
 .chart,.heat,.wd{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
 .chart svg{touch-action:pan-y}
 
+/* compact range picker: tucked beside the brand */
+.top{flex-direction:row;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px 12px}
+.range{background:none;border:0;padding:0;gap:6px 8px;margin-left:auto;opacity:.8}
+.range:hover,.range:focus-within{opacity:1}
+.range label{font-size:11px;color:var(--ink-faint)}
+.range .pick{gap:5px}
+.range select{font-size:11px;padding:3px 20px 3px 8px;background-position:calc(100% - 11px) 52%,calc(100% - 7px) 52%;background-size:4px 4px}
+.range #replay{margin-left:0!important;font-size:11px;padding:3px 9px}
+
 /* scroll reveal: elements rest fully drawn; JS only primes ones that are off-screen */
 .rv{transition:transform .8s var(--ease),opacity .8s var(--ease)}
 .rv.pre{transform:translateY(28px) scale(.96);opacity:.35}
@@ -203,7 +212,7 @@ button,input,select{font-family:inherit}
         <label for="r-from">From</label><select id="r-from"></select>
         <label for="r-to">to</label><select id="r-to"></select>
       </div>
-      <button class="ghost" id="replay" style="margin-left:auto" title="Reset the animations, then scroll down to watch them again">↺ Replay animations</button>
+      <button class="ghost" id="replay" style="margin-left:auto" title="Reset the animations, then scroll down to watch them again">↺ Replay</button>
     </div>
   </div>
 
