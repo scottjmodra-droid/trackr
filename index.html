@@ -5363,7 +5363,7 @@ function reach_renderCard(s){
 
 function reach_renderFreeStretchCard(container){
   const SIDE_OPTIONS = [
-    {key:'left',label:'Left'},{key:'right',label:'Right'},{key:'single',label:'Single'}
+    {key:'both',label:'Both sides'},{key:'single',label:'Single'}
   ];
   const canAdd = reach_freeConfig.side!==null && reach_freeConfig.minutes!==null;
   const div = document.createElement('div');
@@ -5404,7 +5404,9 @@ function reach_renderFreeStretchCard(container){
 function reach_sessionMinutesFor(items){
   return Object.entries(items).reduce((sum,[id,val])=>{
     if(id.startsWith('__free_')){
-      return sum + (typeof val==='object' ? val.minutes||0 : 0);
+      const mins = typeof val==='object' ? val.minutes||0 : 0;
+      const mult = (typeof val==='object' && val.side==='both') ? 2 : 1;
+      return sum + mins * mult;
     }
     const s = STRETCHES.find(x=>x.id==id);
     const min = typeof val==='number' ? val : (val&&val.minutes||0);
@@ -5808,7 +5810,7 @@ function reach_buildSequence(items, order){
     if(id.startsWith('__free_')){
       const f = typeof val==='object' ? val : {minutes:val||1, side:'single', label:'Free Stretch'};
       const fakeStretch = {name:f.label||'Free Stretch', sides:false, id, isFree:true};
-      const sideName = f.side==='left' ? 'Left side' : f.side==='right' ? 'Right side' : null;
+      const sideName = f.side==='both' ? 'Both sides' : null;
       seq.push({stretch:fakeStretch, side:sideName, seconds:(f.minutes||1)*60});
       seq.push({rest:true, seconds:reachSettings.transitionSeconds});
     } else {
@@ -5890,19 +5892,18 @@ function reach_renderPreviewList(){
       <button class="pi-remove" data-id="${id}">✕</button>`;
 
       if(id.startsWith('__free_')){
-        const f = typeof val==='object' ? val : {minutes:1, side:'single', label:'Free Stretch'};
-        const sideName = f.side==='left'?'Left side':f.side==='right'?'Right side':'Single';
-        const chips = DURATIONS.map(d=>{
-          const active = f.minutes===d ? 'active' : '';
-          return `<button class="dur-chip ${active}" data-id="${id}" data-min="${d}">${d} min</button>`;
-        }).join('');
+        const f = typeof val==='object' ? val : {minutes:null, side:null, label:'Free Stretch'};
+        const sideChips = [
+          {key:'both',label:'Both sides'},
+          {key:'single',label:'Single'}
+        ].map(s=>`<button class="dur-chip${f.side===s.key?' active':''}" data-id="${id}" data-side="${s.key}">${s.label}</button>`).join('');
+        const durChips = DURATIONS.map(d=>`<button class="dur-chip${f.minutes===d?' active':''}" data-id="${id}" data-min="${d}">${d} min</button>`).join('');
         return `<div class="preview-item">
           <div class="pi-main" style="flex:1;min-width:0;">
             <div class="pi-free-tag">FREE STRETCH</div>
-            <input class="pi-label-input" type="text" placeholder="Free Stretch" value="${(f.label||'Free Stretch').replace(/"/g,'&quot;')}" data-free-label="${id}">
+            <input class="pi-label-input" type="text" placeholder="Free Stretch" value="${(f.label||'').replace(/"/g,'&quot;')}" data-free-label="${id}">
             <div class="pi-dur-row" style="margin-top:6px;">
-              ${chips}
-              <span class="pi-sides-tag">${sideName}</span>
+              ${sideChips}${durChips}
             </div>
           </div>
           ${orderBtns}
@@ -5931,11 +5932,15 @@ function reach_renderPreviewList(){
     itemsList.querySelectorAll('.dur-chip').forEach(btn=>{
       btn.addEventListener('click', ()=>{
         const id = btn.dataset.id;
-        const min = parseInt(btn.dataset.min, 10);
-        if(id.startsWith('__free_') && typeof reach_previewItems[id]==='object'){
-          reach_previewItems[id] = {...reach_previewItems[id], minutes:min};
+        if(btn.dataset.side && id.startsWith('__free_')){
+          reach_previewItems[id] = {...(typeof reach_previewItems[id]==='object' ? reach_previewItems[id] : {}), side:btn.dataset.side};
         } else {
-          reach_previewItems[id] = min;
+          const min = parseInt(btn.dataset.min, 10);
+          if(id.startsWith('__free_') && typeof reach_previewItems[id]==='object'){
+            reach_previewItems[id] = {...reach_previewItems[id], minutes:min};
+          } else {
+            reach_previewItems[id] = min;
+          }
         }
         reach_syncPreviewChange();
       });
@@ -5990,21 +5995,12 @@ function reach_renderPreviewAddPanel(){
   const freeCount = Object.keys(reach_previewItems).filter(id=>id.startsWith('__free_')).length;
   const remaining = STRETCHES.filter(s=>!(s.id in reach_previewItems));
 
-  // Build panel HTML: free stretch configurator at top, then regular stretches
-  const SIDE_OPTIONS = [{key:'left',label:'Left side'},{key:'right',label:'Right side'},{key:'single',label:'Single'}];
-  const canAdd = reach_freeConfig.side!==null && reach_freeConfig.minutes!==null;
+  // Build panel HTML: free stretch as a simple row at top, then regular stretches
   const freeSection = `
     <div class="preview-add-area">FREE STRETCH</div>
-    <div style="padding:10px 0 12px; border-top:1px solid var(--line);">
-      <div class="fs-label" style="margin-bottom:6px;">Side</div>
-      <div class="fs-pills" style="margin-bottom:8px;">
-        ${SIDE_OPTIONS.map(s=>`<button class="fs-pill${reach_freeConfig.side===s.key?' active':''}" data-pfs-side="${s.key}">${s.label}</button>`).join('')}
-      </div>
-      <div class="fs-label" style="margin-bottom:6px;">Duration</div>
-      <div class="fs-pills">
-        ${DURATIONS.map(d=>`<button class="fs-pill${reach_freeConfig.minutes===d?' active':''}" data-pfs-dur="${d}">${d} min</button>`).join('')}
-      </div>
-      <button class="fs-add-btn" style="margin-top:10px;" id="reach-pfsAddBtn"${canAdd?'':' disabled'}>ADD FREE STRETCH</button>
+    <div class="preview-add-item">
+      <span>Free Stretch</span>
+      <button class="add" data-free-add aria-label="Add free stretch">+</button>
     </div>`;
 
   if(remaining.length===0){
@@ -6022,18 +6018,12 @@ function reach_renderPreviewAddPanel(){
     }).join('');
   }
 
-  panel.querySelectorAll('[data-pfs-side]').forEach(btn=>{
-    btn.addEventListener('click', ()=>{ reach_freeConfig.side=btn.dataset.pfsSide; reach_renderPreviewAddPanel(); });
-  });
-  panel.querySelectorAll('[data-pfs-dur]').forEach(btn=>{
-    btn.addEventListener('click', ()=>{ reach_freeConfig.minutes=parseInt(btn.dataset.pfsDur,10); reach_renderPreviewAddPanel(); });
-  });
-  const pfsAddBtn = panel.querySelector('#reach-pfsAddBtn');
-  if(pfsAddBtn && !pfsAddBtn.disabled){
-    pfsAddBtn.addEventListener('click', ()=>{
-      const uid = '__free_'+Date.now();
-      reach_previewItems[uid] = {minutes:reach_freeConfig.minutes, side:reach_freeConfig.side, label:'Free Stretch'};
-      reach_previewOrder.push(uid);
+  const freeAddBtn = panel.querySelector('[data-free-add]');
+  if(freeAddBtn){
+    freeAddBtn.addEventListener('click', ()=>{
+      const id = '__free_'+Date.now();
+      reach_previewItems[id] = {minutes:null, side:null, label:''};
+      reach_previewOrder.push(id);
       reach_syncPreviewChange();
     });
   }
@@ -6281,6 +6271,15 @@ function reach_showComplete(){
   document.getElementById('reach-playBody').style.display='none';
   document.getElementById('reach-playBg').classList.remove('visible');
   const minsLogged = Math.round(reach_sessionMinutesFor(reach_previewItems));
+  // Auto-log the stretch session
+  if(minsLogged >= 1){
+    const calories = String(Math.round(MET_DEFAULTS.Stretch * (state.weight||80) * (minsLogged/60)));
+    state.sessions.push({
+      id: uid(), date: todayISO(), discipline: 'Stretch',
+      data: { duration: String(minsLogged), calories }
+    });
+    saveSessions();
+  }
   const screen = document.getElementById('reach-completeScreen');
   screen.innerHTML = `
     <div class="big-check">✓</div>
