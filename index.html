@@ -2114,7 +2114,7 @@ const DISCIPLINE_CONFIG = {
         ],
       },
       Other: {
-        icon: "✦", met: 8,
+        icon: "✦", met: 6,
         fields: [
           { key: "type", label: "Activity Type", type: "text", placeholder: "e.g. Boxing, Hiking, Tennis" },
           { key: "duration", label: "Duration (min)", type: "number" },
@@ -2147,7 +2147,7 @@ const DISCIPLINE_CONFIG = {
     },
   },
   Stretch: {
-    color: "#8b5cf6", icon: "🧘", met: 3,
+    color: "#8b5cf6", icon: "🧘", met: 2.3,
     fields: [
       { key: "duration", label: "Duration (min)", type: "number" },
       { key: "calories", label: "Calories", type: "number" },
@@ -2156,7 +2156,14 @@ const DISCIPLINE_CONFIG = {
 };
 
 // MET values for flat disciplines; intensity tiers use cfg.met.
-const MET_DEFAULTS = { Swim: 10, Run: 10, Strength: 6, Active: 8, Chilled: 3, Stretch: 3 };
+const MET_DEFAULTS = { Swim: 9, Run: 10, Strength: 4.5, Active: 8, Chilled: 3, Stretch: 2.3 };
+// "Other" activities: MET by activity name (2024 Compendium, rounded). Anything
+// not listed falls back to the Other sub-type's MET (6).
+const OTHER_TYPE_MET = [
+  [/ellip|eclip|elip/i, 5], [/hill|hik/i, 6], [/pilates/i, 3], [/yoga/i, 2.5],
+  [/climb|boulder/i, 7], [/surf/i, 3], [/baseball|softball|cricket/i, 5],
+  [/tennis/i, 7], [/box/i, 7], [/golf/i, 4], [/kayak|paddle/i, 5], [/ski/i, 6],
+];
 
 // Returns the subType config object for a given discipline + subType name.
 // Falls back to the first subType if subType is unrecognised.
@@ -2178,7 +2185,7 @@ function getActiveFields() {
 const RPE_LABEL = ["", "Very Easy", "Easy", "Moderate", "Moderate", "Hard", "Hard", "Very Hard", "Very Hard", "Max", "Max"];
 const STORAGE_KEY = "training-log:sessions";
 const SETTINGS_KEY = "training-log:settings";
-const APP_VERSION = "0.78";  // bump this on every deploy so you can verify the right file is live
+const APP_VERSION = "0.79";  // bump this on every deploy so you can verify the right file is live
 
 // Structured workouts — rendered first in the Strength Exercises sheet.
 // To update: edit this constant and redeploy.
@@ -2768,7 +2775,7 @@ function rowingMetFromPower(watts) {
   const slope = (y2 - y1) / (x2 - x1);
   return y2 + slope * (watts - x2);
 }
-function metFor(discipline, subType, duration, distance, splitStr) {
+function metFor(discipline, subType, duration, distance, splitStr, typeName) {
   // Priority: subType.met → tier cfg.met → MET_DEFAULTS → 5
   const tierCfg = DISCIPLINE_CONFIG[discipline];
   const stCfg = (tierCfg?.subTypes && subType) ? tierCfg.subTypes[subType] : null;
@@ -2796,14 +2803,19 @@ function metFor(discipline, subType, duration, distance, splitStr) {
       return rowingMetFromPower(watts);
     }
   }
+  // Active/Other: look the activity name up (e.g. Elliptical, Pilates, Climbing).
+  if (discipline === "Active" && subType === "Other" && typeName) {
+    const hit = OTHER_TYPE_MET.find(([re]) => re.test(String(typeName)));
+    if (hit) return hit[1];
+  }
   // All other intensity-tier sub-types use the tier's flat MET.
   return baseMET;
 }
-function calcCalories(discipline, subType, duration, distance, splitStr) {
+function calcCalories(discipline, subType, duration, distance, splitStr, typeName) {
   const dur = parseFloat(duration);
   if (!dur || dur <= 0) return "";
   const weight = state.weight || 94;
-  const met = metFor(discipline, subType, duration, distance, splitStr);
+  const met = metFor(discipline, subType, duration, distance, splitStr, typeName);
   return String(Math.round(met * weight * (dur / 60)));
 }
 
@@ -2971,7 +2983,7 @@ function renderComputedHint(fieldKey) {
     return s ? `<div class="computed-hint">auto: ${s} km/h — tap to use</div>` : "";
   }
   if (fieldKey === "calories" && m && !state.form.calories) {
-    const c = calcCalories(state.activeDiscipline, state.activeSubType, m, d, state.form.avgSplit);
+    const c = calcCalories(state.activeDiscipline, state.activeSubType, m, d, state.form.avgSplit, state.form.type);
     return c ? `<div class="computed-hint">auto: ~${c} kcal — tap to use</div>` : "";
   }
   return "";
@@ -4460,7 +4472,7 @@ function attachHandlers() {
         state.form.avgSpeed = autoSpeed(state.form.distance, state.form.duration);
       }
       if (activeFields.find(f => f.key === "calories") && !state.form.calories) {
-        state.form.calories = calcCalories(state.activeDiscipline, state.activeSubType, state.form.duration, state.form.distance, state.form.avgSplit);
+        state.form.calories = calcCalories(state.activeDiscipline, state.activeSubType, state.form.duration, state.form.distance, state.form.avgSplit, state.form.type);
       }
       render();
     });
@@ -4572,7 +4584,7 @@ function handleSave() {
     if (s) state.form.avgSpeed = s;
   }
   if (activeFields.find(f => f.key === "calories") && !state.form.calories) {
-    const c = calcCalories(state.activeDiscipline, state.activeSubType, state.form.duration, state.form.distance, state.form.avgSplit);
+    const c = calcCalories(state.activeDiscipline, state.activeSubType, state.form.duration, state.form.distance, state.form.avgSplit, state.form.type);
     if (c) state.form.calories = c;
   }
   const session = {
