@@ -336,7 +336,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
 .daily-chart {
   position: relative;
   padding-left: 38px;
-  padding-bottom: 30px;
+  padding-bottom: 50px;
 }
 .daily-y-axis {
   position: absolute; left: 0; top: 0; width: 34px; height: 160px;
@@ -390,7 +390,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
   pointer-events: none;
 }
 .daily-bar-label {
-  position: absolute; bottom: -26px; left: 0; right: 0;
+  position: absolute; bottom: -44px; left: 0; right: 0;
   font-size: 10px; color: #9684b8; text-align: center; line-height: 1.2;
 }
 .daily-bar-label .dow { display: block; font-weight: 500; font-size: 12px; }
@@ -400,6 +400,17 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
 .daily-bar-label.today .dom { color: #e8f84a; }
 .daily-chart.dense .daily-bar-label .dow { font-size: 9px; }
 .daily-chart.dense .daily-bar-label .dom { font-size: 9px; }
+.daily-bar-plan { display:flex; gap:2px; justify-content:center; margin-top:3px; flex-wrap:wrap; }
+.daily-bar-plan-dot { width:5px; height:5px; border-radius:1px; flex-shrink:0; }
+.daily-bar-plan-dot.planned { background:transparent !important; border-width:1.5px; border-style:solid; opacity:0.7; }
+.todays-plan-strip { display:flex; align-items:center; gap:6px; margin:6px 0 10px; flex-wrap:wrap; }
+.tps-label { font-size:10px; letter-spacing:0.1em; color:#7a6394; font-family:'Bebas Neue',sans-serif; flex-shrink:0; }
+.tps-chip { font-size:12px; padding:2px 8px; border-radius:20px; border:1px solid; font-family:'Bebas Neue',sans-serif; letter-spacing:0.05em; white-space:nowrap; }
+.plan-editor { padding:4px 0; }
+.plan-day-row { display:flex; align-items:flex-start; gap:8px; padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.06); }
+.plan-day-name { font-family:'Bebas Neue',sans-serif; font-size:16px; letter-spacing:1px; width:36px; flex-shrink:0; color:#d4baeb; margin-top:4px; }
+.plan-chips { display:flex; flex-wrap:wrap; gap:4px; }
+.plan-chip { font-family:'Bebas Neue',sans-serif; font-size:12px; letter-spacing:0.08em; padding:3px 8px; border-radius:16px; border:1px solid rgba(255,255,255,0.15); color:#9684b8; background:transparent; cursor:pointer; transition:all 0.15s; }
 .weekly-legend { display: flex; gap: 8px; margin-top: 20px; flex-wrap: nowrap; overflow: hidden; }
 .weekly-legend-item { display: flex; align-items: center; gap: 4px; font-size: 10px; color: #d4baeb; white-space: nowrap; }
 .weekly-legend-swatch { width: 7px; height: 7px; border-radius: 2px; flex-shrink: 0; }
@@ -1885,6 +1896,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
   <div class="menu-sheet-inner">
     <div class="menu-handle"></div>
     <button class="menu-item" id="settingsBtn"><span class="menu-icon">⚙</span>Bodyweight <span id="weightDisplay" style="color:#666; margin-left:auto;"></span></button>
+    <button class="menu-item" id="planBtn"><span class="menu-icon">📅</span>Training Plan</button>
     <button class="menu-item" id="exportBtn"><span class="menu-icon">⬇</span>Export sessions (JSON)</button>
     <button class="menu-item" id="importBtn"><span class="menu-icon">⬆</span>Import sessions (JSON)</button>
     <button class="menu-item" id="importAppleBtn"><span class="menu-icon">⌚</span>Import from Apple Health</button>
@@ -1902,6 +1914,15 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
     <div class="workout-card-note" style="color:#d4baeb; margin-bottom:12px;">In-device snapshots, taken once a week automatically. These survive a Clear-All-Data, but not phone loss — use the BACK UP banner for that.</div>
     <div id="restoreContent"></div>
     <button class="menu-item" id="closeRestoreBtn" style="color:#666; justify-content:center; margin-top:8px;">Close</button>
+  </div>
+</div>
+<div class="workout-sheet" id="planSheet">
+  <div class="workout-sheet-inner">
+    <div class="menu-handle"></div>
+    <div class="workout-title">Weekly Training Plan</div>
+    <div class="workout-card-note" style="color:#d4baeb;margin-bottom:12px;">Tap disciplines to toggle them on or off for each day. Planned sessions appear as coloured squares in the weekly chart.</div>
+    <div id="planEditorContent"></div>
+    <button class="menu-item" id="closePlanBtn" style="color:#666; justify-content:center; margin-top:8px;">Done</button>
   </div>
 </div>
 <div class="workout-sheet" id="workoutSheet">
@@ -2185,7 +2206,61 @@ function getActiveFields() {
 const RPE_LABEL = ["", "Very Easy", "Easy", "Moderate", "Moderate", "Hard", "Hard", "Very Hard", "Very Hard", "Max", "Max"];
 const STORAGE_KEY = "training-log:sessions";
 const SETTINGS_KEY = "training-log:settings";
-const APP_VERSION = "0.79";  // bump this on every deploy so you can verify the right file is live
+const PLAN_KEY = "training-log:plan";
+const APP_VERSION = "0.79";
+
+// Default weekly training plan (DOW 0=Sun … 6=Sat)
+const DEFAULT_PLAN = {
+  0: ['Run', 'Strength'],    // Sun: short jog + leg strength
+  1: ['Swim'],               // Mon
+  2: ['Run'],                // Tue: easy run
+  3: ['Strength', 'Active'], // Wed: upper body + water polo
+  4: ['Run'],                // Thu
+  5: ['Swim'],               // Fri
+  6: ['Run'],                // Sat: long run
+};
+function loadPlan() {
+  try {
+    const d = JSON.parse(localStorage.getItem(PLAN_KEY) || 'null');
+    return d || JSON.parse(JSON.stringify(DEFAULT_PLAN));
+  } catch (e) { return JSON.parse(JSON.stringify(DEFAULT_PLAN)); }
+}
+function savePlan(plan) { localStorage.setItem(PLAN_KEY, JSON.stringify(plan)); }
+function renderTodaysPlan(dateISO) {
+  const d = parseLocalISO(dateISO);
+  const dow = d.getDay();
+  const planned = (loadPlan()[dow] || []).filter(disc => DISCIPLINES.includes(disc));
+  if (!planned.length) return '';
+  return `<div class="todays-plan-strip">
+    <span class="tps-label">TODAY'S PLAN</span>
+    ${planned.map(disc => {
+      const cfg = DISCIPLINE_CONFIG[disc];
+      return `<span class="tps-chip" style="background:${cfg.color}22;border-color:${cfg.color}88;color:${cfg.color};">${cfg.icon} ${disc}</span>`;
+    }).join('')}
+  </div>`;
+}
+function renderPlanEditor() {
+  const plan = loadPlan();
+  const DAYS  = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const DOWS  = [1, 2, 3, 4, 5, 6, 0];
+  return `<div class="plan-editor">${DOWS.map((dow, i) => {
+    const active = plan[dow] || [];
+    return `<div class="plan-day-row">
+      <span class="plan-day-name">${DAYS[i]}</span>
+      <div class="plan-chips">
+        ${DISCIPLINES.map(disc => {
+          const on = active.includes(disc);
+          const cfg = DISCIPLINE_CONFIG[disc];
+          return `<button class="plan-chip${on ? ' active' : ''}"
+            data-dow="${dow}" data-disc="${disc}"
+            style="${on ? `background:${cfg.color}33;border-color:${cfg.color};color:${cfg.color};` : ''}">
+            ${cfg.icon} ${disc}
+          </button>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+}  // bump this on every deploy so you can verify the right file is live
 
 // Structured workouts — rendered first in the Strength Exercises sheet.
 // To update: edit this constant and redeploy.
@@ -2912,6 +2987,8 @@ function renderLog() {
       </div>
     </div>
 
+    ${renderTodaysPlan(state.date)}
+
     ${activeFields.map(f => {
       const isNumber = f.type === "number";
       const allowsDecimal = isNumber && !!f.step;
@@ -3375,12 +3452,24 @@ function renderDailyVolume(period) {
               const colTotal = (showLabels && b.total > 0)
                 ? `<div class="daily-bar-total" style="bottom:${stackHeight + 3}px;">${fmtBarLabel(b.total)}</div>` : "";
               const cls = [b.isWeekend ? "weekend" : "", b.isToday ? "today" : ""].filter(Boolean).join(" ");
+              // Plan squares (week range only)
+              let planDotsHTML = '';
+              if (range === 'week' && !dense) {
+                const planForDay = (loadPlan()[b.date.getDay()] || []).filter(d => DISCIPLINES.includes(d));
+                if (planForDay.length) {
+                  planDotsHTML = `<div class="daily-bar-plan">${planForDay.map(disc => {
+                    const col = DISCIPLINE_CONFIG[disc].color;
+                    const logged = b.totals[disc] > 0;
+                    return `<div class="daily-bar-plan-dot${logged ? ' logged' : ' planned'}" title="${disc}" style="${logged ? `background:${col};` : `border-color:${col};`}"></div>`;
+                  }).join('')}</div>`;
+                }
+              }
               return `
                 <div class="daily-bar-col" title="${fmtVal(b.total)}${unitLabel}">
                   ${colTotal}
                   <div class="daily-bar-stack" style="height:${stackHeight}px;">${segments}</div>
                   <div class="daily-bar-label ${cls}">
-                    ${b.hideLabel ? "" : `<span class="dow">${b.label.top}</span><span class="dom">${b.label.bot}</span>`}
+                    ${b.hideLabel ? "" : `<span class="dow">${b.label.top}</span><span class="dom">${b.label.bot}</span>${planDotsHTML}`}
                   </div>
                 </div>
               `;
@@ -4879,6 +4968,7 @@ function setupMenu() {
 
   // Wire up swipe-down on both bottom sheets.
   attachSheetSwipe(sheet, sheet.querySelector(".menu-sheet-inner"));
+  attachSheetSwipe(document.getElementById("planSheet"), document.querySelector("#planSheet .workout-sheet-inner"));
   attachSheetSwipe(document.getElementById("workoutSheet"), document.querySelector("#workoutSheet .workout-sheet-inner"));
 
   document.getElementById("settingsBtn").addEventListener("click", () => {
@@ -4910,6 +5000,30 @@ function setupMenu() {
   document.getElementById("importAppleBtn").addEventListener("click", () => {
     document.getElementById("importAppleFile").click();
   });
+  document.getElementById("planBtn").addEventListener("click", () => {
+    sheet.classList.remove("open");
+    document.getElementById("planEditorContent").innerHTML = renderPlanEditor();
+    document.getElementById("planSheet").classList.add("open");
+  });
+  document.getElementById("closePlanBtn").addEventListener("click", () => {
+    document.getElementById("planSheet").classList.remove("open");
+  });
+  document.getElementById("planSheet").addEventListener("click", e => {
+    if (e.target.id === "planSheet") e.target.classList.remove("open");
+  });
+  document.getElementById("planEditorContent").addEventListener("click", e => {
+    const btn = e.target.closest("[data-dow][data-disc]");
+    if (!btn) return;
+    const dow = parseInt(btn.dataset.dow);
+    const disc = btn.dataset.disc;
+    const plan = loadPlan();
+    const arr = plan[dow] || [];
+    plan[dow] = arr.includes(disc) ? arr.filter(d => d !== disc) : [...arr, disc];
+    savePlan(plan);
+    document.getElementById("planEditorContent").innerHTML = renderPlanEditor();
+    render();
+  });
+
   document.getElementById("restoreBtn").addEventListener("click", () => {
     renderRestoreSheet();
     sheet.classList.remove("open");
