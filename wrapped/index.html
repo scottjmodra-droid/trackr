@@ -172,6 +172,7 @@ button,input,select{font-family:inherit}
 .turn .lede{font-size:16px}
 .turn-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
 .turn-stats .stat{background:rgba(255,255,255,0.04)}
+.mo{transition:opacity .35s ease}
 .anno{font-size:11px;font-weight:600;font-family:var(--f-body);fill:var(--ink);paint-order:stroke;stroke:var(--surface);stroke-width:3px;stroke-linejoin:round}
 @media (max-width:480px){.turn-top{flex-direction:column;align-items:flex-start;gap:10px}.turn-date{display:flex;align-items:baseline;gap:8px}.turn-date b{font-size:64px}}
 
@@ -247,7 +248,7 @@ button,input,select{font-family:inherit}
   <section class="sec">
     <div><div class="eyebrow">Week by week</div><h2>Building up, trying new things</h2></div>
     <p class="lede" id="weekly-lede"></p>
-    <div class="legend"><span><i class="sw" style="background:var(--violet)"></i>Hours that week</span><span><i class="sw" style="background:var(--lime);height:3px"></i>4-week average</span><span>🏅 Icons mark firsts (hover for dates)</span></div>
+    <div class="legend"><span><i class="sw" style="background:var(--violet)"></i>Hours that week</span><span><i class="sw" style="background:var(--lime);height:3px"></i>4-week average</span><span>Icons mark firsts, 🩹 your injury and 🏅 your race (hover for dates)</span></div>
     <div class="chart" id="weekly"><div class="tip" id="wtip" hidden></div></div>
   </section>
 
@@ -485,7 +486,7 @@ function drawChart(A,animate,hold){
     .attr('stroke','var(--surface)').attr('stroke-width',1.5).attr('stroke-linejoin','round');
   const sag=g.append('g').style('transition','opacity .35s ease');annotate(sag,x,m,H,A,false);
   const sAnnoX=MOMENTS.map(mo=>parseD(mo.date)).filter(t=>t>=A.P.start&&t<=A.P.end).map(t=>x(t));
-  if((animate&&!reduce)||hold)sag.style('opacity',0);
+  if((animate&&!reduce)||hold)sag.selectAll('.mo').style('opacity',0);
   const cross=g.append('line').attr('class','xhair').attr('y1',m.t).attr('y2',H-m.b).attr('stroke','rgba(255,255,255,.55)').attr('stroke-width',1).style('display','none');
   const tip=$('tip'), bis=d3.bisector(d=>d.t).center;
   svg.append('rect').attr('x',m.l).attr('y',m.t).attr('width',W-m.l-m.r).attr('height',H-m.t-m.b).attr('fill','transparent')
@@ -505,9 +506,9 @@ function drawChart(A,animate,hold){
     chartTimer=d3.timer(el=>{
       const p=Math.min(1,el/dur), cx=m.l+(W-m.l-m.r)*d3.easeCubicInOut(p);
       clipRect.attr('width',cx+1);
-      if(sAnnoX.length&&cx>=Math.min(...sAnnoX))sag.style('opacity',1);
+      sag.selectAll('.mo').style('opacity',function(){return cx>=+this.getAttribute('data-x')?1:0});
       tag.textContent=p<1?MONTHS[new Date(x.invert(cx)).getUTCMonth()].toUpperCase():'';
-      if(p>=1){chartTimer.stop();chartTimer=null;clipRect.attr('width',W);sag.style('opacity',1)}
+      if(p>=1){chartTimer.stop();chartTimer=null;clipRect.attr('width',W);sag.selectAll('.mo').style('opacity',1)}
     });
   }
   $('chart-note').textContent=(MODE==='share'?"Share of each week's training time.":'Hours per week.')+" Each point averages that week and the three before it, so one big or quiet week doesn't spike the line.";
@@ -573,28 +574,35 @@ function drawChips(A){
 function drawFacts(A){
   const S=A.S, F=[];
   const yr=t=>A.multiYear?' '+new Date(t).getUTCFullYear():'';
+  const pad=n=>String(n).padStart(2,'0');
+  const mmss=v=>{let m=Math.floor(v),s=Math.round((v-m)*60);if(s===60){m++;s=0}return m+':'+pad(s)};
+  const plural=(n,w)=>fmt(n)+' '+w+(n===1?'':'s');
+  const TRIPS=[['Geelong',75],['Ballarat',115],['Bendigo',150],['Albury',325],['Mount Gambier',435],['Canberra',660],['Adelaide',725],['Sydney',880],['Brisbane',1750],['Cairns',3050],['Perth',3420],['Darwin',3740]];
+  const trip=(km,how)=>{const prev=TRIPS.filter(x=>x[1]<=km).pop(), next=TRIPS.find(x=>x[1]>km);
+    if(next&&km>=next[1]*0.92) return `Nearly Melbourne to ${next[0]} ${how}`;
+    if(prev) return `Melbourne to ${prev[0]} ${how}${km-prev[1]>30?', then '+fmt(km-prev[1])+' km more':''}`;
+    return `${fmt(km)} km ${how}`};
+  // races
+  MOMENTS.filter(m=>m.kind==='race').forEach(mo=>{const t=parseD(mo.date);if(t<A.P.start||t>A.P.end)return;
+    const r=S.filter(s=>s.cat===mo.disc&&s.t===t&&s.km>0).sort((a,b)=>b.km-a.km)[0];if(!r)return;
+    F.push({hl:true,v:mmss(r.min),u:'',l:mo.icon+' '+mo.title,x:`${dLabel(t)}${yr(t)} · ${fmt(r.km,1)} km at ${mmss(r.min/r.km)}/km`})});
+  // distance by discipline
+  const C=A.cats;
+  if(C.Run.km>=1) F.push({n:C.Run.km,d:0,u:'KM RUN',l:trip(C.Run.km,'on foot'),x:plural(C.Run.sessions,'run')});
+  if(C.Swim.km>=1){const ch=C.Swim.km/33.8;F.push({n:C.Swim.km,d:0,u:'KM SWUM',l:ch>=1?`${fmt(ch,1)} English Channel crossings`:`${Math.round(ch*100)}% of the English Channel`,x:`${plural(C.Swim.sessions,'swim')} · ${fmt(C.Swim.km*20)} lengths of a 50 m pool`})}
+  if(C.Row.km>=1){const bs=C.Row.km/240;F.push({n:C.Row.km,d:0,u:'KM ROWED',l:bs>=1?(Math.abs(bs-Math.round(bs))<0.1?`Across Bass Strait ${['','once','twice','three times','four times','five times'][Math.round(bs)]||Math.round(bs)+' times'}`:`Across Bass Strait ${fmt(bs,1)} times`):`${Math.round(bs*100)}% of the way across Bass Strait`,x:plural(C.Row.sessions,'row')})}
+  if(C.Cycling.km>=1) F.push({n:C.Cycling.km,d:0,u:'KM RIDDEN',l:trip(C.Cycling.km,'by bike'),x:plural(C.Cycling.sessions,'ride')});
   const runs=S.filter(s=>s.cat==='Run'&&s.km>0);
   if(runs.length){
     const lr=runs.reduce((a,b)=>b.km>a.km?b:a);
     F.push({n:lr.km,d:1,u:'KM',l:'Longest run',x:dLabel(lr.t)+yr(lr.t)+' · '+fmt(lr.min)+' min'});
     const fast=runs.filter(r=>r.km>=5&&r.min>0);
-    if(fast.length){const f=fast.reduce((a,b)=>b.min/b.km<a.min/a.km?b:a);const p=f.min/f.km;let mm=Math.floor(p),ss=Math.round((p-mm)*60);if(ss===60){mm++;ss=0}
-      F.push({v:mm+':'+String(ss).padStart(2,'0'),u:'/KM',l:'Fastest run of 5 km or more',x:fmt(f.km,1)+' km on '+dLabel(f.t)+yr(f.t)});}
+    if(fast.length){const f=fast.reduce((a,b)=>b.min/b.km<a.min/a.km?b:a);
+      F.push({v:mmss(f.min/f.km),u:'/KM',l:'Fastest run of 5 km or more',x:fmt(f.km,1)+' km on '+dLabel(f.t)+yr(f.t)});}
+    const wk={};runs.forEach(r=>{const mon=r.t-((new Date(r.t).getUTCDay()+6)%7)*DAY;(wk[mon]=wk[mon]||{km:0,n:0});wk[mon].km+=r.km;wk[mon].n++});
+    const bw=Object.entries(wk).sort((a,b)=>b[1].km-a[1].km)[0];
+    if(bw) F.push({n:bw[1].km,d:1,u:'KM',l:'Biggest running week',x:`Week of ${dLabel(+bw[0])}${yr(+bw[0])} · ${plural(bw[1].n,'run')}`});
   }
-  const trips=[['Geelong',75],['Ballarat',115],['Bendigo',150],['Canberra',660],['Adelaide',725],['Sydney',880],['Brisbane',1750],['Cairns',3050],['Perth',3420],['Darwin',3740]];
-  const tr=trips.filter(t=>t[1]<=A.totKm).pop();
-  if(tr) F.push({hl:true,n:A.totKm,d:0,u:'KM',l:`Melbourne to ${tr[0]}${A.totKm-tr[1]>50?', then '+fmt(A.totKm-tr[1])+' km more':''}`,x:'Every run, swim, row, ride and walk added up, roughly by road'});
-  const swimKm=A.cats.Swim.km;
-  if(swimKm>0) F.push({n:swimKm*20,d:0,u:'LENGTHS',l:'Of a 50 m pool',x:fmt(swimKm,1)+' km swum in '+A.cats.Swim.sessions+' sessions'});
-  const wk=A.weeks.map(w=>({t:w.t,h:A.used.reduce((a,k)=>a+w[k],0)}));
-  if(wk.length>1){const b=wk.reduce((a,c)=>c.h>a.h?c:a);F.push({n:b.h,d:1,u:'HOURS',l:'Your biggest week',x:'Week of '+dLabel(b.t)+yr(b.t)});}
-  if(A.nM>1){const bm=A.monthTot.indexOf(Math.max(...A.monthTot)),k=FROM+bm;
-    F.push({v:MONTHS[k%12].toUpperCase(),u:A.multiYear?String(Math.floor(k/12)):'',l:'Busiest month',x:fmt(A.monthTot[bm]/60,1)+' hours of training'});}
-  if(S.length){const dow=new Array(7).fill(0);S.forEach(s=>dow[(new Date(s.t).getUTCDay()+6)%7]++);
-    const fd=dow.indexOf(Math.max(...dow));
-    F.push({v:DOW[fd].slice(0,3).toUpperCase(),u:'',l:'Favourite day to train',x:dow[fd]+' sessions on '+DOW[fd]+'s'});}
-  let mv=null;A.byDay.forEach((arr,i)=>{const n=new Set(arr.map(x=>x.cat)).size;if(!mv||n>mv.n||(n===mv.n&&arr.length>mv.c))mv={i,n,c:arr.length,arr}});
-  if(mv&&mv.n>1) F.push({n:mv.n,d:0,u:'DISCIPLINES',l:'Your most varied day',x:dLabel(A.P.start+mv.i*DAY)+': '+[...new Set(mv.arr.map(x=>x.cat))].join(', ')});
   if(A.totCal>0) F.push({hl:true,n:Math.round(A.totCal/95),d:0,u:'TIM TAMS',l:'Burned, in biscuits',x:fmt(A.totCal)+' Calories at about 95 a Tim Tam'});
   const oth={};S.filter(s=>s.cat==='Other').forEach(s=>{oth[s.act]=(oth[s.act]||0)+1});
   const oe=Object.entries(oth).sort((a,b)=>b[1]-a[1]);
@@ -606,19 +614,23 @@ function drawFacts(A){
 }
 
 /* ---------- life moments (things the log can't know on its own) ---------- */
-const MOMENTS=[{date:'2026-03-08',icon:'🩹',title:'Calf injury',headline:'The calf went',disc:'Run'}];
+const MOMENTS=[{date:'2026-03-08',icon:'🩹',title:'Calf injury',headline:'The calf went',disc:'Run',kind:'injury'},
+  {date:'2026-10-10',icon:'🏅',title:'10 km race',disc:'Run',kind:'race'}];
 function nextAfter(mo){const t=parseD(mo.date);const n=ALL.filter(s=>s.cat===mo.disc&&s.t>t).map(s=>s.t);return n.length?Math.min(...n):null}
 function annotate(g,x,m,H,A,band){
   MOMENTS.forEach(mo=>{const t=parseD(mo.date);if(t<A.P.start||t>A.P.end)return;
     const cx=x(t),[x0,x1]=x.range();if(cx<x0||cx>x1)return;
-    if(band){const nx=nextAfter(mo);if(nx){const x2=Math.min(x(nx),x1);g.append('rect').attr('x',cx).attr('y',m.t).attr('width',Math.max(0,x2-cx)).attr('height',H-m.b-m.t).attr('fill','var(--err)').attr('fill-opacity',0.08)}}
-    g.append('line').attr('x1',cx).attr('x2',cx).attr('y1',m.t).attr('y2',H-m.b).attr('stroke','var(--err)').attr('stroke-dasharray','3 3').attr('stroke-width',1.2);
-    g.append('text').attr('class','anno').attr('x',cx+5).attr('y',m.t+12).text(mo.icon+' '+mo.title+' · '+dLabel(t));
+    const mg=g.append('g').attr('class','mo').attr('data-x',cx);
+    if(band&&mo.kind==='injury'){const nx=nextAfter(mo);if(nx){const x2=Math.min(x(nx),x1);mg.append('rect').attr('x',cx).attr('y',m.t).attr('width',Math.max(0,x2-cx)).attr('height',H-m.b-m.t).attr('fill','var(--err)').attr('fill-opacity',0.08)}}
+    const col=mo.kind==='race'?'var(--lime)':'var(--err)';
+    mg.append('line').attr('x1',cx).attr('x2',cx).attr('y1',m.t).attr('y2',H-m.b).attr('stroke',col).attr('stroke-dasharray','3 3').attr('stroke-width',1.2);
+    const right=cx>x1-150;
+    mg.append('text').attr('class','anno').attr('x',right?cx-5:cx+5).attr('text-anchor',right?'end':'start').attr('y',m.t+12).text(mo.icon+' '+mo.title+' · '+dLabel(t));
   });
 }
 function drawTurn(A){
   const sec=$('turn-sec');
-  const mo=MOMENTS.find(m=>{const t=parseD(m.date);return t>=A.P.start&&t<=A.P.end});
+  const mo=MOMENTS.find(m=>{const t=parseD(m.date);return m.kind==='injury'&&t>=A.P.start&&t<=A.P.end});
   if(!mo){sec.hidden=true;return} sec.hidden=false;
   const t=parseD(mo.date), nx=nextAfter(mo), gap=nx?Math.round((nx-t)/DAY):null;
   const last=ALL.filter(s=>s.cat===mo.disc&&s.t===t).pop();
@@ -738,11 +750,11 @@ function drawRace(A){
     .html(d=>`<tspan fill="${COLOR[d.c]}">●</tspan> ${d.c} <tspan class="k">${fmt(cum[d.c][n-1])}</tspan>`);
   const annoX=MOMENTS.map(mo=>parseD(mo.date)).filter(t=>t>=A.P.start&&t<=A.P.end).map(t=>x(t));
   if(box._timer){box._timer.stop();box._timer=null}
-  box._prime=()=>{if(box._timer){box._timer.stop();box._timer=null}cr.attr('width',m.l);ag.style('transition','none').style('opacity',0);lg.style('transition','none').style('opacity',0)};
-  box._play=()=>{const dur=3000;ag.style('transition','opacity .35s ease');lg.style('transition','opacity .5s ease');
+  box._prime=()=>{if(box._timer){box._timer.stop();box._timer=null}cr.attr('width',m.l);ag.selectAll('.mo').style('opacity',0);lg.style('transition','none').style('opacity',0)};
+  box._play=()=>{const dur=3000;lg.style('transition','opacity .5s ease');
     box._timer=d3.timer(el=>{const p=Math.min(1,el/dur),cx=m.l+(W-m.r-m.l)*d3.easeCubicInOut(p);cr.attr('width',cx+2);
-      if(annoX.length&&cx>=Math.min(...annoX))ag.style('opacity',1);
-      if(p>=1){box._timer.stop();box._timer=null;cr.attr('width',W);ag.style('opacity',1);lg.style('opacity',1)}})};
+      ag.selectAll('.mo').style('opacity',function(){return cx>=+this.getAttribute('data-x')?1:0});
+      if(p>=1){box._timer.stop();box._timer=null;cr.attr('width',W);ag.selectAll('.mo').style('opacity',1);lg.style('opacity',1)}})};
   const cross=g.append('line').attr('class','xhair').attr('y1',m.t).attr('y2',H-m.b).attr('stroke','rgba(255,255,255,.55)').style('display','none');
   const tip=$('rtip');
   svg.append('rect').attr('x',m.l).attr('y',m.t).attr('width',W-m.l-m.r).attr('height',H-m.t-m.b).attr('fill','transparent')
