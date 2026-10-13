@@ -2153,6 +2153,7 @@ const DISCIPLINE_CONFIG = {
         fields: [
           { key: "duration", label: "Duration (min)", type: "number" },
           { key: "distance", label: "Distance (km)", type: "number", step: "0.1" },
+          { key: "incline", label: "Incline (%)", type: "number", step: "0.5", placeholder: "treadmill only — leave blank if flat" },
           { key: "calories", label: "Calories", type: "number" },
         ],
       },
@@ -2207,7 +2208,7 @@ const RPE_LABEL = ["", "Very Easy", "Easy", "Moderate", "Moderate", "Hard", "Har
 const STORAGE_KEY = "training-log:sessions";
 const SETTINGS_KEY = "training-log:settings";
 const PLAN_KEY = "training-log:plan";
-const APP_VERSION = "0.79";
+const APP_VERSION = "0.80";
 
 // Default weekly training plan (DOW 0=Sun … 6=Sat)
 const DEFAULT_PLAN = {
@@ -2850,7 +2851,7 @@ function rowingMetFromPower(watts) {
   const slope = (y2 - y1) / (x2 - x1);
   return y2 + slope * (watts - x2);
 }
-function metFor(discipline, subType, duration, distance, splitStr, typeName) {
+function metFor(discipline, subType, duration, distance, splitStr, typeName, incline) {
   // Priority: subType.met → tier cfg.met → MET_DEFAULTS → 5
   const tierCfg = DISCIPLINE_CONFIG[discipline];
   const stCfg = (tierCfg?.subTypes && subType) ? tierCfg.subTypes[subType] : null;
@@ -2878,6 +2879,24 @@ function metFor(discipline, subType, duration, distance, splitStr, typeName) {
       return rowingMetFromPower(watts);
     }
   }
+  // Walk: by speed, from the 2024 Compendium walking table. With a treadmill
+  // incline, use the ACSM walking equation instead (it includes the climb):
+  //   VO2 = 0.1*speed + 1.8*speed*grade + 3.5  (speed in m/min), MET = VO2 / 3.5
+  if (discipline === "Chilled" && subType === "Walk" && dist > 0) {
+    const kmh = (dist / dur) * 60;
+    const grade = (parseFloat(incline) || 0) / 100;
+    if (grade > 0) {
+      const mpm = kmh * 1000 / 60;
+      return Math.round(((0.1 * mpm + 1.8 * mpm * grade + 3.5) / 3.5) * 10) / 10;
+    }
+    if (kmh > 7.2) return 7.0;
+    if (kmh > 6.4) return 5.5;
+    if (kmh > 5.6) return 5.0;
+    if (kmh > 4.8) return 4.3;
+    if (kmh > 4.0) return 3.5;
+    if (kmh > 3.2) return 3.0;
+    return 2.8;
+  }
   // Active/Other: look the activity name up (e.g. Elliptical, Pilates, Climbing).
   if (discipline === "Active" && subType === "Other" && typeName) {
     const hit = OTHER_TYPE_MET.find(([re]) => re.test(String(typeName)));
@@ -2886,11 +2905,11 @@ function metFor(discipline, subType, duration, distance, splitStr, typeName) {
   // All other intensity-tier sub-types use the tier's flat MET.
   return baseMET;
 }
-function calcCalories(discipline, subType, duration, distance, splitStr, typeName) {
+function calcCalories(discipline, subType, duration, distance, splitStr, typeName, incline) {
   const dur = parseFloat(duration);
   if (!dur || dur <= 0) return "";
   const weight = state.weight || 94;
-  const met = metFor(discipline, subType, duration, distance, splitStr, typeName);
+  const met = metFor(discipline, subType, duration, distance, splitStr, typeName, incline);
   return String(Math.round(met * weight * (dur / 60)));
 }
 
@@ -3060,7 +3079,7 @@ function renderComputedHint(fieldKey) {
     return s ? `<div class="computed-hint">auto: ${s} km/h — tap to use</div>` : "";
   }
   if (fieldKey === "calories" && m && !state.form.calories) {
-    const c = calcCalories(state.activeDiscipline, state.activeSubType, m, d, state.form.avgSplit, state.form.type);
+    const c = calcCalories(state.activeDiscipline, state.activeSubType, m, d, state.form.avgSplit, state.form.type, state.form.incline);
     return c ? `<div class="computed-hint">auto: ~${c} kcal — tap to use</div>` : "";
   }
   return "";
@@ -4391,6 +4410,7 @@ function renderDisciplineStats(discipline, period) {
             const unit = f.key === "distance" ? "km"
               : f.key === "calories" ? " kcal"
               : f.key === "avgSpeed" ? " km/h"
+              : f.key === "incline" ? "%"
               : "";
             displayVal = escapeHtml(s.data[f.key]) + unit;
           }
@@ -4561,7 +4581,7 @@ function attachHandlers() {
         state.form.avgSpeed = autoSpeed(state.form.distance, state.form.duration);
       }
       if (activeFields.find(f => f.key === "calories") && !state.form.calories) {
-        state.form.calories = calcCalories(state.activeDiscipline, state.activeSubType, state.form.duration, state.form.distance, state.form.avgSplit, state.form.type);
+        state.form.calories = calcCalories(state.activeDiscipline, state.activeSubType, state.form.duration, state.form.distance, state.form.avgSplit, state.form.type, state.form.incline);
       }
       render();
     });
@@ -4673,7 +4693,7 @@ function handleSave() {
     if (s) state.form.avgSpeed = s;
   }
   if (activeFields.find(f => f.key === "calories") && !state.form.calories) {
-    const c = calcCalories(state.activeDiscipline, state.activeSubType, state.form.duration, state.form.distance, state.form.avgSplit, state.form.type);
+    const c = calcCalories(state.activeDiscipline, state.activeSubType, state.form.duration, state.form.distance, state.form.avgSplit, state.form.type, state.form.incline);
     if (c) state.form.calories = c;
   }
   const session = {
