@@ -2208,7 +2208,7 @@ const RPE_LABEL = ["", "Very Easy", "Easy", "Moderate", "Moderate", "Hard", "Har
 const STORAGE_KEY = "training-log:sessions";
 const SETTINGS_KEY = "training-log:settings";
 const PLAN_KEY = "training-log:plan";
-const APP_VERSION = "0.80";
+const APP_VERSION = "0.81";
 
 // Default weekly training plan (DOW 0=Sun … 6=Sat)
 const DEFAULT_PLAN = {
@@ -4538,7 +4538,7 @@ function attachHandlers() {
       state.form[input.dataset.field] = val;
       // Re-render only if a hint needs to update or RPE preview changes
       const key = input.dataset.field;
-      if (key === "distance" || key === "duration" || key === "avgSplit") {
+      if (key === "distance" || key === "duration" || key === "avgSplit" || key === "incline" || key === "type") {
         // Preserve focus
         const focused = document.activeElement.dataset?.field;
         const selStart = document.activeElement.selectionStart;
